@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { daysAgo, fmt$, fmtDate, STAGE_LABELS } from '@/lib/utils'
 import { ProjectPanel } from '@/components/project/ProjectPanel'
+import { NewProjectModal } from '@/components/project/NewProjectModal'
+import { exportProjectsCSV } from '@/lib/export-utils'
 import type { Project, Schedule } from '@/types/database'
 
 // ── SLA THRESHOLDS ─────────────────────────────────────────────────────────────
@@ -218,6 +220,11 @@ export default function CommandPage() {
   const [user, setUser] = useState<{ email: string } | null>(null)
   const [pmFilter, setPmFilter] = useState<string>('all')
   const [search, setSearch] = useState<string>('')
+  const [showNewProject, setShowNewProject] = useState(false)
+  const [displayName, setDisplayName] = useState(() =>
+    typeof window !== 'undefined' ? localStorage.getItem('mg_display_name') ?? '' : ''
+  )
+  const [showNameInput, setShowNameInput] = useState(false)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [collapsed, setCollapsed] = useState<Partial<Record<Section, boolean>>>({
     aging: true, ok: false,
@@ -305,7 +312,7 @@ export default function CommandPage() {
       {/* ── TOP NAV ──────────────────────────────────────────────────────── */}
       <nav className="bg-gray-950 border-b border-gray-800 flex items-center gap-2 px-4 py-2 sticky top-0 z-50">
         <span className="text-green-400 font-bold text-base mr-2">MicroGRID</span>
-                {[
+        {[
           { label: 'Command',  href: '/command'  },
           { label: 'Queue',    href: '/queue'    },
           { label: 'Pipeline', href: '/pipeline' },
@@ -336,13 +343,31 @@ export default function CommandPage() {
             <option value="all">All PMs</option>
             {pms.map(pm => <option key={pm} value={pm}>{pm}</option>)}
           </select>
-          <button
-            onClick={loadData}
-            className="text-xs text-gray-500 hover:text-white transition-colors"
-          >
+          <button onClick={loadData} className="text-xs text-gray-500 hover:text-white transition-colors">
             ↻ {Math.round((Date.now() - lastRefresh) / 60000)}m ago
           </button>
-          <span className="text-xs text-gray-500">{user?.email}</span>
+          <button
+            onClick={() => exportProjectsCSV(filtered)}
+            className="text-xs text-gray-500 hover:text-white transition-colors"
+          >↓ Export</button>
+          {showNameInput ? (
+            <input
+              autoFocus
+              defaultValue={displayName}
+              onBlur={e => { const v = e.target.value.trim(); if(v){ localStorage.setItem('mg_display_name',v); setDisplayName(v); } setShowNameInput(false); }}
+              onKeyDown={e => { if(e.key==='Enter') (e.target as HTMLInputElement).blur(); if(e.key==='Escape') setShowNameInput(false); }}
+              className="text-xs bg-gray-800 text-white border border-gray-600 rounded px-2 py-1 w-28 focus:outline-none focus:border-green-500"
+              placeholder="Your name"
+            />
+          ) : (
+            <button onClick={() => setShowNameInput(true)} className="text-xs text-gray-500 hover:text-white">
+              {displayName || user?.email?.split('@')[0]}
+            </button>
+          )}
+          <button
+            onClick={() => setShowNewProject(true)}
+            className="text-xs bg-green-600 hover:bg-green-500 text-white font-medium px-3 py-1.5 rounded-lg transition-colors"
+          >+ New Project</button>
         </div>
       </nav>
 
@@ -429,6 +454,16 @@ export default function CommandPage() {
           project={selectedProject}
           onClose={() => setSelectedProject(null)}
           onProjectUpdated={loadData}
+        />
+      )}
+
+      {/* New Project modal */}
+      {showNewProject && (
+        <NewProjectModal
+          onClose={() => setShowNewProject(false)}
+          onCreated={(id) => { setShowNewProject(false); loadData(); }}
+          existingIds={projects.map(p => p.id)}
+          pms={pms}
         />
       )}
     </div>

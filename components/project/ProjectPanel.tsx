@@ -81,6 +81,41 @@ function Row({ label, value, small }: { label: string; value?: string | null; sm
   )
 }
 
+function EditRow({ label, field, value, draft, editing, onChange, small, type = 'text' }: {
+  label: string
+  field: string
+  value?: string | null
+  draft: Record<string, any>
+  editing: boolean
+  onChange: (d: any) => void
+  small?: boolean
+  type?: 'text' | 'date'
+}) {
+  const current = field in draft ? draft[field] : value
+  if (!editing) {
+    if (!value) return null
+    return (
+      <div className="flex gap-2 py-0.5">
+        <span className="text-gray-500 text-xs w-28 flex-shrink-0">{label}</span>
+        <span className={`text-gray-200 text-xs break-words ${small ? 'text-xs' : ''}`}>
+          {type === 'date' && value ? new Date(value + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : value}
+        </span>
+      </div>
+    )
+  }
+  return (
+    <div className="flex gap-2 py-0.5 items-center">
+      <span className="text-gray-500 text-xs w-28 flex-shrink-0">{label}</span>
+      <input
+        type={type}
+        value={current ?? ''}
+        onChange={e => onChange((d: any) => ({ ...d, [field]: e.target.value || null }))}
+        className="flex-1 bg-gray-700 text-white text-xs rounded px-2 py-1 border border-gray-600 focus:border-green-500 focus:outline-none"
+      />
+    </div>
+  )
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-4">
@@ -148,6 +183,11 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   const [showBlockerForm, setShowBlockerForm] = useState(false)
   const [advancing, setAdvancing] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [editMode, setEditMode] = useState(false)
+  const [editDraft, setEditDraft] = useState<Partial<Project>>({})
+  const [editSaving, setEditSaving] = useState(false)
+  const [ahjInfo, setAhjInfo] = useState<any>(null)
+  const [utilityInfo, setUtilityInfo] = useState<any>(null)
 
   const pid = project.id
   const stageTasks = TASKS[project.stage] ?? []
@@ -179,6 +219,17 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     if (data && 'folder_url' in data) setFolderUrl((data as any).folder_url)
   }, [pid])
 
+  const loadAhjUtil = useCallback(async () => {
+    if (project.ahj) {
+      const { data } = await (supabase as any).from('ahjs').select('permit_phone,permit_website,max_duration,electric_code,permit_notes').ilike('name', project.ahj).limit(1).single()
+      if (data) setAhjInfo(data)
+    }
+    if (project.utility) {
+      const { data } = await (supabase as any).from('utilities').select('phone,website,notes').ilike('name', `%${project.utility}%`).limit(1).single()
+      if (data) setUtilityInfo(data)
+    }
+  }, [project.ahj, project.utility])
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserEmail(data.user?.email ?? ''))
   }, [])
@@ -186,9 +237,12 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   useEffect(() => {
     setProject(initialProject)
     setBlockerInput(initialProject.blocker ?? '')
+    setAhjInfo(null)
+    setUtilityInfo(null)
     loadTasks()
     loadNotes()
     loadFolder()
+    loadAhjUtil()
   }, [initialProject.id])
 
   // Update task status
@@ -208,7 +262,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   async function addNote() {
     if (!newNote.trim()) return
     setSaving(true)
-    const pm = userEmail.split('@')[0] ?? 'PM'
+    const pm = (typeof window !== 'undefined' ? localStorage.getItem('mg_display_name') : null) ?? userEmail.split('@')[0] ?? 'PM'
     await (supabase as any).from('notes').insert({
       project_id: pid, text: newNote.trim(),
       time: new Date().toISOString(), pm,
@@ -227,6 +281,55 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     setShowBlockerForm(false)
     onProjectUpdated()
     showToast(text ? 'Blocker set' : 'Blocker cleared')
+  }
+
+  // Save edits
+  async function saveEdits() {
+    setEditSaving(true)
+    await (supabase as any).from('projects').update(editDraft).eq('id', pid)
+    setProject(p => ({ ...p, ...editDraft }))
+    setEditMode(false)
+    setEditDraft({})
+    setEditSaving(false)
+    onProjectUpdated()
+    showToast('Project updated')
+  }
+
+  function startEdit() {
+    setEditDraft({
+      name: project.name,
+      city: project.city,
+      address: project.address,
+      phone: project.phone,
+      email: project.email,
+      pm: project.pm,
+      advisor: project.advisor,
+      consultant: project.consultant,
+      consultant_email: project.consultant_email,
+      ahj: project.ahj,
+      utility: project.utility,
+      permit_number: project.permit_number,
+      utility_app_number: project.utility_app_number,
+      permit_fee: project.permit_fee,
+      city_permit_date: project.city_permit_date,
+      utility_permit_date: project.utility_permit_date,
+      ntp_date: project.ntp_date,
+      survey_scheduled_date: project.survey_scheduled_date,
+      survey_date: project.survey_date,
+      install_scheduled_date: project.install_scheduled_date,
+      install_complete_date: project.install_complete_date,
+      city_inspection_date: project.city_inspection_date,
+      utility_inspection_date: project.utility_inspection_date,
+      pto_date: project.pto_date,
+      in_service_date: project.in_service_date,
+      hoa: project.hoa,
+      esid: project.esid,
+      financing_type: project.financing_type,
+      disposition: project.disposition,
+      site_surveyor: project.site_surveyor,
+    })
+    setEditMode(true)
+    setTab('info')
   }
 
   // Advance stage
@@ -317,6 +420,25 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
               </div>
             )}
 
+            {/* Edit button */}
+            {!showBlockerForm && !editMode && (
+              <button onClick={startEdit}
+                className="text-xs px-3 py-1.5 rounded-lg font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 transition-colors">
+                ✏ Edit
+              </button>
+            )}
+            {editMode && (
+              <div className="flex items-center gap-2">
+                <button onClick={saveEdits} disabled={editSaving}
+                  className="text-xs px-3 py-1.5 rounded-lg font-medium bg-green-700 hover:bg-green-600 text-white disabled:opacity-50 transition-colors">
+                  {editSaving ? 'Saving...' : 'Save Changes'}
+                </button>
+                <button onClick={() => { setEditMode(false); setEditDraft({}) }}
+                  className="text-xs px-3 py-1.5 rounded-lg font-medium bg-gray-800 text-gray-400 hover:text-white transition-colors">
+                  Cancel
+                </button>
+              </div>
+            )}
             {/* Stage advance */}
             {nextStage && !showBlockerForm && (
               <button
@@ -435,19 +557,20 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
               <div className="grid grid-cols-2 gap-8 max-w-3xl">
                 <div>
                   <Section title="Contact">
-                    <Row label="Address" value={project.address} small />
-                    <Row label="Phone" value={project.phone} />
-                    <Row label="Email" value={project.email} small />
+                    <EditRow label="Name" field="name" value={project.name} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="Address" field="address" value={project.address} draft={editDraft} editing={editMode} onChange={setEditDraft} small />
+                    <EditRow label="Phone" field="phone" value={project.phone} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="Email" field="email" value={project.email} draft={editDraft} editing={editMode} onChange={setEditDraft} small />
                   </Section>
                   <Section title="Contract">
                     <Row label="Amount" value={fmt$(project.contract)} />
                     <Row label="System" value={project.systemkw ? `${project.systemkw} kW` : null} />
                     <Row label="Financier" value={project.financier} />
-                    <Row label="Financing" value={project.financing_type} />
+                    <EditRow label="Financing" field="financing_type" value={project.financing_type} draft={editDraft} editing={editMode} onChange={setEditDraft} />
                     <Row label="Down payment" value={project.down_payment ? `$${Number(project.down_payment).toLocaleString()}` : null} />
                     <Row label="TPO escalator" value={project.tpo_escalator?.toString()} />
                     <Row label="Adv pmt sched" value={project.financier_adv_pmt} />
-                    <Row label="Disposition" value={project.disposition} />
+                    <EditRow label="Disposition" field="disposition" value={project.disposition} draft={editDraft} editing={editMode} onChange={setEditDraft} />
                     <Row label="Dealer" value={project.dealer} />
                   </Section>
                   <Section title="Equipment">
@@ -466,38 +589,54 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                     <Row label="Perf meter" value={project.performance_meter} />
                     <Row label="Interconnect" value={project.interconnection_breaker} />
                     <Row label="Main breaker" value={project.main_breaker} />
-                    <Row label="HOA" value={project.hoa} />
+                    <EditRow label="HOA" field="hoa" value={project.hoa} draft={editDraft} editing={editMode} onChange={setEditDraft} />
                     <Row label="ESID" value={project.esid ? String(project.esid).replace(/e\+?\d+$/i, v => '') : null} />
                   </Section>
                 </div>
                 <div>
                   <Section title="Team">
-                    <Row label="PM" value={project.pm} />
-                    <Row label="Advisor" value={project.advisor} />
-                    <Row label="Consultant" value={project.consultant} />
-                    <Row label="Consultant email" value={project.consultant_email} small />
-                    <Row label="Site surveyor" value={project.site_surveyor} />
+                    <EditRow label="PM" field="pm" value={project.pm} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="Advisor" field="advisor" value={project.advisor} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="Consultant" field="consultant" value={project.consultant} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="Consultant email" field="consultant_email" value={project.consultant_email} draft={editDraft} editing={editMode} onChange={setEditDraft} small />
+                    <EditRow label="Site surveyor" field="site_surveyor" value={project.site_surveyor} draft={editDraft} editing={editMode} onChange={setEditDraft} />
                   </Section>
                   <Section title="Permitting">
-                    <Row label="AHJ" value={project.ahj} />
-                    <Row label="Utility" value={project.utility} />
-                    <Row label="Permit #" value={project.permit_number} />
-                    <Row label="Utility app #" value={project.utility_app_number} />
+                    <EditRow label="AHJ" field="ahj" value={project.ahj} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    {!editMode && ahjInfo && (
+                      <div className="ml-0 mt-1 mb-2 pl-28 space-y-0.5">
+                        {ahjInfo.permit_phone && <div className="text-xs text-green-400">{ahjInfo.permit_phone}</div>}
+                        {ahjInfo.permit_website && <a href={ahjInfo.permit_website.startsWith('http') ? ahjInfo.permit_website : 'https://'+ahjInfo.permit_website} target="_blank" rel="noopener" className="text-xs text-green-400 hover:underline block">{ahjInfo.permit_website} ↗</a>}
+                        {ahjInfo.max_duration && <div className="text-xs text-gray-500">{ahjInfo.max_duration}d turnaround</div>}
+                        {ahjInfo.electric_code && <div className="text-xs text-gray-500">{ahjInfo.electric_code}</div>}
+                        {ahjInfo.permit_notes && <div className="text-xs text-gray-400 mt-1 bg-gray-800 rounded p-2">{ahjInfo.permit_notes.slice(0,200)}</div>}
+                      </div>
+                    )}
+                    <EditRow label="Utility" field="utility" value={project.utility} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    {!editMode && utilityInfo && (
+                      <div className="ml-0 mt-1 mb-2 pl-28 space-y-0.5">
+                        {utilityInfo.phone && <div className="text-xs text-green-400">{utilityInfo.phone}</div>}
+                        {utilityInfo.website && <a href={utilityInfo.website.startsWith('http') ? utilityInfo.website : 'https://'+utilityInfo.website} target="_blank" rel="noopener" className="text-xs text-green-400 hover:underline block">{utilityInfo.website} ↗</a>}
+                        {utilityInfo.notes && <div className="text-xs text-gray-400 mt-1 bg-gray-800 rounded p-2">{utilityInfo.notes.slice(0,150)}</div>}
+                      </div>
+                    )}
+                    <EditRow label="Permit #" field="permit_number" value={project.permit_number} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="Utility app #" field="utility_app_number" value={project.utility_app_number} draft={editDraft} editing={editMode} onChange={setEditDraft} />
                     <Row label="Permit fee" value={project.permit_fee ? `$${Number(project.permit_fee).toLocaleString()}` : null} />
-                    <Row label="City permit" value={fmtDate(project.city_permit_date)} />
-                    <Row label="Utility permit" value={fmtDate(project.utility_permit_date)} />
+                    <EditRow label="City permit" field="city_permit_date" value={project.city_permit_date} draft={editDraft} editing={editMode} onChange={setEditDraft} type="date" />
+                    <EditRow label="Utility permit" field="utility_permit_date" value={project.utility_permit_date} draft={editDraft} editing={editMode} onChange={setEditDraft} type="date" />
                   </Section>
                   <Section title="Milestones">
-                    <Row label="Sale date" value={fmtDate(project.sale_date)} />
-                    <Row label="NTP" value={fmtDate(project.ntp_date)} />
-                    <Row label="Survey scheduled" value={fmtDate(project.survey_scheduled_date)} />
-                    <Row label="Survey complete" value={fmtDate(project.survey_date)} />
-                    <Row label="Install scheduled" value={fmtDate(project.install_scheduled_date)} />
-                    <Row label="Install complete" value={fmtDate(project.install_complete_date)} />
-                    <Row label="City inspection" value={fmtDate(project.city_inspection_date)} />
-                    <Row label="Utility inspection" value={fmtDate(project.utility_inspection_date)} />
-                    <Row label="PTO" value={fmtDate(project.pto_date)} />
-                    <Row label="In service" value={fmtDate(project.in_service_date)} />
+                    <EditRow label="Sale date" field="sale_date" value={project.sale_date} draft={editDraft} editing={editMode} onChange={setEditDraft} type="date" />
+                    <EditRow label="NTP" field="ntp_date" value={project.ntp_date} draft={editDraft} editing={editMode} onChange={setEditDraft} type="date" />
+                    <EditRow label="Survey scheduled" field="survey_scheduled_date" value={project.survey_scheduled_date} draft={editDraft} editing={editMode} onChange={setEditDraft} type="date" />
+                    <EditRow label="Survey complete" field="survey_date" value={project.survey_date} draft={editDraft} editing={editMode} onChange={setEditDraft} type="date" />
+                    <EditRow label="Install scheduled" field="install_scheduled_date" value={project.install_scheduled_date} draft={editDraft} editing={editMode} onChange={setEditDraft} type="date" />
+                    <EditRow label="Install complete" field="install_complete_date" value={project.install_complete_date} draft={editDraft} editing={editMode} onChange={setEditDraft} type="date" />
+                    <EditRow label="City inspection" field="city_inspection_date" value={project.city_inspection_date} draft={editDraft} editing={editMode} onChange={setEditDraft} type="date" />
+                    <EditRow label="Utility inspection" field="utility_inspection_date" value={project.utility_inspection_date} draft={editDraft} editing={editMode} onChange={setEditDraft} type="date" />
+                    <EditRow label="PTO" field="pto_date" value={project.pto_date} draft={editDraft} editing={editMode} onChange={setEditDraft} type="date" />
+                    <EditRow label="In service" field="in_service_date" value={project.in_service_date} draft={editDraft} editing={editMode} onChange={setEditDraft} type="date" />
                   </Section>
                 </div>
               </div>
