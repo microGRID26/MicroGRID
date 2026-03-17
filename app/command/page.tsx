@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { daysAgo, fmt$, fmtDate, STAGE_LABELS } from '@/lib/utils'
+import { ProjectPanel } from '@/components/project/ProjectPanel'
 import type { Project, Schedule } from '@/types/database'
 
 // ── SLA THRESHOLDS ─────────────────────────────────────────────────────────────
@@ -391,51 +392,18 @@ export default function CommandPage() {
             onSelect={setSelectedProject} selectedId={selectedProject?.id ?? null}
             collapsed={!!collapsed.ok} onToggle={() => toggleSection('ok')} />
         </div>
-
-        {/* Project detail panel */}
-        {selectedProject && (
-          <div className="w-80 bg-gray-950 border-l border-gray-800 overflow-y-auto flex-shrink-0">
-            <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
-              <div>
-                <div className="text-sm font-semibold text-white">{selectedProject.name}</div>
-                <div className="text-xs text-gray-500">{selectedProject.id}</div>
-              </div>
-              <button onClick={() => setSelectedProject(null)} className="text-gray-500 hover:text-white text-lg">×</button>
-            </div>
-            <div className="px-4 py-3 space-y-3 text-xs">
-              <Row label="Stage" value={STAGE_LABELS[selectedProject.stage]} />
-              <Row label="Days in Stage" value={`${daysAgo(selectedProject.stage_date)}d`} />
-              <Row label="PM" value={selectedProject.pm} />
-              <Row label="City" value={selectedProject.city} />
-              <Row label="Address" value={selectedProject.address} />
-              <Row label="Contract" value={fmt$(selectedProject.contract)} />
-              <Row label="System" value={selectedProject.systemkw ? `${selectedProject.systemkw} kW` : null} />
-              <Row label="Financier" value={selectedProject.financier} />
-              <Row label="AHJ" value={selectedProject.ahj} />
-              <Row label="Utility" value={selectedProject.utility} />
-              <Row label="Sale Date" value={fmtDate(selectedProject.sale_date)} />
-              <Row label="NTP Date" value={fmtDate(selectedProject.ntp_date)} />
-              <Row label="Permit #" value={selectedProject.permit_number} />
-              {selectedProject.blocker && (
-                <div className="bg-red-950 border border-red-800 rounded-lg p-3">
-                  <div className="text-red-400 font-semibold mb-1">🚫 Blocked</div>
-                  <div className="text-red-300">{selectedProject.blocker}</div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Full Project Panel modal */}
+      {selectedProject && (
+        <ProjectPanel
+          project={selectedProject}
+          onClose={() => setSelectedProject(null)}
+          onProjectUpdated={loadData}
+        />
+      )}
     </div>
   )
 }
 
-function Row({ label, value }: { label: string; value: string | null | undefined }) {
-  if (!value) return null
-  return (
-    <div className="flex gap-2">
-      <span className="text-gray-500 w-24 flex-shrink-0">{label}</span>
-      <span className="text-gray-200">{value}</span>
-    </div>
-  )
-}
+
