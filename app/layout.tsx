@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ['latin'], preload: false })
 
 export const metadata: Metadata = {
   title: 'MicroGRID CRM',
-  description: 'TriSMART Solar Project Management',
+  description: 'MicroGRID CRM',
 }
 
 export default function RootLayout({

@@ -1152,7 +1152,7 @@ function CRMInfo() {
                 { label: 'Stack',      value: 'Next.js 16 + TypeScript + Tailwind v4' },
                 { label: 'Database',   value: 'Supabase (PostgreSQL)' },
                 { label: 'Hosting',    value: 'Vercel Hobby' },
-                { label: 'Auth',       value: 'Google OAuth (@trismartsolar.com)' },
+                { label: 'Auth',       value: 'Google OAuth (@trismartsolar.com / @microgrid.com)' },
                 { label: 'Repo',       value: 'github.com/microGRID26/microgrid-crm' },
                 { label: 'Phase',      value: 'Phase 3 — Admin Portal' },
               ].map(r => (
