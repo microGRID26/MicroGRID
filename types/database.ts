@@ -20,6 +20,7 @@ export interface Project {
   advisor: string | null
   consultant: string | null
   blocker: string | null
+  loyalty: string | null
   financing_type: string | null
   down_payment: number | null
   tpo_escalator: number | null
@@ -122,16 +123,55 @@ export interface ProjectFunding {
   nonfunded_code_3: string | null
 }
 
+export interface ProjectFolder {
+  project_id: string
+  folder_id: string | null
+  folder_url: string | null
+}
+
 export type Database = {
   public: {
     Tables: {
-      projects: { Row: Project; Insert: Partial<Project>; Update: Partial<Project> }
-      notes: { Row: Note; Insert: Partial<Note>; Update: Partial<Note> }
-      task_state: { Row: TaskState; Insert: Partial<TaskState>; Update: Partial<TaskState> }
-      stage_history: { Row: StageHistory; Insert: Partial<StageHistory>; Update: Partial<StageHistory> }
-      crews: { Row: Crew; Insert: Partial<Crew>; Update: Partial<Crew> }
-      schedule: { Row: Schedule; Insert: Partial<Schedule>; Update: Partial<Schedule> }
-      project_funding: { Row: ProjectFunding; Insert: Partial<ProjectFunding>; Update: Partial<ProjectFunding> }
+      projects: {
+        Row: Project
+        Insert: Partial<Project> & { id: string }
+        Update: Partial<Project>
+      }
+      notes: {
+        Row: Note
+        Insert: Omit<Note, 'id'> & { id?: string }
+        Update: Partial<Note>
+      }
+      task_state: {
+        Row: TaskState
+        Insert: TaskState
+        Update: Partial<TaskState>
+      }
+      stage_history: {
+        Row: StageHistory
+        Insert: Omit<StageHistory, 'id'> & { id?: string }
+        Update: Partial<StageHistory>
+      }
+      crews: {
+        Row: Crew
+        Insert: Omit<Crew, 'id'> & { id?: string }
+        Update: Partial<Crew>
+      }
+      schedule: {
+        Row: Schedule
+        Insert: Omit<Schedule, 'id'> & { id?: string }
+        Update: Partial<Schedule>
+      }
+      project_funding: {
+        Row: ProjectFunding
+        Insert: ProjectFunding
+        Update: Partial<ProjectFunding>
+      }
+      project_folders: {
+        Row: ProjectFolder
+        Insert: ProjectFolder
+        Update: Partial<ProjectFolder>
+      }
     }
   }
 }
