@@ -12,9 +12,6 @@ export default function LoginPage() {
       provider: 'google',
       options: {
         redirectTo: `${location.origin}/auth/callback`,
-        queryParams: {
-          // hd restriction removed — allow any Google account
-        },
       },
     })
   }
