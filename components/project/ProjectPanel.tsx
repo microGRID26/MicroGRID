@@ -359,7 +359,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     const today = new Date().toISOString().slice(0, 10)
     await (supabase as any).from('projects').update({ stage: nextStage, stage_date: today }).eq('id', pid)
     await (supabase as any).from('stage_history').insert({ project_id: pid, stage: nextStage, entered: today })
-    setProject(p => ({ ...p, stage: nextStage as any, stage_date: today }))
+    setProject(p => ({ ...p, stage: nextStage as Project['stage'], stage_date: today }))
     setAdvancing(false)
     onProjectUpdated()
     showToast(`Moved to ${STAGE_LABELS[nextStage]}`)
