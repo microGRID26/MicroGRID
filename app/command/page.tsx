@@ -305,10 +305,19 @@ export default function CommandPage() {
       {/* ── TOP NAV ──────────────────────────────────────────────────────── */}
       <nav className="bg-gray-950 border-b border-gray-800 flex items-center gap-2 px-4 py-2 sticky top-0 z-50">
         <span className="text-green-400 font-bold text-base mr-2">MicroGRID</span>
-        {['Command','Queue','Pipeline','Analytics','Audit','Schedule','Service','Funding'].map(v => (
-          <a key={v} href={v === 'Queue' ? '/queue' : '#'}
-            className={`text-xs px-3 py-1.5 rounded-md transition-colors ${v === 'Command' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}>
-            {v}
+        {[
+          { label: 'Command',  href: '/command'  },
+          { label: 'Queue',    href: '/queue'    },
+          { label: 'Pipeline', href: '/pipeline' },
+          { label: 'Analytics',href: '/analytics'},
+          { label: 'Audit',    href: '/audit'    },
+          { label: 'Schedule', href: '/schedule' },
+          { label: 'Service',  href: '/service'  },
+          { label: 'Funding',  href: '/funding'  },
+        ].map(v => (
+          <a key={v.label} href={v.href}
+            className={`text-xs px-3 py-1.5 rounded-md transition-colors ${v.label === 'Command' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}>
+            {v.label}
           </a>
         ))}
         <div className="ml-auto flex items-center gap-3">
