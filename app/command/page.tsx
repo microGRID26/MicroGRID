@@ -270,7 +270,7 @@ export default function CommandPage() {
   const pms = [...new Set(projects.map(p => p.pm).filter(Boolean))].sort() as string[]
 
   // Stats
-  const totalContract = filtered.reduce((s, p) => s + (p.contract ?? 0), 0)
+  const totalContract = filtered.reduce((s, p) => s + (Number(p.contract) || 0), 0)
 
   function toggleSection(id: Section) {
     setCollapsed(c => ({ ...c, [id]: !c[id] }))
