@@ -188,6 +188,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   const [editSaving, setEditSaving] = useState(false)
   const [ahjInfo, setAhjInfo] = useState<any>(null)
   const [utilityInfo, setUtilityInfo] = useState<any>(null)
+  const [serviceCalls, setServiceCalls] = useState<any[]>([])
 
   const pid = project.id
   const stageTasks = TASKS[project.stage] ?? []
@@ -214,21 +215,26 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     if (data) setNotes(data as Note[])
   }, [pid])
 
-  const loadFolder = useCallback(async () => {
-    const { data } = await supabase.from('project_folders').select('folder_url').eq('project_id', pid).single()
-    if (data && 'folder_url' in data) setFolderUrl((data as any).folder_url)
-  }, [pid])
-
   const loadAhjUtil = useCallback(async () => {
     if (project.ahj) {
       const { data } = await (supabase as any).from('ahjs').select('permit_phone,permit_website,max_duration,electric_code,permit_notes').ilike('name', project.ahj).limit(1).single()
       if (data) setAhjInfo(data)
     }
     if (project.utility) {
-      const { data } = await (supabase as any).from('utilities').select('phone,website,notes').ilike('name', `%${project.utility}%`).limit(1).single()
+      const { data } = await (supabase as any).from('utilities').select('phone,website,notes').ilike('name', '%' + project.utility + '%').limit(1).single()
       if (data) setUtilityInfo(data)
     }
   }, [project.ahj, project.utility])
+
+  const loadServiceCalls = useCallback(async () => {
+    const { data } = await (supabase as any).from('service_calls').select('*').eq('project_id', pid).order('created_at', { ascending: false }).limit(5)
+    if (data) setServiceCalls(data)
+  }, [pid])
+
+  const loadFolder = useCallback(async () => {
+    const { data } = await supabase.from('project_folders').select('folder_url').eq('project_id', pid).single()
+    if (data && 'folder_url' in data) setFolderUrl((data as any).folder_url)
+  }, [pid])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserEmail(data.user?.email ?? ''))
@@ -243,6 +249,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     loadNotes()
     loadFolder()
     loadAhjUtil()
+    loadServiceCalls()
   }, [initialProject.id])
 
   // Update task status
@@ -638,6 +645,23 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                     <EditRow label="PTO" field="pto_date" value={project.pto_date} draft={editDraft} editing={editMode} onChange={setEditDraft} type="date" />
                     <EditRow label="In service" field="in_service_date" value={project.in_service_date} draft={editDraft} editing={editMode} onChange={setEditDraft} type="date" />
                   </Section>
+                  {serviceCalls.length > 0 && (
+                    <Section title="Service Calls">
+                      {serviceCalls.map((sc: any) => (
+                        <div key={sc.id} className="flex items-start gap-2 py-1">
+                          <span className={`text-xs px-1.5 py-0.5 rounded flex-shrink-0 ${
+                            sc.status === 'open' ? 'bg-red-900 text-red-300' :
+                            sc.status === 'closed' ? 'bg-green-900 text-green-300' :
+                            'bg-amber-900 text-amber-300'
+                          }`}>{sc.status}</span>
+                          <div className="min-w-0">
+                            {sc.issue_type && <div className="text-xs text-gray-300">{sc.issue_type}</div>}
+                            {sc.description && <div className="text-xs text-gray-500 truncate">{sc.description}</div>}
+                          </div>
+                        </div>
+                      ))}
+                    </Section>
+                  )}
                 </div>
               </div>
             </div>

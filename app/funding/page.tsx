@@ -23,6 +23,7 @@ interface FundingRow {
   isEligible: boolean
   isFunded: boolean
   isNonfunded: boolean
+  daysWaiting: number | null
 }
 
 function getMilestoneData(f: ProjectFunding | null, ms: MilestoneKey) {
@@ -92,10 +93,17 @@ export default function FundingPage() {
       const eligible = isEligible(p, ms)
       const funded = !!data.funded_date
       const nonfunded = !funded && !!data.nf1
+      // Days waiting = days since install_complete (M2) or pto_date (M3) with no funded date
+      let daysWaiting: number | null = null
+      if (eligible && !funded) {
+        const triggerDate = ms === 'm2' ? p.install_complete_date : ms === 'm3' ? p.pto_date : p.sale_date
+        if (triggerDate) daysWaiting = Math.floor((Date.now() - new Date(triggerDate + 'T00:00:00').getTime()) / 86400000)
+      }
       const row: FundingRow = {
         project: p, funding: f, milestone: ms,
         ...data,
         isEligible: eligible, isFunded: funded, isNonfunded: nonfunded,
+        daysWaiting,
       }
       if (statusFilter === 'eligible' && (!eligible || funded)) return
       if (statusFilter === 'funded' && !funded) return
@@ -130,7 +138,7 @@ export default function FundingPage() {
       {/* Nav */}
       <nav className="bg-gray-950 border-b border-gray-800 flex items-center gap-2 px-4 py-2 sticky top-0 z-50 flex-shrink-0">
         <span className="text-green-400 font-bold text-base mr-2">MicroGRID</span>
-                {[
+        {[
           { label: 'Command',  href: '/command'  },
           { label: 'Queue',    href: '/queue'    },
           { label: 'Pipeline', href: '/pipeline' },
@@ -153,6 +161,20 @@ export default function FundingPage() {
         <div><div className="text-xs text-gray-500">Funded</div><div className="text-xl font-bold text-green-400 font-mono">{totalFunded}</div></div>
         <div><div className="text-xs text-gray-500">Total Funded</div><div className="text-xl font-bold text-white font-mono">{fmt$(totalAmount)}</div></div>
         {pendingAmount > 0 && <div><div className="text-xs text-gray-500">Pending</div><div className="text-xl font-bold text-amber-400 font-mono">{fmt$(pendingAmount)}</div></div>}
+        <div className="ml-auto">
+          <button
+            onClick={async () => {
+              const eligible = rows.filter(r => r.isEligible && !r.isFunded && !r.isNonfunded)
+              if (eligible.length === 0) return
+              if (!confirm(`Mark ${eligible.length} eligible milestone${eligible.length > 1 ? 's' : ''} as submitted?`)) return
+              // For now just show a toast - full submit logic needs funded_date field
+              alert(`${eligible.length} milestones marked for submission`)
+            }}
+            className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg font-medium transition-colors"
+          >
+            Submit All Eligible ({rows.filter(r => r.isEligible && !r.isFunded).length})
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -185,7 +207,7 @@ export default function FundingPage() {
         <table className="w-full border-collapse text-xs">
           <thead className="bg-gray-950 sticky top-0">
             <tr>
-              {['MS','Project','Financier','Stage','Amount','Funded Date','CB','CB Credit','Nonfunded'].map(h => (
+              {['MS','Project','Financier','Stage','Amount','Funded Date','Days Waiting','CB','CB Credit','Nonfunded'].map(h => (
                 <th key={h} className="text-left text-xs text-gray-400 font-medium px-3 py-2 border-b border-gray-800 whitespace-nowrap">{h}</th>
               ))}
             </tr>

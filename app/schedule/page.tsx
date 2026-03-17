@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { ProjectPanel } from '@/components/project/ProjectPanel'
+import { ScheduleAssignModal } from '@/components/project/ScheduleAssignModal'
 import type { Project, Schedule, Crew } from '@/types/database'
 
 const JOB_COLORS: Record<string, { bg: string; text: string }> = {
@@ -54,10 +55,17 @@ export default function SchedulePage() {
   const [jobFilter, setJobFilter] = useState('all')
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [loading, setLoading] = useState(true)
+  const [assignModal, setAssignModal] = useState<{
+    crewId: string | null
+    date: string
+    scheduleId: string | null
+    projectId: string | null
+    jobType: string
+  } | null>(null)
 
   const loadData = useCallback(async () => {
     const [crewRes, schedRes, projRes] = await Promise.all([
-      supabase.from('crews').select('*').eq('active', 'TRUE').order('name'),
+      supabase.from('crews').select('*').eq('active', 'Yes').order('name'),
       supabase.from('schedule').select('*'),
       supabase.from('projects').select('id, name, city, stage, stage_date, pm, blocker, contract, financier, phone, email, address, systemkw, ahj, utility, advisor, consultant, sale_date, ntp_date, permit_number, module, module_qty, inverter, inverter_qty, battery, battery_qty, optimizer, optimizer_qty, meter_location, panel_location, voltage, msp_bus_rating, mpu, shutdown, performance_meter, interconnection_breaker, main_breaker, hoa, esid, utility_app_number, permit_fee, city_permit_date, utility_permit_date, survey_scheduled_date, survey_date, install_scheduled_date, install_complete_date, city_inspection_date, utility_inspection_date, pto_date, in_service_date, site_surveyor, consultant_email, dealer, financing_type, down_payment, tpo_escalator, financier_adv_pmt, disposition, loyalty, created_at'),
     ])
@@ -111,7 +119,7 @@ export default function SchedulePage() {
       {/* Nav */}
       <nav className="bg-gray-950 border-b border-gray-800 flex items-center gap-2 px-4 py-2 sticky top-0 z-50 flex-shrink-0">
         <span className="text-green-400 font-bold text-base mr-2">MicroGRID</span>
-                {[
+        {[
           { label: 'Command',  href: '/command'  },
           { label: 'Queue',    href: '/queue'    },
           { label: 'Pipeline', href: '/pipeline' },
@@ -192,14 +200,16 @@ export default function SchedulePage() {
                   const isToday = iso === todayIso
                   const jobs = jobsFor(crew.id, iso)
                   return (
-                    <td key={i} className={`px-2 py-2 border-r border-gray-800 align-top min-h-16 ${isToday ? 'bg-green-950/20' : ''}`}>
+                    <td key={i}
+                      onClick={() => setAssignModal({ crewId: crew.id, date: iso, scheduleId: null, projectId: null, jobType: 'install' })}
+                      className={`px-2 py-2 border-r border-gray-800 align-top min-h-16 cursor-pointer hover:bg-gray-800/50 transition-colors ${isToday ? 'bg-green-950/20' : ''}`}>
                       {jobs.map(job => {
                         const p = projectMap[job.project_id]
                         const colors = JOB_COLORS[job.job_type] ?? { bg: 'bg-gray-800', text: 'text-gray-300' }
                         return (
                           <div
                             key={job.id}
-                            onClick={() => p && setSelectedProject(p)}
+                            onClick={e => { e.stopPropagation(); setAssignModal({ crewId: crew.id, date: iso, scheduleId: job.id, projectId: job.project_id, jobType: job.job_type }) }}
                             className={`${colors.bg} ${colors.text} rounded px-2 py-1 mb-1 cursor-pointer hover:opacity-80 transition-opacity`}
                           >
                             {job.time && <div className="text-xs font-bold opacity-90">{fmtTime(job.time)}</div>}
@@ -224,6 +234,19 @@ export default function SchedulePage() {
 
       {selectedProject && (
         <ProjectPanel project={selectedProject} onClose={() => setSelectedProject(null)} onProjectUpdated={loadData} />
+      )}
+
+      {assignModal && (
+        <ScheduleAssignModal
+          crewId={assignModal.crewId}
+          date={assignModal.date}
+          scheduleId={assignModal.scheduleId}
+          projectId={assignModal.projectId}
+          jobType={assignModal.jobType}
+          crews={filteredCrews}
+          onClose={() => setAssignModal(null)}
+          onSaved={() => { setAssignModal(null); loadData() }}
+        />
       )}
     </div>
   )
