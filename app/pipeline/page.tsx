@@ -94,15 +94,15 @@ export default function PipelinePage() {
       {/* Nav */}
       <nav className="bg-gray-950 border-b border-gray-800 flex items-center gap-2 px-4 py-2 sticky top-0 z-50 flex-shrink-0">
         <span className="text-green-400 font-bold text-base mr-2">MicroGRID</span>
-        {[
-          { label: 'Command', href: '/command' },
-          { label: 'Queue',   href: '/queue' },
-          { label: 'Pipeline',href: '/pipeline' },
-          { label: 'Analytics',href: '#' },
-          { label: 'Audit',   href: '#' },
-          { label: 'Schedule',href: '#' },
-          { label: 'Service', href: '#' },
-          { label: 'Funding', href: '#' },
+                {[
+          { label: 'Command',  href: '/command'  },
+          { label: 'Queue',    href: '/queue'    },
+          { label: 'Pipeline', href: '/pipeline' },
+          { label: 'Analytics',href: '/analytics'},
+          { label: 'Audit',    href: '/audit'    },
+          { label: 'Schedule', href: '/schedule' },
+          { label: 'Service',  href: '/service'  },
+          { label: 'Funding',  href: '/funding'  },
         ].map(v => (
           <a key={v.label} href={v.href}
             className={`text-xs px-3 py-1.5 rounded-md transition-colors ${v.label === 'Pipeline' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}>
