@@ -78,6 +78,13 @@ function Row({ label, value, small }: { label: string; value?: string | null; sm
     <div className="flex gap-2 py-0.5">
       <span className="text-gray-500 text-xs w-28 flex-shrink-0">{label}</span>
       <span className={`text-gray-200 text-xs break-words ${small ? 'text-xs' : ''}`}>{value}</span>
+      {showAhjModal && project.ahj && (
+        <AHJEditModal
+          ahjName={project.ahj}
+          onClose={() => setShowAhjModal(false)}
+          onSaved={() => { setShowAhjModal(false); loadAhjUtil() }}
+        />
+      )}
     </div>
   )
 }
@@ -116,6 +123,154 @@ function EditRow({ label, field, value, draft, editing, onChange, small, type = 
     </div>
   )
 }
+
+// ── AHJ EDIT MODAL ────────────────────────────────────────────────────────────
+function AHJEditModal({ ahjName, onClose, onSaved }: {
+  ahjName: string
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const supabase = createClient()
+  const [ahj, setAhj] = useState<any>(null)
+  const [draft, setDraft] = useState<any>({})
+  const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [showPw, setShowPw] = useState(false)
+  const [toast, setToast] = useState('')
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await (supabase as any)
+        .from('ahjs').select('*').ilike('name', ahjName).limit(1).single()
+      if (data) { setAhj(data); setDraft({ ...data }) }
+      setLoading(false)
+    }
+    load()
+  }, [ahjName])
+
+  const save = async () => {
+    if (!ahj) return
+    setSaving(true)
+    await (supabase as any).from('ahjs').update({
+      name: draft.name,
+      permit_phone: draft.permit_phone,
+      permit_website: draft.permit_website,
+      max_duration: draft.max_duration,
+      electric_code: draft.electric_code,
+      permit_notes: draft.permit_notes,
+      username: draft.username,
+      password: draft.password,
+    }).eq('id', ahj.id)
+    setSaving(false)
+    setToast('AHJ saved')
+    setTimeout(() => { setToast(''); onSaved() }, 1500)
+  }
+
+  const inputCls = "w-full bg-gray-700 text-white text-xs rounded px-2 py-1.5 border border-gray-600 focus:border-green-500 focus:outline-none"
+  const labelCls = "text-xs text-gray-400 mb-1 block"
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
+          <div>
+            <h2 className="text-sm font-semibold text-white">Edit AHJ</h2>
+            {ahj && <p className="text-xs text-gray-500 mt-0.5">{ahj.name}</p>}
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <span className="text-gray-500 text-sm">Loading...</span>
+          </div>
+        ) : !ahj ? (
+          <div className="flex items-center justify-center py-12">
+            <span className="text-gray-500 text-sm">AHJ "{ahjName}" not found in database.</span>
+          </div>
+        ) : (
+          <div className="overflow-y-auto flex-1 px-5 py-4 space-y-3">
+            {toast && (
+              <div className="bg-green-700 text-white text-xs px-3 py-2 rounded-md">{toast}</div>
+            )}
+            <div>
+              <label className={labelCls}>Name</label>
+              <input className={inputCls} value={draft.name ?? ''} onChange={e => setDraft((d: any) => ({ ...d, name: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Permit Phone</label>
+                <input className={inputCls} value={draft.permit_phone ?? ''} onChange={e => setDraft((d: any) => ({ ...d, permit_phone: e.target.value }))} />
+              </div>
+              <div>
+                <label className={labelCls}>Max Duration (days)</label>
+                <input className={inputCls} type="number" value={draft.max_duration ?? ''} onChange={e => setDraft((d: any) => ({ ...d, max_duration: e.target.value ? Number(e.target.value) : null }))} />
+              </div>
+            </div>
+            <div>
+              <label className={labelCls}>Permit Website</label>
+              <input className={inputCls} value={draft.permit_website ?? ''} onChange={e => setDraft((d: any) => ({ ...d, permit_website: e.target.value }))} />
+            </div>
+            <div>
+              <label className={labelCls}>Electric Code</label>
+              <input className={inputCls} value={draft.electric_code ?? ''} onChange={e => setDraft((d: any) => ({ ...d, electric_code: e.target.value }))} />
+            </div>
+            <div>
+              <label className={labelCls}>Permit Notes</label>
+              <textarea className={inputCls + " resize-none"} rows={3} value={draft.permit_notes ?? ''} onChange={e => setDraft((d: any) => ({ ...d, permit_notes: e.target.value }))} />
+            </div>
+            <div className="border-t border-gray-800 pt-3">
+              <p className="text-xs text-gray-500 font-medium mb-2 uppercase tracking-wide">Portal Login</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>Username</label>
+                  <input className={inputCls} value={draft.username ?? ''} onChange={e => setDraft((d: any) => ({ ...d, username: e.target.value }))} />
+                </div>
+                <div>
+                  <label className={labelCls}>Password</label>
+                  <div className="relative">
+                    <input
+                      type={showPw ? 'text' : 'password'}
+                      className={inputCls + " pr-8"}
+                      value={draft.password ?? ''}
+                      onChange={e => setDraft((d: any) => ({ ...d, password: e.target.value }))}
+                    />
+                    <button type="button" onClick={() => setShowPw(s => !s)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+                      {showPw
+                        ? <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                        : <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                      }
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 px-5 py-4 border-t border-gray-800">
+          <button onClick={onClose}
+            className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md transition-colors">
+            Cancel
+          </button>
+          {ahj && (
+            <button onClick={save} disabled={saving}
+              className="px-4 py-1.5 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white text-xs font-medium rounded-md transition-colors">
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 
 function AutocompleteRow({ label, field, value, draft, editing, onChange, table, searchCol = 'name' }: {
   label: string
@@ -281,6 +436,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   const [utilityInfo, setUtilityInfo] = useState<any>(null)
   const [serviceCalls, setServiceCalls] = useState<any[]>([])
   const [stageHistory, setStageHistory] = useState<any[]>([])
+  const [showAhjModal, setShowAhjModal] = useState(false)
 
   const pid = project.id
   const stageTasks = TASKS[project.stage] ?? []
