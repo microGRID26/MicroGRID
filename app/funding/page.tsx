@@ -246,7 +246,7 @@ export default function FundingPage() {
             {rows.map((row, i) => (
               <tr key={`${row.project.id}-${row.milestone}`}
                 onClick={() => setSelectedProject(row.project)}
-                className={`border-b border-gray-800 cursor-pointer hover:bg-gray-800 ${i % 2 === 0 ? '' : 'bg-gray-850'}`}>
+                className={`border-b border-gray-800 cursor-pointer hover:bg-gray-800`}>
                 <td className="px-3 py-2">
                   <span className={`font-bold px-1.5 py-0.5 rounded text-xs ${
                     row.isFunded ? 'bg-green-900 text-green-300' :

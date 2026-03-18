@@ -218,7 +218,7 @@ export default function SchedulePage() {
           </thead>
           <tbody>
             {filteredCrews.map(crew => (
-              <tr key={crew.id} className="border-b border-gray-800 hover:bg-gray-850">
+              <tr key={crew.id} className="border-b border-gray-800 hover:bg-gray-800">
                 <td className="px-3 py-2 border-r border-gray-800 align-top">
                   <div className="text-xs font-medium text-white">{crew.name}</div>
                   {crew.warehouse && <div className="text-xs text-gray-500">{crew.warehouse}</div>}

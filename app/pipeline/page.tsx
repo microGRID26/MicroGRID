@@ -169,7 +169,7 @@ export default function PipelinePage() {
 
       {/* Kanban board */}
       <div className="flex-1 overflow-x-auto">
-        <div className="flex gap-0 h-full min-w-max">
+        <div className="flex gap-0 h-full w-full">
           {STAGE_ORDER.map(stageId => {
             const cards = sortedCards(filtered.filter(p => p.stage === stageId))
             const colContract = cards.reduce((s, p) => s + (Number(p.contract) || 0), 0)
@@ -177,7 +177,7 @@ export default function PipelinePage() {
             const crit = cards.filter(p => !p.blocker && getSLA(p).status === 'crit').length
 
             return (
-              <div key={stageId} className="flex flex-col border-r border-gray-800 w-52 flex-shrink-0">
+              <div key={stageId} className="flex flex-col border-r border-gray-800 flex-1 min-w-[180px]">
                 {/* Column header */}
                 <div className="bg-gray-950 border-b border-gray-800 px-3 py-2.5 sticky top-0 flex-shrink-0">
                   <div className="flex items-center justify-between mb-1">
@@ -201,7 +201,7 @@ export default function PipelinePage() {
                       <div
                         key={p.id}
                         onClick={() => setSelected(p)}
-                        className={`bg-gray-800 rounded-lg p-2.5 cursor-pointer hover:bg-gray-750 border transition-colors ${
+                        className={`bg-gray-800 rounded-lg p-2.5 cursor-pointer hover:bg-gray-700 border transition-colors ${
                           p.blocker ? 'border-l-2 border-l-red-500 border-gray-700' :
                           sla.status === 'crit' ? 'border-l-2 border-l-red-500 border-gray-700' :
                           sla.status === 'risk' ? 'border-l-2 border-l-amber-500 border-gray-700' :
