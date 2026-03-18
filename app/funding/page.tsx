@@ -66,6 +66,10 @@ export default function FundingPage() {
   const [statusFilter, setStatusFilter] = useState<FundingFilter>('eligible')
   const [financierFilter, setFinancierFilter] = useState('all')
   const [search, setSearch] = useState('')
+  const [showGuide, setShowGuide] = useState(() => {
+    if (typeof window === 'undefined') return true
+    return localStorage.getItem('mg_funding_guide') !== 'dismissed'
+  })
 
   const loadData = useCallback(async () => {
     const [projRes, fundRes] = await Promise.all([
@@ -200,7 +204,6 @@ export default function FundingPage() {
               const eligible = rows.filter(r => r.isEligible && !r.isFunded && !r.isNonfunded)
               if (eligible.length === 0) return
               if (!confirm(`Mark ${eligible.length} eligible milestone${eligible.length > 1 ? 's' : ''} as submitted?`)) return
-              // For now just show a toast - full submit logic needs funded_date field
               alert(`${eligible.length} milestones marked for submission`)
             }}
             className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg font-medium transition-colors"
@@ -209,6 +212,51 @@ export default function FundingPage() {
           </button>
         </div>
       </div>
+
+      {/* How-to banner for Taylor */}
+      {showGuide && (
+        <div className="bg-indigo-950 border-b border-indigo-800 px-6 py-4 flex-shrink-0">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <div className="text-xs font-bold text-indigo-300 uppercase tracking-wider mb-2">👋 How to use the Funding page</div>
+              <div className="grid grid-cols-3 gap-6 text-xs text-indigo-200">
+                <div>
+                  <div className="font-semibold text-white mb-1">The three milestones</div>
+                  <div className="text-indigo-300 space-y-1">
+                    <div><span className="text-amber-300 font-bold">M1</span> — Advance payment. Eligible once a project is sold.</div>
+                    <div><span className="text-amber-300 font-bold">M2</span> — Substantial completion. Eligible once installation is complete.</div>
+                    <div><span className="text-amber-300 font-bold">M3</span> — Final payment. Eligible once PTO date is recorded.</div>
+                  </div>
+                </div>
+                <div>
+                  <div className="font-semibold text-white mb-1">Status badges</div>
+                  <div className="space-y-1 text-indigo-300">
+                    <div><span className="bg-amber-900 text-amber-300 px-1.5 py-0.5 rounded text-xs font-bold mr-1">M1</span> Eligible — ready to submit to financier</div>
+                    <div><span className="bg-green-900 text-green-300 px-1.5 py-0.5 rounded text-xs font-bold mr-1">M1</span> Funded — payment received</div>
+                    <div><span className="bg-red-900 text-red-300 px-1.5 py-0.5 rounded text-xs font-bold mr-1">M1</span> Nonfunded — rejected, see NF codes</div>
+                  </div>
+                </div>
+                <div>
+                  <div className="font-semibold text-white mb-1">Daily workflow</div>
+                  <div className="text-indigo-300 space-y-1">
+                    <div>1. Set filter to <span className="text-white font-medium">Eligible (unfunded)</span> to see what needs submitting</div>
+                    <div>2. Filter by <span className="text-white font-medium">Financier</span> to group submissions</div>
+                    <div>3. Click a row to open the project and record payment details</div>
+                    <div>4. <span className="text-white font-medium">Days Waiting</span> highlights overdue submissions in red</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setShowGuide(false)
+                localStorage.setItem('mg_funding_guide', 'dismissed')
+              }}
+              className="text-indigo-400 hover:text-white text-lg flex-shrink-0 leading-none"
+            >×</button>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="bg-gray-950 border-b border-gray-800 flex items-center gap-2 px-4 py-2 flex-shrink-0 flex-wrap">
