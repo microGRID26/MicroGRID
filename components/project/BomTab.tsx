@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Project } from '@/types/database'
@@ -198,8 +199,8 @@ export function BomTab({ project }: Props) {
           </thead>
           <tbody>
             {categories.map(cat => (
-              <>
-                <tr key={`cat-${cat}`}>
+              <React.Fragment key={cat}>
+                <tr>
                   <td colSpan={5} className="px-3 py-1.5 bg-gray-850 border-b border-gray-800">
                     <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{cat}</span>
                   </td>
@@ -221,7 +222,7 @@ export function BomTab({ project }: Props) {
                     <td className="px-3 py-2 text-gray-600">{item.note}</td>
                   </tr>
                 ))}
-              </>
+              </React.Fragment>
             ))}
           </tbody>
         </table>

@@ -399,7 +399,7 @@ export default function CommandPage() {
   // Get overdue task project IDs
   const overduePids = new Set(
     taskStates
-      .filter(t => t.status !== 'Complete' && t.completed_date && daysAgo(t.completed_date) > 0)
+      .filter(t => t.status === 'Pending Resolution' || t.status === 'Revision Required')
       .map(t => t.project_id)
   )
 

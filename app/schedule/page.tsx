@@ -53,7 +53,6 @@ export default function SchedulePage() {
   const [weekOffset, setWeekOffset] = useState(0)
   const [warehouseFilter, setWarehouseFilter] = useState('all')
   const [jobFilter, setJobFilter] = useState('all')
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [loading, setLoading] = useState(true)
 
   async function signOut() {
@@ -261,10 +260,6 @@ export default function SchedulePage() {
           </tbody>
         </table>
       </div>
-
-      {selectedProject && (
-        <ProjectPanel project={selectedProject} onClose={() => setSelectedProject(null)} onProjectUpdated={loadData} />
-      )}
 
       {assignModal && (
         <ScheduleAssignModal

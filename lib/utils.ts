@@ -33,7 +33,7 @@ export const STAGE_LABELS: Record<string, string> = {
   permit: 'Permitting',
   install: 'Installation',
   inspection: 'Inspection',
-  complete: 'Completion',
+  complete: 'Complete',
 }
 
 export const STAGE_ORDER = ['evaluation','survey','design','permit','install','inspection','complete']

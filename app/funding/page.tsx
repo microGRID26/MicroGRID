@@ -196,9 +196,9 @@ export default function FundingPage() {
             onClick={async () => {
               const eligible = rows.filter(r => r.isEligible && !r.isFunded && !r.isNonfunded)
               if (eligible.length === 0) return
-              if (!confirm(`Mark ${eligible.length} eligible milestone${eligible.length > 1 ? 's' : ''} as submitted?`)) return
-              // For now just show a toast - full submit logic needs funded_date field
-              alert(`${eligible.length} milestones marked for submission`)
+              if (!window.confirm(`Mark ${eligible.length} eligible milestone${eligible.length > 1 ? 's' : ''} as submitted?`)) return
+              // TODO: implement actual submission logic
+              window.alert(`${eligible.length} milestones marked for submission`)
             }}
             className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg font-medium transition-colors"
           >
@@ -263,13 +263,18 @@ export default function FundingPage() {
                 <td className="px-3 py-2 text-gray-400">{STAGE_LABELS[row.project.stage]}</td>
                 <td className="px-3 py-2 text-gray-200 font-mono">{row.amount ? fmt$(row.amount) : '—'}</td>
                 <td className="px-3 py-2 text-gray-300">{fmtDate(row.funded_date) || '—'}</td>
+                <td className="px-3 py-2 font-mono">
+                  {row.daysWaiting !== null
+                    ? <span className={row.daysWaiting > 30 ? 'text-red-400 font-bold' : row.daysWaiting > 14 ? 'text-amber-400' : 'text-gray-400'}>{row.daysWaiting}d</span>
+                    : <span className="text-gray-600">—</span>}
+                </td>
                 <td className="px-3 py-2 text-gray-400 font-mono">{row.cb ? fmt$(row.cb) : '—'}</td>
                 <td className="px-3 py-2 text-gray-400 font-mono">{row.cb_credit ? fmt$(row.cb_credit) : '—'}</td>
                 <td className="px-3 py-2 text-red-400">{[row.nf1, row.nf2, row.nf3].filter(Boolean).join(', ') || '—'}</td>
               </tr>
             ))}
             {rows.length === 0 && (
-              <tr><td colSpan={9} className="text-center py-12 text-gray-500">No funding rows match your filters.</td></tr>
+              <tr><td colSpan={10} className="text-center py-12 text-gray-500">No funding rows match your filters.</td></tr>
             )}
           </tbody>
         </table>

@@ -392,12 +392,26 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   async function saveEdits() {
     setEditSaving(true)
     await (supabase as any).from('projects').update(editDraft).eq('id', pid)
-    setProject(p => ({ ...p, ...editDraft }))
+    const updated = { ...project, ...editDraft }
+    setProject(updated)
     setEditMode(false)
     setEditDraft({})
     setEditSaving(false)
     onProjectUpdated()
     showToast('Project updated')
+    // Reload AHJ/utility info if those fields changed
+    if (editDraft.ahj !== project.ahj || editDraft.utility !== project.utility) {
+      setAhjInfo(null)
+      setUtilityInfo(null)
+      if (editDraft.ahj) {
+        const { data } = await (supabase as any).from('ahjs').select('permit_phone,permit_website,max_duration,electric_code,permit_notes').ilike('name', editDraft.ahj).limit(1).single()
+        if (data) setAhjInfo(data)
+      }
+      if (editDraft.utility) {
+        const { data } = await (supabase as any).from('utilities').select('phone,website,notes').ilike('name', '%' + editDraft.utility + '%').limit(1).single()
+        if (data) setUtilityInfo(data)
+      }
+    }
   }
 
   function startEdit() {
