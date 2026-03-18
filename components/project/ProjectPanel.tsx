@@ -25,7 +25,7 @@ const TASKS: Record<string, { id: string; name: string; pre: string[]; req: bool
     { id: 'monitoring',      name: 'Monitoring',              pre: ['scope'],         req: true  },
     { id: 'build_eng',       name: 'Build Engineering',       pre: ['scope'],         req: true  },
     { id: 'eng_approval',    name: 'Engineering Approval',    pre: ['build_eng'],     req: true  },
-    { id: 'stamps',          name: 'Stamps Required',         pre: ['eng_approval'],  req: false }, // optional per source data
+    { id: 'stamps',          name: 'Stamps Required',         pre: ['eng_approval'],  req: false },
     { id: 'wp1',             name: 'WP1',                     pre: ['scope'],         req: false },
     { id: 'prod_add',        name: 'Production Addendum',     pre: ['scope'],         req: false },
     { id: 'new_ia',          name: 'Create New IA',           pre: ['scope'],         req: false },
@@ -63,7 +63,7 @@ const TASKS: Record<string, { id: string; name: string; pre: string[]; req: bool
   ],
 }
 
-// ── TASK STATUSES — 'Scheduled' added (was missing, exists in live DB data) ──
+// ── TASK STATUSES ─────────────────────────────────────────────────────────────
 const TASK_STATUSES = ['Not Ready','Ready To Start','In Progress','Scheduled','Pending Resolution','Revision Required','Complete']
 
 const STATUS_STYLE: Record<string, string> = {
@@ -298,6 +298,11 @@ const REVISION_REASONS: Record<string, string[]> = {
   ],
   complete: ['Need PTO Letter','Needs to Reschedule','Tech Required'],
 }
+
+// ── FLAT TASK NAME LOOKUP — used by history view ──────────────────────────────
+// Built once at module level (not per render) for scale
+const ALL_TASKS_MAP: Record<string, string> = {}
+Object.values(TASKS).flat().forEach(t => { ALL_TASKS_MAP[t.id] = t.name })
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 function Row({ label, value, small }: { label: string; value?: string | null; small?: boolean }) {
@@ -568,11 +573,14 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   const [editMode, setEditMode] = useState(false)
   const [editDraft, setEditDraft] = useState<Partial<Project>>({})
   const [editSaving, setEditSaving] = useState(false)
-  const [taskView, setTaskView] = useState<'current' | 'all'>('current')
+  const [taskView, setTaskView] = useState<'current' | 'all' | 'history'>('current')
   const [ahjInfo, setAhjInfo] = useState<any>(null)
   const [utilityInfo, setUtilityInfo] = useState<any>(null)
   const [serviceCalls, setServiceCalls] = useState<any[]>([])
   const [stageHistory, setStageHistory] = useState<any[]>([])
+  // ── task_history — lazy-loaded only when user opens the History view ─────────
+  const [taskHistory, setTaskHistory] = useState<any[]>([])
+  const [taskHistoryLoaded, setTaskHistoryLoaded] = useState(false)
 
   const pid = project.id
   const stageTasks = TASKS[project.stage] ?? []
@@ -609,6 +617,21 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     if (data) setStageHistory(data)
   }, [pid])
 
+  // Lazy — only called when user navigates to History view
+  // Indexes on project_id + changed_at keep this fast at 20k+ projects
+  const loadTaskHistory = useCallback(async () => {
+    const { data } = await (supabase as any)
+      .from('task_history')
+      .select('task_id, status, reason, changed_by, changed_at')
+      .eq('project_id', pid)
+      .order('changed_at', { ascending: false })
+      .limit(200)
+    if (data) {
+      setTaskHistory(data)
+      setTaskHistoryLoaded(true)
+    }
+  }, [pid])
+
   const loadServiceCalls = useCallback(async () => {
     const { data } = await (supabase as any).from('service_calls').select('*').eq('project_id', pid).order('created_at', { ascending: false }).limit(5)
     if (data) setServiceCalls(data)
@@ -642,6 +665,9 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   useEffect(() => {
     setAhjInfo(null)
     setUtilityInfo(null)
+    // Reset history cache when project changes
+    setTaskHistory([])
+    setTaskHistoryLoaded(false)
     loadTasks()
     loadNotes()
     loadFolder()
@@ -649,6 +675,13 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     loadServiceCalls()
     loadStageHistory()
   }, [initialProject.id])
+
+  // Lazy-load task history — only when the user navigates to History view
+  useEffect(() => {
+    if (taskView === 'history' && !taskHistoryLoaded) {
+      loadTaskHistory()
+    }
+  }, [taskView, taskHistoryLoaded, loadTaskHistory])
 
   async function updateTaskStatus(taskId: string, status: string) {
     setTaskStates(prev => ({ ...prev, [taskId]: status }))
@@ -663,6 +696,20 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       reason: needsReason ? (taskReasons[taskId] ?? null) : null,
       completed_date: status === 'Complete' ? new Date().toISOString().slice(0, 10) : null,
     }, { onConflict: 'project_id,task_id' })
+
+    // Fire-and-forget revision trail insert — no await, zero user-facing latency
+    const changedBy = (typeof window !== 'undefined' ? localStorage.getItem('mg_display_name') : null)
+      ?? userEmail.split('@')[0]
+      ?? 'unknown'
+    void (supabase as any).from('task_history').insert({
+      project_id: pid,
+      task_id: taskId,
+      status,
+      reason: needsReason ? (taskReasons[taskId] ?? null) : null,
+      changed_by: changedBy,
+    })
+    // Invalidate cache so History view reloads fresh on next open
+    setTaskHistoryLoaded(false)
 
     // Auto-flip disposition when In Service task status changes
     if (taskId === 'in_service') {
@@ -689,6 +736,19 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       status: taskStates[taskId] ?? 'Not Ready',
       reason: reason || null,
     }, { onConflict: 'project_id,task_id' })
+
+    // Fire-and-forget — log reason changes to history too
+    const changedBy = (typeof window !== 'undefined' ? localStorage.getItem('mg_display_name') : null)
+      ?? userEmail.split('@')[0]
+      ?? 'unknown'
+    void (supabase as any).from('task_history').insert({
+      project_id: pid,
+      task_id: taskId,
+      status: taskStates[taskId] ?? 'Not Ready',
+      reason: reason || null,
+      changed_by: changedBy,
+    })
+    setTaskHistoryLoaded(false)
   }
 
   function isLocked(task: { pre: string[] }): boolean {
@@ -894,7 +954,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
             <div className="flex-1 overflow-y-auto p-6">
               <div className="max-w-2xl">
 
-                {/* Toggle */}
+                {/* Toggle — Current Stage · All Tasks · History */}
                 <div className="flex items-center gap-1 mb-5 bg-gray-800 rounded-lg p-1 w-fit">
                   <button
                     onClick={() => setTaskView('current')}
@@ -911,6 +971,14 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                     }`}
                   >
                     All Tasks
+                  </button>
+                  <button
+                    onClick={() => setTaskView('history')}
+                    className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors ${
+                      taskView === 'history' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    History
                   </button>
                 </div>
 
@@ -1034,6 +1102,76 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                   </div>
                 )}
 
+                {/* History View — lazy-loaded, most recent first */}
+                {taskView === 'history' && (
+                  <div>
+                    {!taskHistoryLoaded ? (
+                      <div className="text-xs text-gray-500 text-center py-12 animate-pulse">
+                        Loading history...
+                      </div>
+                    ) : taskHistory.length === 0 ? (
+                      <div className="text-xs text-gray-500 text-center py-12">
+                        <div className="text-2xl mb-2">📋</div>
+                        No history recorded yet.
+                        <div className="mt-1 text-gray-600">Changes will appear here after the task_history table is created.</div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="text-xs text-gray-600 mb-3">{taskHistory.length} change{taskHistory.length !== 1 ? 's' : ''} — most recent first</div>
+                        <div className="divide-y divide-gray-800">
+                          {taskHistory.map((entry, i) => {
+                            const taskName = ALL_TASKS_MAP[entry.task_id] ?? entry.task_id
+                            const when = entry.changed_at
+                              ? new Date(entry.changed_at).toLocaleString('en-US', {
+                                  month: 'short', day: 'numeric', year: 'numeric',
+                                  hour: 'numeric', minute: '2-digit',
+                                })
+                              : ''
+                            return (
+                              <div key={i} className="flex items-start gap-3 py-2.5 px-2 hover:bg-gray-800/40 rounded">
+                                {/* Status dot */}
+                                <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${
+                                  entry.status === 'Complete'           ? 'bg-green-500'  :
+                                  entry.status === 'Pending Resolution' ? 'bg-red-500'    :
+                                  entry.status === 'Revision Required'  ? 'bg-amber-500'  :
+                                  entry.status === 'In Progress'        ? 'bg-blue-500'   :
+                                  entry.status === 'Scheduled'          ? 'bg-indigo-400' :
+                                  entry.status === 'Ready To Start'     ? 'bg-gray-400'   : 'bg-gray-700'
+                                }`} />
+
+                                {/* Task + status + reason */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-xs font-medium text-gray-200">{taskName}</span>
+                                    <span className={`text-xs px-1.5 py-0.5 rounded flex-shrink-0 ${STATUS_STYLE[entry.status] ?? 'bg-gray-800 text-gray-500'}`}>
+                                      {entry.status}
+                                    </span>
+                                  </div>
+                                  {entry.reason && (
+                                    <div className={`mt-0.5 text-xs px-1.5 py-0.5 rounded inline-block ${
+                                      entry.status === 'Pending Resolution' ? 'bg-red-950 text-red-400' :
+                                      entry.status === 'Revision Required'  ? 'bg-amber-950 text-amber-400' :
+                                      'text-gray-500'
+                                    }`}>
+                                      {entry.reason}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Who + when */}
+                                <div className="text-right flex-shrink-0">
+                                  <div className="text-xs text-gray-400">{entry.changed_by ?? '—'}</div>
+                                  <div className="text-xs text-gray-600">{when}</div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
               </div>
             </div>
           )}
@@ -1049,24 +1187,26 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                 />
                 <div className="flex justify-end mt-2">
                   <button onClick={addNote} disabled={saving || !newNote.trim()}
-                    className="bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors">
-                    {saving ? 'Saving…' : 'Add Note'}
+                    className="text-xs px-4 py-2 bg-green-700 hover:bg-green-600 disabled:opacity-40 text-white rounded-lg transition-colors">
+                    {saving ? 'Saving...' : 'Add Note'}
                   </button>
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {notes.length === 0 && <div className="text-gray-500 text-xs text-center py-8">No notes yet.</div>}
-                {notes.map(note => (
-                  <div key={note.id} className="bg-gray-800 rounded-lg p-3">
+                {notes.map(n => (
+                  <div key={n.id} className="bg-gray-800 rounded-xl p-3">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-medium text-green-400">{note.pm}</span>
+                      <span className="text-xs font-medium text-green-400">{n.pm}</span>
                       <span className="text-xs text-gray-500">
-                        {note.time ? new Date(note.time).toLocaleDateString('en-US', { month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit' }) : ''}
+                        {n.time ? new Date(n.time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-200 whitespace-pre-wrap">{note.text}</p>
+                    <p className="text-xs text-gray-200 whitespace-pre-wrap">{n.text}</p>
                   </div>
                 ))}
+                {notes.length === 0 && (
+                  <div className="text-center py-8 text-gray-500 text-xs">No notes yet.</div>
+                )}
               </div>
             </div>
           )}
@@ -1074,25 +1214,27 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
           {/* INFO */}
           {tab === 'info' && (
             <div className="flex-1 overflow-y-auto p-6">
-              <div className="grid grid-cols-2 gap-8 max-w-3xl">
+              <div className="grid grid-cols-2 gap-6 max-w-3xl">
                 <div>
-                  <Section title="Contact">
+                  <Section title="Customer">
                     <EditRow label="Name" field="name" value={project.name} draft={editDraft} editing={editMode} onChange={setEditDraft} />
-                    <EditRow label="Address" field="address" value={project.address} draft={editDraft} editing={editMode} onChange={setEditDraft} small />
+                    <EditRow label="Address" field="address" value={project.address} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="City" field="city" value={project.city} draft={editDraft} editing={editMode} onChange={setEditDraft} />
                     <EditRow label="Phone" field="phone" value={project.phone} draft={editDraft} editing={editMode} onChange={setEditDraft} />
                     <EditRow label="Email" field="email" value={project.email} draft={editDraft} editing={editMode} onChange={setEditDraft} small />
                   </Section>
-                  <Section title="Contract">
-                    <EditRow label="Amount ($)" field="contract" value={project.contract?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} type="number" />
-                    <EditRow label="System (kW)" field="systemkw" value={project.systemkw?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} type="number" />
-                    <EditRow label="Financier" field="financier" value={project.financier} draft={editDraft} editing={editMode} onChange={setEditDraft} />
-                    <SelectEditRow label="Financing" field="financing_type" value={project.financing_type} draft={editDraft} editing={editMode} onChange={setEditDraft}
+                  <Section title="Project">
+                    <SelectEditRow label="Disposition" field="disposition" value={project.disposition} draft={editDraft} editing={editMode} onChange={setEditDraft}
+                      options={['Sale','Loyalty','Cancelled','In Service']} />
+                    <EditRow label="Contract" field="contract" value={project.contract?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} type="number" />
+                    <EditRow label="System kW" field="systemkw" value={project.systemkw?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} type="number" />
+                    <SelectEditRow label="Financier" field="financier" value={project.financier} draft={editDraft} editing={editMode} onChange={setEditDraft}
+                      options={['Cash','Edge','Mosaic','Sungage','GoodLeap','Dividend','Sunrun','Tesla','Sunnova','Loanpal','Other']} />
+                    <SelectEditRow label="Financing type" field="financing_type" value={project.financing_type} draft={editDraft} editing={editMode} onChange={setEditDraft}
                       options={['Loan','TPO (Lease, PPA)','Cash']} />
                     <EditRow label="Down payment" field="down_payment" value={project.down_payment?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} type="number" />
                     <EditRow label="TPO escalator" field="tpo_escalator" value={project.tpo_escalator?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} type="number" />
-                    <EditRow label="Adv pmt sched" field="financier_adv_pmt" value={project.financier_adv_pmt} draft={editDraft} editing={editMode} onChange={setEditDraft} />
-                    <SelectEditRow label="Disposition" field="disposition" value={project.disposition} draft={editDraft} editing={editMode} onChange={setEditDraft}
-                      options={['Sale','Loyalty','Cancelled','In Service']} />
+                    <EditRow label="Financier adv pmt" field="financier_adv_pmt" value={project.financier_adv_pmt?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} type="number" />
                     <EditRow label="Dealer" field="dealer" value={project.dealer} draft={editDraft} editing={editMode} onChange={setEditDraft} />
                   </Section>
                   <Section title="Equipment">
@@ -1105,20 +1247,22 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                     <EditRow label="Optimizer" field="optimizer" value={project.optimizer} draft={editDraft} editing={editMode} onChange={setEditDraft} />
                     <EditRow label="Optimizer qty" field="optimizer_qty" value={project.optimizer_qty?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} type="number" />
                   </Section>
-                  <Section title="Site & Electrical">
-                    <EditRow label="Meter location" field="meter_location" value={project.meter_location} draft={editDraft} editing={editMode} onChange={setEditDraft} />
-                    <EditRow label="Panel location" field="panel_location" value={project.panel_location} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                  <Section title="Site">
+                    <SelectEditRow label="Meter location" field="meter_location" value={project.meter_location} draft={editDraft} editing={editMode} onChange={setEditDraft}
+                      options={['Garage','Side of House','Front of House','Back of House','Other']} />
+                    <SelectEditRow label="Panel location" field="panel_location" value={project.panel_location} draft={editDraft} editing={editMode} onChange={setEditDraft}
+                      options={['Garage','Inside House','Outside','Basement','Other']} />
                     <SelectEditRow label="Voltage" field="voltage" value={project.voltage} draft={editDraft} editing={editMode} onChange={setEditDraft}
-                      options={['120','240']} />
+                      options={['120/240V','120/208V','277/480V']} />
                     <SelectEditRow label="MSP bus rating" field="msp_bus_rating" value={project.msp_bus_rating} draft={editDraft} editing={editMode} onChange={setEditDraft}
-                      options={['100A','125A','150A','200A','225A','400A']} />
-                    <SelectEditRow label="MPU" field="mpu" value={project.mpu?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft}
+                      options={['100A','125A','150A','200A','225A','320A','400A']} />
+                    <SelectEditRow label="MPU" field="mpu" value={project.mpu} draft={editDraft} editing={editMode} onChange={setEditDraft}
+                      options={['Yes','No','Pending']} />
+                    <SelectEditRow label="Shutdown" field="shutdown" value={project.shutdown} draft={editDraft} editing={editMode} onChange={setEditDraft}
+                      options={['Rapid Shutdown','Standard']} />
+                    <SelectEditRow label="Perf. meter" field="performance_meter" value={project.performance_meter} draft={editDraft} editing={editMode} onChange={setEditDraft}
                       options={['Yes','No']} />
-                    <SelectEditRow label="Shutdown" field="shutdown" value={project.shutdown?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft}
-                      options={['Yes','No']} />
-                    <SelectEditRow label="Perf meter" field="performance_meter" value={project.performance_meter} draft={editDraft} editing={editMode} onChange={setEditDraft}
-                      options={['Yes','No']} />
-                    <SelectEditRow label="Interconnect" field="interconnection_breaker" value={project.interconnection_breaker} draft={editDraft} editing={editMode} onChange={setEditDraft}
+                    <SelectEditRow label="IBC breaker" field="interconnection_breaker" value={project.interconnection_breaker} draft={editDraft} editing={editMode} onChange={setEditDraft}
                       options={['15A','20A','25A','30A','40A','50A','60A']} />
                     <SelectEditRow label="Main breaker" field="main_breaker" value={project.main_breaker} draft={editDraft} editing={editMode} onChange={setEditDraft}
                       options={['100A','125A','150A','200A','225A','400A']} />
