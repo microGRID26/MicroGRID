@@ -30,7 +30,6 @@ export default function PipelinePage() {
   const [loading, setLoading] = useState(true)
 
   async function signOut() {
-    const { createClient } = await import('@/lib/supabase/client')
     const supabase = createClient()
     await supabase.auth.signOut()
     window.location.href = '/login'
@@ -57,8 +56,9 @@ export default function PipelinePage() {
   const financiers = [...new Set(projects.map(p => p.financier).filter(Boolean))].sort() as string[]
   const ahjs = [...new Set(projects.map(p => p.ahj).filter(Boolean))].sort() as string[]
 
-  // Apply filters
+  // Apply filters — exclude In Service and Loyalty from active pipeline view
   const filtered = projects.filter(p => {
+    if (p.disposition === 'In Service' || p.disposition === 'Loyalty') return false
     if (pmFilter !== 'all' && p.pm !== pmFilter) return false
     if (financierFilter !== 'all' && p.financier !== financierFilter) return false
     if (ahjFilter !== 'all' && p.ahj !== ahjFilter) return false
@@ -129,18 +129,18 @@ export default function PipelinePage() {
           Sign out
         </button>
 
-        <div className="ml-auto text-xs text-gray-500">
-          {filtered.length} projects · {fmt$(totalContract)}
+        <div className="ml-auto flex items-center gap-2 text-xs text-gray-500">
+          <input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search..."
+            className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-3 py-1.5 w-40 focus:outline-none focus:border-green-500 placeholder-gray-500"
+          />
+          <span>{filtered.length} projects · {fmt$(totalContract)}</span>
         </div>
       </nav>
 
       {/* Filter bar */}
       <div className="bg-gray-950 border-b border-gray-800 flex items-center gap-2 px-4 py-2 flex-shrink-0 flex-wrap">
-        <input
-          value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Search..."
-          className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-3 py-1.5 w-36 focus:outline-none focus:border-green-500 placeholder-gray-500"
-        />
         <select value={pmFilter} onChange={e => setPmFilter(e.target.value)}
           className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">
           <option value="all">All PMs</option>

@@ -71,7 +71,9 @@ export default function QueuePage() {
     return ''
   })
   const [availablePms, setAvailablePms] = useState<string[]>([])
+  const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
 
   async function signOut() {
     const supabase = createClient()
@@ -82,7 +84,10 @@ export default function QueuePage() {
   const loadData = useCallback(async () => {
     const pm = userPm
     const [projRes, taskRes, allProjRes] = await Promise.all([
-      pm ? supabase.from('projects').select('*').eq('pm', pm) : Promise.resolve({ data: [] }),
+      // When no PM selected, load ALL projects so user can see everything
+      pm
+        ? supabase.from('projects').select('*').eq('pm', pm)
+        : supabase.from('projects').select('*'),
       supabase.from('task_state').select('project_id, task_id, status, reason'),
       supabase.from('projects').select('pm'),
     ])
@@ -113,9 +118,20 @@ export default function QueuePage() {
     }
   }
 
-  // In Service = legacy, PM is done — exclude entirely from Queue
+  // In Service projects are legacy — PMs are done with them, exclude entirely
   const live = projects.filter(p => p.disposition !== 'In Service')
-  const sorted = [...live].sort((a, b) => priority(a) - priority(b))
+
+  // Apply search filter
+  const searched = search.trim()
+    ? live.filter(p => {
+        const q = search.toLowerCase()
+        return p.name?.toLowerCase().includes(q) ||
+          p.id?.toLowerCase().includes(q) ||
+          p.city?.toLowerCase().includes(q)
+      })
+    : live
+
+  const sorted = [...searched].sort((a, b) => priority(a) - priority(b))
   const blocked = sorted.filter(p => p.blocker)
   const active = sorted.filter(p => !p.blocker && p.stage !== 'complete')
   const complete = sorted.filter(p => p.stage === 'complete')
@@ -170,20 +186,26 @@ export default function QueuePage() {
           Sign out
         </button>
 
-        <div className="ml-auto text-xs text-gray-400">
+        <div className="ml-auto flex items-center gap-2 text-xs text-gray-400">
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search..."
+            className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-3 py-1.5 w-40 focus:outline-none focus:border-green-500 placeholder-gray-500"
+          />
           <select
             value={userPm}
             onChange={e => selectPm(e.target.value)}
-            className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-2 py-1 mr-2"
+            className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-2 py-1"
           >
-            <option value="">Select PM...</option>
+            <option value="">All PMs</option>
             {availablePms.map(pm => <option key={pm} value={pm}>{pm}</option>)}
           </select>
           <span className="text-gray-500">{live.length} projects</span>
         </div>
       </nav>
 
-      {/* Stats */}
+      {/* Stats + Search */}
       <div className="bg-gray-900 border-b border-gray-800 flex items-center gap-6 px-6 py-3">
         <div>
           <div className="text-xs text-gray-500">Total</div>
@@ -204,6 +226,14 @@ export default function QueuePage() {
           <div className="text-xl font-bold text-white font-mono">
             {fmt$(live.reduce((s, p) => s + (Number(p.contract) || 0), 0))}
           </div>
+        </div>
+        <div className="ml-auto">
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search projects..."
+            className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-3 py-1.5 w-44 focus:outline-none focus:border-green-500 placeholder-gray-500"
+          />
         </div>
       </div>
 

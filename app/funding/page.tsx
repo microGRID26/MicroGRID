@@ -57,7 +57,6 @@ export default function FundingPage() {
   const [loading, setLoading] = useState(true)
 
   async function signOut() {
-    const { createClient } = await import('@/lib/supabase/client')
     const supabase = createClient()
     await supabase.auth.signOut()
     window.location.href = '/login'
@@ -182,7 +181,11 @@ export default function FundingPage() {
           className="text-xs px-3 py-1.5 rounded-md transition-colors text-gray-500 hover:text-white hover:bg-gray-800">
           Sign out
         </button>
-
+        <div className="ml-auto">
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search..."
+            className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-3 py-1.5 w-40 focus:outline-none focus:border-green-500 placeholder-gray-500" />
+        </div>
       </nav>
 
       {/* Stats bar */}
@@ -209,9 +212,6 @@ export default function FundingPage() {
 
       {/* Filters */}
       <div className="bg-gray-950 border-b border-gray-800 flex items-center gap-2 px-4 py-2 flex-shrink-0 flex-wrap">
-        <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Search..."
-          className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-3 py-1.5 w-36 focus:outline-none focus:border-green-500 placeholder-gray-500" />
         <select value={msFilter} onChange={e => setMsFilter(e.target.value as any)}
           className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">
           <option value="all">All Milestones</option>

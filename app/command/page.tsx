@@ -28,7 +28,7 @@ function isBlocked(p: Project) { return !!p.blocker }
 function isStalled(p: Project) { return !p.blocker && daysAgo(p.stage_date) >= 5 }
 
 // ── TYPES ─────────────────────────────────────────────────────────────────────
-type Section = 'overdue' | 'blocked' | 'crit' | 'risk' | 'stall' | 'aging' | 'ok' | 'inService'
+type Section = 'overdue' | 'blocked' | 'crit' | 'risk' | 'stall' | 'aging' | 'ok' | 'loyalty' | 'inService'
 
 interface Classified {
   overdue: Project[]
@@ -38,6 +38,7 @@ interface Classified {
   stall: Project[]
   aging: Project[]
   ok: Project[]
+  loyalty: Project[]
   inService: Project[]
 }
 
@@ -55,16 +56,18 @@ interface StuckTask { name: string; status: 'Pending Resolution' | 'Revision Req
 
 // ── CLASSIFY PROJECTS ─────────────────────────────────────────────────────────
 function classify(projects: Project[], overduePids: Set<string>): Classified {
-  const live = projects.filter(p => p.disposition !== 'In Service')
-  const active = live.filter(p => p.stage !== 'complete')
+  // Loyalty and In Service are separated out — rest are active pipeline
+  const pipeline = projects.filter(p => p.disposition !== 'In Service' && p.disposition !== 'Loyalty')
+  const active = pipeline.filter(p => p.stage !== 'complete')
   return {
-    overdue:   live.filter(p => overduePids.has(p.id)),
+    overdue:   pipeline.filter(p => overduePids.has(p.id)),
     blocked:   active.filter(p => isBlocked(p)),
     crit:      active.filter(p => !isBlocked(p) && getSLA(p).status === 'crit'),
     risk:      active.filter(p => !isBlocked(p) && getSLA(p).status === 'risk'),
     stall:     active.filter(p => !isBlocked(p) && getSLA(p).status === 'ok' && isStalled(p)),
-    aging:     live.filter(p => p.stage !== 'complete' && cycleDays(p) >= 90),
+    aging:     pipeline.filter(p => p.stage !== 'complete' && cycleDays(p) >= 90),
     ok:        active.filter(p => !isBlocked(p) && getSLA(p).status === 'ok' && !isStalled(p)),
+    loyalty:   projects.filter(p => p.disposition === 'Loyalty'),
     inService: projects.filter(p => p.disposition === 'In Service'),
   }
 }
@@ -348,7 +351,7 @@ export default function CommandPage() {
   const [showNameInput, setShowNameInput] = useState(false)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [collapsed, setCollapsed] = useState<Partial<Record<Section, boolean>>>({
-    aging: true, ok: false, inService: true,
+    aging: true, ok: false, loyalty: true, inService: true,
   })
   const [loading, setLoading] = useState(true)
   const [lastRefresh, setLastRefresh] = useState(Date.now())
@@ -431,8 +434,7 @@ export default function CommandPage() {
   const pms = [...new Set(projects.map(p => p.pm).filter(Boolean))].sort() as string[]
   const totalContract = filtered.reduce((s, p) => s + (Number(p.contract) || 0), 0)
 
-  // When search is active, any section with results is force-expanded
-  // Computed synchronously during render — no timing issues
+  // When search is active, any section with results is force-expanded — synchronous, no timing issues
   const effectiveCollapsed = (id: Section, count: number): boolean => {
     if (search.trim() && count > 0) return false
     return !!collapsed[id]
@@ -605,6 +607,11 @@ export default function CommandPage() {
             projects={sections.ok} color="text-green-400" taskMapAll={taskMapAll}
             onSelect={setSelectedProject} selectedId={selectedProject?.id ?? null}
             collapsed={effectiveCollapsed('ok', sections.ok.length)} onToggle={() => toggleSection('ok')} />
+
+          <CommandSection id="loyalty" title={`Loyalty (${sections.loyalty.length})`}
+            projects={sections.loyalty} color="text-purple-400" taskMapAll={taskMapAll}
+            onSelect={setSelectedProject} selectedId={selectedProject?.id ?? null}
+            collapsed={effectiveCollapsed('loyalty', sections.loyalty.length)} onToggle={() => toggleSection('loyalty')} />
 
           <CommandSection id="inService" title={`In Service (${sections.inService.length})`}
             projects={sections.inService} color="text-gray-500" taskMapAll={taskMapAll}

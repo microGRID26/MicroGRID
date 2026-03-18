@@ -27,7 +27,6 @@ export default function AuditPage() {
   const [loading, setLoading] = useState(true)
 
   async function signOut() {
-    const { createClient } = await import('@/lib/supabase/client')
     const supabase = createClient()
     await supabase.auth.signOut()
     window.location.href = '/login'
@@ -37,6 +36,7 @@ export default function AuditPage() {
   const [sort, setSort] = useState<AuditSort>('count')
   const [pmFilter, setPmFilter] = useState('all')
   const [stageFilter, setStageFilter] = useState('')
+  const [search, setSearch] = useState('')
 
   const loadData = useCallback(async () => {
     const [projRes, taskRes] = await Promise.all([
@@ -82,6 +82,10 @@ export default function AuditPage() {
   projects.forEach(p => {
     if (pmFilter !== 'all' && p.pm !== pmFilter) return
     if (stageFilter && p.stage !== stageFilter) return
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      if (!p.name?.toLowerCase().includes(q) && !p.id?.toLowerCase().includes(q) && !p.city?.toLowerCase().includes(q)) return
+    }
     const stageTasks = STAGE_TASKS[p.stage] ?? []
     let flagged: { task: { id: string; name: string }; status: string }[] = []
 
@@ -154,7 +158,13 @@ export default function AuditPage() {
           className="text-xs px-3 py-1.5 rounded-md transition-colors text-gray-500 hover:text-white hover:bg-gray-800">
           Sign out
         </button>
-
+        <div className="ml-auto">
+          <input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search..."
+            className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-3 py-1.5 w-40 focus:outline-none focus:border-green-500 placeholder-gray-500"
+          />
+        </div>
       </nav>
 
       {/* Filters */}
