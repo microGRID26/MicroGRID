@@ -27,7 +27,7 @@ function isBlocked(p: Project) { return !!p.blocker }
 function isStalled(p: Project) { return !p.blocker && daysAgo(p.stage_date) >= 5 }
 
 // ── TYPES ─────────────────────────────────────────────────────────────────────
-type Section = 'overdue' | 'blocked' | 'crit' | 'risk' | 'stall' | 'aging' | 'ok'
+type Section = 'overdue' | 'blocked' | 'crit' | 'risk' | 'stall' | 'aging' | 'ok' | 'inService'
 
 interface Classified {
   overdue: Project[]
@@ -37,6 +37,7 @@ interface Classified {
   stall: Project[]
   aging: Project[]
   ok: Project[]
+  inService: Project[]
 }
 
 interface TaskEntry { status: string; reason?: string; completed_date?: string | null }
@@ -53,15 +54,17 @@ interface StuckTask { name: string; status: 'Pending Resolution' | 'Revision Req
 
 // ── CLASSIFY PROJECTS ─────────────────────────────────────────────────────────
 function classify(projects: Project[], overduePids: Set<string>): Classified {
-  const active = projects.filter(p => p.stage !== 'complete')
+  const live = projects.filter(p => p.disposition !== 'In Service')
+  const active = live.filter(p => p.stage !== 'complete')
   return {
-    overdue:  projects.filter(p => overduePids.has(p.id)),
-    blocked:  active.filter(p => isBlocked(p)),
-    crit:     active.filter(p => !isBlocked(p) && getSLA(p).status === 'crit'),
-    risk:     active.filter(p => !isBlocked(p) && getSLA(p).status === 'risk'),
-    stall:    active.filter(p => !isBlocked(p) && getSLA(p).status === 'ok' && isStalled(p)),
-    aging:    projects.filter(p => p.stage !== 'complete' && cycleDays(p) >= 90),
-    ok:       active.filter(p => !isBlocked(p) && getSLA(p).status === 'ok' && !isStalled(p)),
+    overdue:   live.filter(p => overduePids.has(p.id)),
+    blocked:   active.filter(p => isBlocked(p)),
+    crit:      active.filter(p => !isBlocked(p) && getSLA(p).status === 'crit'),
+    risk:      active.filter(p => !isBlocked(p) && getSLA(p).status === 'risk'),
+    stall:     active.filter(p => !isBlocked(p) && getSLA(p).status === 'ok' && isStalled(p)),
+    aging:     live.filter(p => p.stage !== 'complete' && cycleDays(p) >= 90),
+    ok:        active.filter(p => !isBlocked(p) && getSLA(p).status === 'ok' && !isStalled(p)),
+    inService: projects.filter(p => p.disposition === 'In Service'),
   }
 }
 
@@ -344,7 +347,7 @@ export default function CommandPage() {
   const [showNameInput, setShowNameInput] = useState(false)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [collapsed, setCollapsed] = useState<Partial<Record<Section, boolean>>>({
-    aging: true, ok: false,
+    aging: true, ok: false, inService: true,
   })
   const [loading, setLoading] = useState(true)
   const [lastRefresh, setLastRefresh] = useState(Date.now())
@@ -592,6 +595,11 @@ export default function CommandPage() {
             projects={sections.ok} color="text-green-400" taskMapAll={taskMapAll}
             onSelect={setSelectedProject} selectedId={selectedProject?.id ?? null}
             collapsed={!!collapsed.ok} onToggle={() => toggleSection('ok')} />
+
+          <CommandSection id="inService" title={`In Service — Legacy (${sections.inService.length})`}
+            projects={sections.inService} color="text-gray-500" taskMapAll={taskMapAll}
+            onSelect={setSelectedProject} selectedId={selectedProject?.id ?? null}
+            collapsed={!!collapsed.inService} onToggle={() => toggleSection('inService')} />
         </div>
       </div>
 

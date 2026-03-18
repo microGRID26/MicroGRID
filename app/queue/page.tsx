@@ -113,7 +113,9 @@ export default function QueuePage() {
     }
   }
 
-  const sorted = [...projects].sort((a, b) => priority(a) - priority(b))
+  // In Service = legacy, PM is done — exclude entirely from Queue
+  const live = projects.filter(p => p.disposition !== 'In Service')
+  const sorted = [...live].sort((a, b) => priority(a) - priority(b))
   const blocked = sorted.filter(p => p.blocker)
   const active = sorted.filter(p => !p.blocker && p.stage !== 'complete')
   const complete = sorted.filter(p => p.stage === 'complete')
@@ -177,7 +179,7 @@ export default function QueuePage() {
             <option value="">Select PM...</option>
             {availablePms.map(pm => <option key={pm} value={pm}>{pm}</option>)}
           </select>
-          <span className="text-gray-500">{projects.length} projects</span>
+          <span className="text-gray-500">{live.length} projects</span>
         </div>
       </nav>
 
@@ -185,7 +187,7 @@ export default function QueuePage() {
       <div className="bg-gray-900 border-b border-gray-800 flex items-center gap-6 px-6 py-3">
         <div>
           <div className="text-xs text-gray-500">Total</div>
-          <div className="text-xl font-bold text-white font-mono">{projects.length}</div>
+          <div className="text-xl font-bold text-white font-mono">{live.length}</div>
         </div>
         <div>
           <div className="text-xs text-gray-500">Blocked</div>
@@ -200,7 +202,7 @@ export default function QueuePage() {
         <div>
           <div className="text-xs text-gray-500">Portfolio</div>
           <div className="text-xl font-bold text-white font-mono">
-            {fmt$(projects.reduce((s, p) => s + (Number(p.contract) || 0), 0))}
+            {fmt$(live.reduce((s, p) => s + (Number(p.contract) || 0), 0))}
           </div>
         </div>
       </div>

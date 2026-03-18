@@ -660,6 +660,14 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       reason: needsReason ? (taskReasons[taskId] ?? null) : null,
       completed_date: status === 'Complete' ? new Date().toISOString().slice(0, 10) : null,
     }, { onConflict: 'project_id,task_id' })
+
+    // Auto-flip disposition to 'In Service' when the In Service task is completed
+    if (taskId === 'in_service' && status === 'Complete') {
+      await (supabase as any).from('projects').update({ disposition: 'In Service' }).eq('id', pid)
+      setProject(p => ({ ...p, disposition: 'In Service' }))
+      onProjectUpdated()
+      showToast('Project marked In Service ✓')
+    }
   }
 
   async function updateTaskReason(taskId: string, reason: string) {
@@ -966,7 +974,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                     <EditRow label="TPO escalator" field="tpo_escalator" value={project.tpo_escalator?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} type="number" />
                     <EditRow label="Adv pmt sched" field="financier_adv_pmt" value={project.financier_adv_pmt} draft={editDraft} editing={editMode} onChange={setEditDraft} />
                     <SelectEditRow label="Disposition" field="disposition" value={project.disposition} draft={editDraft} editing={editMode} onChange={setEditDraft}
-                      options={['Sale','Loyalty','Cancelled']} />
+                      options={['Sale','Loyalty','Cancelled','In Service']} />
                     <EditRow label="Dealer" field="dealer" value={project.dealer} draft={editDraft} editing={editMode} onChange={setEditDraft} />
                   </Section>
                   <Section title="Equipment">
