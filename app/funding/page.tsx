@@ -246,6 +246,19 @@ export default function FundingPage() {
                   </div>
                 </div>
               </div>
+              <div className="mt-4 pt-4 border-t border-indigo-800">
+                <div className="text-xs font-bold text-white mb-1">👋 Hey Taylor — this page is being built for you.</div>
+                <div className="text-xs text-indigo-300 leading-relaxed">
+                  This is an early version of the Funding page. Before I build out the full submission workflow, I need your input on how you actually work.
+                  Some things I'd love your feedback on:
+                  <span className="text-white"> How do you currently track which milestones have been submitted vs. paid?
+                  What does your submission process look like — do you submit one at a time or in batches by financier?
+                  What information do you need on screen when you're working through these?
+                  Anything that's missing or confusing here?</span>
+                  <br /><br />
+                  Drop your feedback in a note to Greg or reach out directly — the goal is to make this page save you time, not create more work.
+                </div>
+              </div>
             </div>
             <button
               onClick={() => {
