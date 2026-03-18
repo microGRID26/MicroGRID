@@ -117,345 +117,6 @@ function EditRow({ label, field, value, draft, editing, onChange, small, type = 
   )
 }
 
-// ── AHJ EDIT MODAL ────────────────────────────────────────────────────────────
-function AHJEditModal({ ahjName, onClose, onSaved }: {
-  ahjName: string
-  onClose: () => void
-  onSaved: () => void
-}) {
-  const supabase = createClient()
-  const [ahj, setAhj] = useState<any>(null)
-  const [draft, setDraft] = useState<any>({})
-  const [saving, setSaving] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [showPw, setShowPw] = useState(false)
-  const [toast, setToast] = useState('')
-
-  useEffect(() => {
-    const load = async () => {
-      const { data } = await (supabase as any)
-        .from('ahjs').select('*').ilike('name', ahjName).limit(1).single()
-      if (data) { setAhj(data); setDraft({ ...data }) }
-      setLoading(false)
-    }
-    load()
-  }, [ahjName])
-
-  const save = async () => {
-    if (!ahj) return
-    setSaving(true)
-    await (supabase as any).from('ahjs').update({
-      name: draft.name,
-      permit_phone: draft.permit_phone,
-      permit_website: draft.permit_website,
-      max_duration: draft.max_duration,
-      electric_code: draft.electric_code,
-      permit_notes: draft.permit_notes,
-      username: draft.username,
-      password: draft.password,
-    }).eq('id', ahj.id)
-    setSaving(false)
-    setToast('AHJ saved')
-    setTimeout(() => { setToast(''); onSaved() }, 1500)
-  }
-
-  const inputCls = "w-full bg-gray-700 text-white text-xs rounded px-2 py-1.5 border border-gray-600 focus:border-green-500 focus:outline-none"
-  const labelCls = "text-xs text-gray-400 mb-1 block"
-
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
-          <div>
-            <h2 className="text-sm font-semibold text-white">Edit AHJ</h2>
-            {ahj && <p className="text-xs text-gray-500 mt-0.5">{ahj.name}</p>}
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <span className="text-gray-500 text-sm">Loading...</span>
-          </div>
-        ) : !ahj ? (
-          <div className="flex items-center justify-center py-12">
-            <span className="text-gray-500 text-sm">AHJ "{ahjName}" not found in database.</span>
-          </div>
-        ) : (
-          <div className="overflow-y-auto flex-1 px-5 py-4 space-y-3">
-            {toast && (
-              <div className="bg-green-700 text-white text-xs px-3 py-2 rounded-md">{toast}</div>
-            )}
-            <div>
-              <label className={labelCls}>Name</label>
-              <input className={inputCls} value={draft.name ?? ''} onChange={e => setDraft((d: any) => ({ ...d, name: e.target.value }))} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelCls}>Permit Phone</label>
-                <input className={inputCls} value={draft.permit_phone ?? ''} onChange={e => setDraft((d: any) => ({ ...d, permit_phone: e.target.value }))} />
-              </div>
-              <div>
-                <label className={labelCls}>Max Duration (days)</label>
-                <input className={inputCls} type="number" value={draft.max_duration ?? ''} onChange={e => setDraft((d: any) => ({ ...d, max_duration: e.target.value ? Number(e.target.value) : null }))} />
-              </div>
-            </div>
-            <div>
-              <label className={labelCls}>Permit Website</label>
-              <input className={inputCls} value={draft.permit_website ?? ''} onChange={e => setDraft((d: any) => ({ ...d, permit_website: e.target.value }))} />
-            </div>
-            <div>
-              <label className={labelCls}>Electric Code</label>
-              <input className={inputCls} value={draft.electric_code ?? ''} onChange={e => setDraft((d: any) => ({ ...d, electric_code: e.target.value }))} />
-            </div>
-            <div>
-              <label className={labelCls}>Permit Notes</label>
-              <textarea className={inputCls + " resize-none"} rows={3} value={draft.permit_notes ?? ''} onChange={e => setDraft((d: any) => ({ ...d, permit_notes: e.target.value }))} />
-            </div>
-            <div className="border-t border-gray-800 pt-3">
-              <p className="text-xs text-gray-500 font-medium mb-2 uppercase tracking-wide">Portal Login</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={labelCls}>Username</label>
-                  <input className={inputCls} value={draft.username ?? ''} onChange={e => setDraft((d: any) => ({ ...d, username: e.target.value }))} />
-                </div>
-                <div>
-                  <label className={labelCls}>Password</label>
-                  <div className="relative">
-                    <input
-                      type={showPw ? 'text' : 'password'}
-                      className={inputCls + " pr-8"}
-                      value={draft.password ?? ''}
-                      onChange={e => setDraft((d: any) => ({ ...d, password: e.target.value }))}
-                    />
-                    <button type="button" onClick={() => setShowPw(s => !s)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
-                      {showPw
-                        ? <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
-                        : <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                      }
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="flex justify-end gap-2 px-5 py-4 border-t border-gray-800">
-          <button onClick={onClose}
-            className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md transition-colors">
-            Cancel
-          </button>
-          {ahj && (
-            <button onClick={save} disabled={saving}
-              className="px-4 py-1.5 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white text-xs font-medium rounded-md transition-colors">
-              {saving ? 'Saving…' : 'Save'}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-
-// ── UTILITY EDIT MODAL ────────────────────────────────────────────────────────
-function UtilityEditModal({ utilityName, onClose, onSaved }: {
-  utilityName: string
-  onClose: () => void
-  onSaved: () => void
-}) {
-  const supabase = createClient()
-  const [utility, setUtility] = useState<any>(null)
-  const [draft, setDraft] = useState<any>({})
-  const [saving, setSaving] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [toast, setToast] = useState('')
-
-  useEffect(() => {
-    const load = async () => {
-      const { data } = await (supabase as any)
-        .from('utilities').select('*').ilike('name', '%' + utilityName + '%').limit(1).single()
-      if (data) { setUtility(data); setDraft({ ...data }) }
-      setLoading(false)
-    }
-    load()
-  }, [utilityName])
-
-  const save = async () => {
-    if (!utility) return
-    setSaving(true)
-    await (supabase as any).from('utilities').update({
-      name: draft.name,
-      phone: draft.phone,
-      website: draft.website,
-      notes: draft.notes,
-    }).eq('id', utility.id)
-    setSaving(false)
-    setToast('Utility saved')
-    setTimeout(() => { setToast(''); onSaved() }, 1500)
-  }
-
-  const inputCls = "w-full bg-gray-700 text-white text-xs rounded px-2 py-1.5 border border-gray-600 focus:border-green-500 focus:outline-none"
-  const labelCls = "text-xs text-gray-400 mb-1 block"
-
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
-          <div>
-            <h2 className="text-sm font-semibold text-white">Edit Utility</h2>
-            {utility && <p className="text-xs text-gray-500 mt-0.5">{utility.name}</p>}
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <span className="text-gray-500 text-sm">Loading...</span>
-          </div>
-        ) : !utility ? (
-          <div className="flex items-center justify-center py-12">
-            <span className="text-gray-500 text-sm">Utility "{utilityName}" not found in database.</span>
-          </div>
-        ) : (
-          <div className="overflow-y-auto flex-1 px-5 py-4 space-y-3">
-            {toast && <div className="bg-green-700 text-white text-xs px-3 py-2 rounded-md">{toast}</div>}
-            <div>
-              <label className={labelCls}>Name</label>
-              <input className={inputCls} value={draft.name ?? ''} onChange={e => setDraft((d: any) => ({ ...d, name: e.target.value }))} />
-            </div>
-            <div>
-              <label className={labelCls}>Phone</label>
-              <input className={inputCls} value={draft.phone ?? ''} onChange={e => setDraft((d: any) => ({ ...d, phone: e.target.value }))} />
-            </div>
-            <div>
-              <label className={labelCls}>Website</label>
-              <input className={inputCls} value={draft.website ?? ''} onChange={e => setDraft((d: any) => ({ ...d, website: e.target.value }))} />
-            </div>
-            <div>
-              <label className={labelCls}>Notes</label>
-              <textarea className={inputCls + " resize-none"} rows={4} value={draft.notes ?? ''} onChange={e => setDraft((d: any) => ({ ...d, notes: e.target.value }))} />
-            </div>
-          </div>
-        )}
-        <div className="flex justify-end gap-2 px-5 py-4 border-t border-gray-800">
-          <button onClick={onClose}
-            className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md transition-colors">
-            Cancel
-          </button>
-          {utility && (
-            <button onClick={save} disabled={saving}
-              className="px-4 py-1.5 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white text-xs font-medium rounded-md transition-colors">
-              {saving ? 'Saving…' : 'Save'}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── HOA EDIT MODAL ────────────────────────────────────────────────────────────
-function HOAEditModal({ project, onClose, onSaved }: {
-  project: any
-  onClose: () => void
-  onSaved: (updates: Record<string, any>) => void
-}) {
-  const supabase = createClient()
-  const [draft, setDraft] = useState({
-    hoa: project.hoa ?? '',
-    hoa_contact: project.hoa_contact ?? '',
-    hoa_phone: project.hoa_phone ?? '',
-    hoa_email: project.hoa_email ?? '',
-    hoa_notes: project.hoa_notes ?? '',
-  })
-  const [saving, setSaving] = useState(false)
-  const [toast, setToast] = useState('')
-
-  const save = async () => {
-    setSaving(true)
-    await (supabase as any).from('projects').update({
-      hoa: draft.hoa || null,
-      hoa_contact: draft.hoa_contact || null,
-      hoa_phone: draft.hoa_phone || null,
-      hoa_email: draft.hoa_email || null,
-      hoa_notes: draft.hoa_notes || null,
-    }).eq('id', project.id)
-    setSaving(false)
-    setToast('HOA saved')
-    setTimeout(() => { setToast(''); onSaved(draft) }, 1500)
-  }
-
-  const inputCls = "w-full bg-gray-700 text-white text-xs rounded px-2 py-1.5 border border-gray-600 focus:border-green-500 focus:outline-none"
-  const labelCls = "text-xs text-gray-400 mb-1 block"
-
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
-          <div>
-            <h2 className="text-sm font-semibold text-white">HOA Details</h2>
-            {project.hoa && <p className="text-xs text-gray-500 mt-0.5">{project.hoa}</p>}
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-3">
-          {toast && <div className="bg-green-700 text-white text-xs px-3 py-2 rounded-md">{toast}</div>}
-          <div>
-            <label className={labelCls}>HOA Name</label>
-            <input className={inputCls} value={draft.hoa} onChange={e => setDraft(d => ({ ...d, hoa: e.target.value }))} />
-          </div>
-          <div>
-            <label className={labelCls}>Contact Name</label>
-            <input className={inputCls} value={draft.hoa_contact} onChange={e => setDraft(d => ({ ...d, hoa_contact: e.target.value }))} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls}>Phone</label>
-              <input className={inputCls} value={draft.hoa_phone} onChange={e => setDraft(d => ({ ...d, hoa_phone: e.target.value }))} />
-            </div>
-            <div>
-              <label className={labelCls}>Email</label>
-              <input className={inputCls} type="email" value={draft.hoa_email} onChange={e => setDraft(d => ({ ...d, hoa_email: e.target.value }))} />
-            </div>
-          </div>
-          <div>
-            <label className={labelCls}>Notes</label>
-            <textarea className={inputCls + " resize-none"} rows={4} value={draft.hoa_notes} onChange={e => setDraft(d => ({ ...d, hoa_notes: e.target.value }))} />
-          </div>
-        </div>
-        <div className="flex justify-end gap-2 px-5 py-4 border-t border-gray-800">
-          <button onClick={onClose}
-            className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md transition-colors">
-            Cancel
-          </button>
-          <button onClick={save} disabled={saving}
-            className="px-4 py-1.5 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white text-xs font-medium rounded-md transition-colors">
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-
 function AutocompleteRow({ label, field, value, draft, editing, onChange, table, searchCol = 'name' }: {
   label: string
   field: string
@@ -620,9 +281,6 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   const [utilityInfo, setUtilityInfo] = useState<any>(null)
   const [serviceCalls, setServiceCalls] = useState<any[]>([])
   const [stageHistory, setStageHistory] = useState<any[]>([])
-  const [showAhjModal, setShowAhjModal] = useState(false)
-  const [showUtilityModal, setShowUtilityModal] = useState(false)
-  const [showHoaModal, setShowHoaModal] = useState(false)
 
   const pid = project.id
   const stageTasks = TASKS[project.stage] ?? []
@@ -661,27 +319,34 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
 
   const loadAhjUtil = useCallback(async () => {
     if (project.ahj) {
-      const { data } = await (supabase as any).from('ahjs').select('permit_phone,permit_website,max_duration,electric_code,permit_notes').ilike('name', project.ahj).limit(1).single()
-      if (data) setAhjInfo(data)
+      // FIX: use contains-match (%name%) so minor formatting differences don't silently fail
+      const { data } = await (supabase as any).from('ahjs').select('permit_phone,permit_website,max_duration,electric_code,permit_notes').ilike('name', `%${project.ahj}%`).limit(1).maybeSingle()
+      setAhjInfo(data ?? null)
     }
     if (project.utility) {
-      const { data } = await (supabase as any).from('utilities').select('phone,website,notes').ilike('name', '%' + project.utility + '%').limit(1).single()
-      if (data) setUtilityInfo(data)
+      const { data } = await (supabase as any).from('utilities').select('phone,website,notes').ilike('name', `%${project.utility}%`).limit(1).maybeSingle()
+      setUtilityInfo(data ?? null)
     }
   }, [project.ahj, project.utility])
 
+  // FIX: use maybeSingle() so missing folder row doesn't throw an error
   const loadFolder = useCallback(async () => {
-    const { data } = await supabase.from('project_folders').select('folder_url').eq('project_id', pid).single()
-    if (data && 'folder_url' in data) setFolderUrl((data as any).folder_url)
+    const { data } = await (supabase as any).from('project_folders').select('folder_url').eq('project_id', pid).maybeSingle()
+    setFolderUrl(data?.folder_url ?? null)
   }, [pid])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserEmail(data.user?.email ?? ''))
   }, [])
 
+  // FIX: sync project state when parent updates the same project (stage advance, blocker change, etc.)
   useEffect(() => {
     setProject(initialProject)
     setBlockerInput(initialProject.blocker ?? '')
+  }, [initialProject.id, initialProject.stage, initialProject.stage_date, initialProject.blocker])
+
+  // Reload data when project ID changes (switching between projects)
+  useEffect(() => {
     setAhjInfo(null)
     setUtilityInfo(null)
     loadTasks()
@@ -734,39 +399,61 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   async function saveEdits() {
     setEditSaving(true)
     await (supabase as any).from('projects').update(editDraft).eq('id', pid)
-    const updated = { ...project, ...editDraft }
-    setProject(updated)
+    setProject(p => ({ ...p, ...editDraft }))
     setEditMode(false)
     setEditDraft({})
     setEditSaving(false)
     onProjectUpdated()
     showToast('Project updated')
-    // Reload AHJ/utility info if those fields changed
-    if (editDraft.ahj !== project.ahj || editDraft.utility !== project.utility) {
-      setAhjInfo(null)
-      setUtilityInfo(null)
-      if (editDraft.ahj) {
-        const { data } = await (supabase as any).from('ahjs').select('permit_phone,permit_website,max_duration,electric_code,permit_notes').ilike('name', editDraft.ahj).limit(1).single()
-        if (data) setAhjInfo(data)
-      }
-      if (editDraft.utility) {
-        const { data } = await (supabase as any).from('utilities').select('phone,website,notes').ilike('name', '%' + editDraft.utility + '%').limit(1).single()
-        if (data) setUtilityInfo(data)
-      }
-    }
   }
 
+  // FIX: pre-populate ALL editable fields so Save without changes doesn't lose data
   function startEdit() {
     setEditDraft({
+      // Contact
       name: project.name,
       city: project.city,
       address: project.address,
       phone: project.phone,
       email: project.email,
+      // Contract
+      contract: project.contract,
+      systemkw: project.systemkw,
+      financier: project.financier,
+      financing_type: project.financing_type,
+      down_payment: project.down_payment,
+      tpo_escalator: project.tpo_escalator,
+      financier_adv_pmt: project.financier_adv_pmt,
+      disposition: project.disposition,
+      dealer: project.dealer,
+      // Equipment
+      module: project.module,
+      module_qty: project.module_qty,
+      inverter: project.inverter,
+      inverter_qty: project.inverter_qty,
+      battery: project.battery,
+      battery_qty: project.battery_qty,
+      optimizer: project.optimizer,
+      optimizer_qty: project.optimizer_qty,
+      // Site & Electrical
+      meter_location: project.meter_location,
+      panel_location: project.panel_location,
+      voltage: project.voltage,
+      msp_bus_rating: project.msp_bus_rating,
+      mpu: project.mpu,
+      shutdown: project.shutdown,
+      performance_meter: project.performance_meter,
+      interconnection_breaker: project.interconnection_breaker,
+      main_breaker: project.main_breaker,
+      hoa: project.hoa,
+      esid: project.esid,
+      // Team
       pm: project.pm,
       advisor: project.advisor,
       consultant: project.consultant,
       consultant_email: project.consultant_email,
+      site_surveyor: project.site_surveyor,
+      // Permitting
       ahj: project.ahj,
       utility: project.utility,
       permit_number: project.permit_number,
@@ -774,6 +461,8 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       permit_fee: project.permit_fee,
       city_permit_date: project.city_permit_date,
       utility_permit_date: project.utility_permit_date,
+      // Milestones
+      sale_date: project.sale_date,
       ntp_date: project.ntp_date,
       survey_scheduled_date: project.survey_scheduled_date,
       survey_date: project.survey_date,
@@ -783,11 +472,6 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       utility_inspection_date: project.utility_inspection_date,
       pto_date: project.pto_date,
       in_service_date: project.in_service_date,
-      hoa: project.hoa,
-      esid: project.esid,
-      financing_type: project.financing_type,
-      disposition: project.disposition,
-      site_surveyor: project.site_surveyor,
     })
     setEditMode(true)
     setTab('info')
@@ -1025,45 +709,38 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                     <EditRow label="Email" field="email" value={project.email} draft={editDraft} editing={editMode} onChange={setEditDraft} small />
                   </Section>
                   <Section title="Contract">
-                    <Row label="Amount" value={fmt$(project.contract)} />
-                    <Row label="System" value={project.systemkw ? `${project.systemkw} kW` : null} />
-                    <Row label="Financier" value={project.financier} />
+                    <EditRow label="Amount ($)" field="contract" value={project.contract?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="System (kW)" field="systemkw" value={project.systemkw?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="Financier" field="financier" value={project.financier} draft={editDraft} editing={editMode} onChange={setEditDraft} />
                     <EditRow label="Financing" field="financing_type" value={project.financing_type} draft={editDraft} editing={editMode} onChange={setEditDraft} />
-                    <Row label="Down payment" value={project.down_payment ? `$${Number(project.down_payment).toLocaleString()}` : null} />
-                    <Row label="TPO escalator" value={project.tpo_escalator?.toString()} />
-                    <Row label="Adv pmt sched" value={project.financier_adv_pmt} />
+                    <EditRow label="Down payment" field="down_payment" value={project.down_payment?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="TPO escalator" field="tpo_escalator" value={project.tpo_escalator?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="Adv pmt sched" field="financier_adv_pmt" value={project.financier_adv_pmt} draft={editDraft} editing={editMode} onChange={setEditDraft} />
                     <EditRow label="Disposition" field="disposition" value={project.disposition} draft={editDraft} editing={editMode} onChange={setEditDraft} />
-                    <Row label="Dealer" value={project.dealer} />
+                    <EditRow label="Dealer" field="dealer" value={project.dealer} draft={editDraft} editing={editMode} onChange={setEditDraft} />
                   </Section>
                   <Section title="Equipment">
-                    <Row label="Module" value={project.module ? `${project.module}${project.module_qty ? ` × ${project.module_qty}` : ''}` : null} />
-                    <Row label="Inverter" value={project.inverter ? `${project.inverter}${project.inverter_qty ? ` × ${project.inverter_qty}` : ''}` : null} />
-                    <Row label="Battery" value={project.battery ? `${project.battery}${project.battery_qty ? ` × ${project.battery_qty}` : ''}` : null} />
-                    <Row label="Optimizer" value={project.optimizer ? `${project.optimizer}${project.optimizer_qty ? ` × ${project.optimizer_qty}` : ''}` : null} />
+                    <EditRow label="Module" field="module" value={project.module} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="Module qty" field="module_qty" value={project.module_qty?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="Inverter" field="inverter" value={project.inverter} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="Inverter qty" field="inverter_qty" value={project.inverter_qty?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="Battery" field="battery" value={project.battery} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="Battery qty" field="battery_qty" value={project.battery_qty?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="Optimizer" field="optimizer" value={project.optimizer} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="Optimizer qty" field="optimizer_qty" value={project.optimizer_qty?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} />
                   </Section>
                   <Section title="Site & Electrical">
-                    <Row label="Meter location" value={project.meter_location} />
-                    <Row label="Panel location" value={project.panel_location} />
-                    <Row label="Voltage" value={project.voltage} />
-                    <Row label="MSP bus rating" value={project.msp_bus_rating} />
-                    <Row label="MPU" value={project.mpu} />
-                    <Row label="Shutdown" value={project.shutdown} />
-                    <Row label="Perf meter" value={project.performance_meter} />
-                    <Row label="Interconnect" value={project.interconnection_breaker} />
-                    <Row label="Main breaker" value={project.main_breaker} />
-                    {!editMode && project.hoa ? (
-                      <div className="flex gap-2 py-0.5">
-                        <span className="text-gray-500 text-xs w-28 flex-shrink-0">HOA</span>
-                        <button
-                          onClick={() => setShowHoaModal(true)}
-                          className="text-xs text-green-400 hover:text-green-300 hover:underline text-left transition-colors">
-                          {project.hoa}
-                        </button>
-                      </div>
-                    ) : (
-                      <EditRow label="HOA" field="hoa" value={project.hoa} draft={editDraft} editing={editMode} onChange={setEditDraft} />
-                    )}
-                    <Row label="ESID" value={project.esid ? String(project.esid).replace(/e\+?\d+$/i, v => '') : null} />
+                    <EditRow label="Meter location" field="meter_location" value={project.meter_location} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="Panel location" field="panel_location" value={project.panel_location} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="Voltage" field="voltage" value={project.voltage} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="MSP bus rating" field="msp_bus_rating" value={project.msp_bus_rating} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="MPU" field="mpu" value={project.mpu?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="Shutdown" field="shutdown" value={project.shutdown?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="Perf meter" field="performance_meter" value={project.performance_meter} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="Interconnect" field="interconnection_breaker" value={project.interconnection_breaker} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="Main breaker" field="main_breaker" value={project.main_breaker} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="HOA" field="hoa" value={project.hoa} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+                    <EditRow label="ESID" field="esid" value={project.esid?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} />
                   </Section>
                 </div>
                 <div>
@@ -1075,18 +752,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                     <EditRow label="Site surveyor" field="site_surveyor" value={project.site_surveyor} draft={editDraft} editing={editMode} onChange={setEditDraft} />
                   </Section>
                   <Section title="Permitting">
-                    {!editMode && project.ahj ? (
-                      <div className="flex gap-2 py-0.5">
-                        <span className="text-gray-500 text-xs w-28 flex-shrink-0">AHJ</span>
-                        <button
-                          onClick={() => setShowAhjModal(true)}
-                          className="text-xs text-green-400 hover:text-green-300 hover:underline text-left transition-colors">
-                          {project.ahj}
-                        </button>
-                      </div>
-                    ) : (
-                      <AutocompleteRow label="AHJ" field="ahj" value={project.ahj} draft={editDraft} editing={editMode} onChange={setEditDraft} table="ahjs" />
-                    )}
+                    <AutocompleteRow label="AHJ" field="ahj" value={project.ahj} draft={editDraft} editing={editMode} onChange={setEditDraft} table="ahjs" />
                     {!editMode && ahjInfo && (
                       <div className="ml-0 mt-1 mb-2 pl-28 space-y-0.5">
                         {ahjInfo.permit_phone && <div className="text-xs text-green-400">{ahjInfo.permit_phone}</div>}
@@ -1096,18 +762,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                         {ahjInfo.permit_notes && <div className="text-xs text-gray-400 mt-1 bg-gray-800 rounded p-2">{ahjInfo.permit_notes.slice(0,200)}</div>}
                       </div>
                     )}
-                    {!editMode && project.utility ? (
-                      <div className="flex gap-2 py-0.5">
-                        <span className="text-gray-500 text-xs w-28 flex-shrink-0">Utility</span>
-                        <button
-                          onClick={() => setShowUtilityModal(true)}
-                          className="text-xs text-green-400 hover:text-green-300 hover:underline text-left transition-colors">
-                          {project.utility}
-                        </button>
-                      </div>
-                    ) : (
-                      <AutocompleteRow label="Utility" field="utility" value={project.utility} draft={editDraft} editing={editMode} onChange={setEditDraft} table="utilities" />
-                    )}
+                    <AutocompleteRow label="Utility" field="utility" value={project.utility} draft={editDraft} editing={editMode} onChange={setEditDraft} table="utilities" />
                     {!editMode && utilityInfo && (
                       <div className="ml-0 mt-1 mb-2 pl-28 space-y-0.5">
                         {utilityInfo.phone && <div className="text-xs text-green-400">{utilityInfo.phone}</div>}
@@ -1117,7 +772,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                     )}
                     <EditRow label="Permit #" field="permit_number" value={project.permit_number} draft={editDraft} editing={editMode} onChange={setEditDraft} />
                     <EditRow label="Utility app #" field="utility_app_number" value={project.utility_app_number} draft={editDraft} editing={editMode} onChange={setEditDraft} />
-                    <Row label="Permit fee" value={project.permit_fee ? `$${Number(project.permit_fee).toLocaleString()}` : null} />
+                    <EditRow label="Permit fee" field="permit_fee" value={project.permit_fee?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} />
                     <EditRow label="City permit" field="city_permit_date" value={project.city_permit_date} draft={editDraft} editing={editMode} onChange={setEditDraft} type="date" />
                     <EditRow label="Utility permit" field="utility_permit_date" value={project.utility_permit_date} draft={editDraft} editing={editMode} onChange={setEditDraft} type="date" />
                   </Section>
@@ -1187,27 +842,6 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
           )}
         </div>
       </div>
-      {showAhjModal && project.ahj && (
-        <AHJEditModal
-          ahjName={project.ahj}
-          onClose={() => setShowAhjModal(false)}
-          onSaved={() => { setShowAhjModal(false); loadAhjUtil() }}
-        />
-      )}
-      {showUtilityModal && project.utility && (
-        <UtilityEditModal
-          utilityName={project.utility}
-          onClose={() => setShowUtilityModal(false)}
-          onSaved={() => { setShowUtilityModal(false); loadAhjUtil() }}
-        />
-      )}
-      {showHoaModal && (
-        <HOAEditModal
-          project={project}
-          onClose={() => setShowHoaModal(false)}
-          onSaved={(updates) => { setShowHoaModal(false); setProject(p => ({ ...p, ...updates })) }}
-        />
-      )}
     </div>
   )
 }
