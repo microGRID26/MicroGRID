@@ -37,3 +37,60 @@ export const STAGE_LABELS: Record<string, string> = {
 }
 
 export const STAGE_ORDER = ['evaluation','survey','design','permit','install','inspection','complete']
+
+// ── Centralised SLA thresholds (single source of truth) ───────────────────────
+export const SLA_THRESHOLDS: Record<string, { target: number; risk: number; crit: number }> = {
+  evaluation: { target: 3,  risk: 4,  crit: 6  },
+  survey:     { target: 3,  risk: 5,  crit: 10 },
+  design:     { target: 3,  risk: 5,  crit: 10 },
+  permit:     { target: 21, risk: 30, crit: 45 },
+  install:    { target: 5,  risk: 7,  crit: 10 },
+  inspection: { target: 14, risk: 21, crit: 30 },
+  complete:   { target: 3,  risk: 5,  crit: 7  },
+}
+
+// ── Simplified task list per stage (required tasks only, no prereq chains) ────
+// ProjectPanel uses its own richer version with prereqs + optional tasks.
+export const STAGE_TASKS: Record<string, { id: string; name: string }[]> = {
+  evaluation: [
+    { id: 'welcome',      name: 'Welcome Call'           },
+    { id: 'ia',           name: 'IA Confirmation'         },
+    { id: 'ub',           name: 'UB Confirmation'         },
+    { id: 'sched_survey', name: 'Schedule Site Survey'    },
+    { id: 'ntp',          name: 'NTP Procedure'           },
+  ],
+  survey: [
+    { id: 'site_survey',  name: 'Site Survey'             },
+    { id: 'survey_review',name: 'Survey Review'           },
+  ],
+  design: [
+    { id: 'build_design', name: 'Build Design'            },
+    { id: 'scope',        name: 'Scope of Work'           },
+    { id: 'monitoring',   name: 'Monitoring'              },
+    { id: 'build_eng',    name: 'Build Engineering'       },
+    { id: 'eng_approval', name: 'Engineering Approval'    },
+    { id: 'stamps',       name: 'Stamps Required'         },
+  ],
+  permit: [
+    { id: 'hoa',          name: 'HOA Approval'            },
+    { id: 'om_review',    name: 'OM Project Review'       },
+    { id: 'city_permit',  name: 'City Permit Approval'    },
+    { id: 'util_permit',  name: 'Utility Permit Approval' },
+  ],
+  install: [
+    { id: 'sched_install',name: 'Schedule Installation'   },
+    { id: 'inventory',    name: 'Inventory Allocation'    },
+    { id: 'install_done', name: 'Installation Complete'   },
+  ],
+  inspection: [
+    { id: 'insp_review',  name: 'Inspection Review'             },
+    { id: 'sched_city',   name: 'Schedule City Inspection'      },
+    { id: 'sched_util',   name: 'Schedule Utility Inspection'   },
+    { id: 'city_insp',    name: 'City Inspection'               },
+    { id: 'util_insp',    name: 'Utility Inspection'            },
+  ],
+  complete: [
+    { id: 'pto',          name: 'Permission to Operate' },
+    { id: 'in_service',   name: 'In Service'            },
+  ],
+}

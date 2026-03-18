@@ -2,22 +2,11 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { daysAgo, fmt$, fmtDate, STAGE_LABELS } from '@/lib/utils'
+import { daysAgo, fmt$, fmtDate, STAGE_LABELS, SLA_THRESHOLDS, STAGE_TASKS } from '@/lib/utils'
 import { exportProjectsCSV, ALL_EXPORT_FIELDS, DEFAULT_EXPORT_KEYS } from '@/lib/export-utils'
 import { ProjectPanel } from '@/components/project/ProjectPanel'
 import { NewProjectModal } from '@/components/project/NewProjectModal'
 import type { Project, Schedule } from '@/types/database'
-
-// ── SLA THRESHOLDS ─────────────────────────────────────────────────────────────
-const SLA: Record<string, { target: number; risk: number; crit: number }> = {
-  evaluation: { target: 3,  risk: 4,  crit: 6  },
-  survey:     { target: 3,  risk: 5,  crit: 10 },
-  design:     { target: 3,  risk: 5,  crit: 10 },
-  permit:     { target: 21, risk: 30, crit: 45 },
-  install:    { target: 5,  risk: 7,  crit: 10 },
-  inspection: { target: 14, risk: 21, crit: 30 },
-  complete:   { target: 3,  risk: 5,  crit: 7  },
-}
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 function cycleDays(p: Project): number {
@@ -25,7 +14,7 @@ function cycleDays(p: Project): number {
 }
 
 function getSLA(p: Project) {
-  const t = SLA[p.stage] ?? { target: 3, risk: 5, crit: 7 }
+  const t = SLA_THRESHOLDS[p.stage] ?? { target: 3, risk: 5, crit: 7 }
   const days = daysAgo(p.stage_date)
   let status: 'ok' | 'warn' | 'risk' | 'crit' = 'ok'
   if (days >= t.crit) status = 'crit'
@@ -396,10 +385,10 @@ export default function CommandPage() {
     return result
   })()
 
-  // Get project IDs that have any task in Pending Resolution or Revision Required
+  // Get overdue task project IDs
   const overduePids = new Set(
     taskStates
-      .filter(t => t.status === 'Pending Resolution' || t.status === 'Revision Required')
+      .filter(t => t.status !== 'Complete' && t.completed_date && daysAgo(t.completed_date) > 0)
       .map(t => t.project_id)
   )
 
@@ -552,7 +541,7 @@ export default function CommandPage() {
         {/* Project list */}
         <div className="flex-1 overflow-y-auto">
 
-          <CommandSection id="overdue" title="Needs Attention — Pending / Revision Required"
+          <CommandSection id="overdue" title="Overdue Tasks"
             projects={sections.overdue} color="text-red-400"
             onSelect={setSelectedProject} selectedId={selectedProject?.id ?? null}
             collapsed={!!collapsed.overdue} onToggle={() => toggleSection('overdue')} />

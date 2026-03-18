@@ -2,65 +2,11 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { fmt$, daysAgo, STAGE_LABELS } from '@/lib/utils'
+import { fmt$, daysAgo, STAGE_LABELS, SLA_THRESHOLDS, STAGE_TASKS } from '@/lib/utils'
 import { ProjectPanel } from '@/components/project/ProjectPanel'
 import type { Project } from '@/types/database'
 
-const SLA: Record<string, { crit: number; risk: number }> = {
-  evaluation: { crit: 6,  risk: 4  },
-  survey:     { crit: 10, risk: 5  },
-  design:     { crit: 10, risk: 5  },
-  permit:     { crit: 45, risk: 30 },
-  install:    { crit: 10, risk: 7  },
-  inspection: { crit: 30, risk: 21 },
-  complete:   { crit: 7,  risk: 5  },
-}
-
-const TASKS: Record<string, { id: string; name: string; req: boolean }[]> = {
-  evaluation: [
-    { id: 'welcome', name: 'Welcome Call', req: true },
-    { id: 'ia', name: 'IA Confirmation', req: true },
-    { id: 'ub', name: 'UB Confirmation', req: true },
-    { id: 'sched_survey', name: 'Schedule Site Survey', req: true },
-    { id: 'ntp', name: 'NTP Procedure', req: true },
-  ],
-  survey: [
-    { id: 'site_survey', name: 'Site Survey', req: true },
-    { id: 'survey_review', name: 'Survey Review', req: true },
-  ],
-  design: [
-    { id: 'build_design', name: 'Build Design', req: true },
-    { id: 'scope', name: 'Scope of Work', req: true },
-    { id: 'monitoring', name: 'Monitoring', req: true },
-    { id: 'build_eng', name: 'Build Engineering', req: true },
-    { id: 'eng_approval', name: 'Engineering Approval', req: true },
-    { id: 'stamps', name: 'Stamps Required', req: true },
-  ],
-  permit: [
-    { id: 'hoa', name: 'HOA Approval', req: true },
-    { id: 'om_review', name: 'OM Project Review', req: true },
-    { id: 'city_permit', name: 'City Permit Approval', req: true },
-    { id: 'util_permit', name: 'Utility Permit Approval', req: true },
-  ],
-  install: [
-    { id: 'sched_install', name: 'Schedule Installation', req: true },
-    { id: 'inventory', name: 'Inventory Allocation', req: true },
-    { id: 'install_done', name: 'Installation Complete', req: true },
-  ],
-  inspection: [
-    { id: 'insp_review', name: 'Inspection Review', req: true },
-    { id: 'sched_city', name: 'Schedule City Inspection', req: true },
-    { id: 'sched_util', name: 'Schedule Utility Inspection', req: true },
-    { id: 'city_insp', name: 'City Inspection', req: true },
-    { id: 'util_insp', name: 'Utility Inspection', req: true },
-  ],
-  complete: [
-    { id: 'pto', name: 'Permission to Operate', req: true },
-    { id: 'in_service', name: 'In Service', req: true },
-  ],
-}
-
-const ALL_TASKS = Object.values(TASKS).flat()
+const ALL_TASKS = Object.values(STAGE_TASKS).flat()
 
 const STATUS_STYLE: Record<string, string> = {
   'Pending Resolution': 'bg-red-900 text-red-300',
@@ -118,7 +64,7 @@ export default function AuditPage() {
   }
 
   function getSLA(p: Project) {
-    const t = SLA[p.stage] ?? { crit: 7, risk: 5 }
+    const t = SLA_THRESHOLDS[p.stage] ?? { crit: 7, risk: 5 }
     const days = daysAgo(p.stage_date)
     let status: 'ok' | 'risk' | 'crit' = 'ok'
     if (days >= t.crit) status = 'crit'
@@ -136,7 +82,7 @@ export default function AuditPage() {
   projects.forEach(p => {
     if (pmFilter !== 'all' && p.pm !== pmFilter) return
     if (stageFilter && p.stage !== stageFilter) return
-    const stageTasks = TASKS[p.stage] ?? []
+    const stageTasks = STAGE_TASKS[p.stage] ?? []
     let flagged: { task: { id: string; name: string }; status: string }[] = []
 
     if (filter === 'stuck') {
@@ -144,9 +90,9 @@ export default function AuditPage() {
     } else if (filter === 'active') {
       ALL_TASKS.forEach(t => { const s = ts(p.id, t.id); if (ACTIVE_STATUSES.includes(s)) flagged.push({ task: t, status: s }) })
     } else if (filter === 'incomplete') {
-      stageTasks.filter(t => t.req).forEach(t => { const s = ts(p.id, t.id); if (s !== 'Complete') flagged.push({ task: t, status: s }) })
+      stageTasks.forEach(t => { const s = ts(p.id, t.id); if (s !== 'Complete') flagged.push({ task: t, status: s }) })
     } else if (filter === 'missing') {
-      stageTasks.filter(t => t.req).forEach(t => { const s = ts(p.id, t.id); if (s === 'Not Ready' || s === 'Ready To Start') flagged.push({ task: t, status: s }) })
+      stageTasks.forEach(t => { const s = ts(p.id, t.id); if (s === 'Not Ready' || s === 'Ready To Start') flagged.push({ task: t, status: s }) })
     }
     if (flagged.length) rows.push({ p, flagged })
   })
@@ -223,7 +169,7 @@ export default function AuditPage() {
         <select value={stageFilter} onChange={e => setStageFilter(e.target.value)}
           className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">
           <option value="">All Stages</option>
-          {Object.keys(TASKS).map(s => <option key={s} value={s}>{STAGE_LABELS[s]}</option>)}
+          {Object.keys(STAGE_TASKS).map(s => <option key={s} value={s}>{STAGE_LABELS[s]}</option>)}
         </select>
         <select value={pmFilter} onChange={e => setPmFilter(e.target.value)}
           className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">

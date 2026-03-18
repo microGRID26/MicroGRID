@@ -2,22 +2,12 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { daysAgo, fmt$, fmtDate, STAGE_LABELS, STAGE_ORDER } from '@/lib/utils'
+import { daysAgo, fmt$, fmtDate, STAGE_LABELS, STAGE_ORDER, SLA_THRESHOLDS, STAGE_TASKS } from '@/lib/utils'
 import { ProjectPanel } from '@/components/project/ProjectPanel'
 import type { Project } from '@/types/database'
 
-const SLA: Record<string, { target: number; risk: number; crit: number }> = {
-  evaluation: { target: 3,  risk: 4,  crit: 6  },
-  survey:     { target: 3,  risk: 5,  crit: 10 },
-  design:     { target: 3,  risk: 5,  crit: 10 },
-  permit:     { target: 21, risk: 30, crit: 45 },
-  install:    { target: 5,  risk: 7,  crit: 10 },
-  inspection: { target: 14, risk: 21, crit: 30 },
-  complete:   { target: 3,  risk: 5,  crit: 7  },
-}
-
 function getSLA(p: Project) {
-  const t = SLA[p.stage] ?? { target: 3, risk: 5, crit: 7 }
+  const t = SLA_THRESHOLDS[p.stage] ?? { target: 3, risk: 5, crit: 7 }
   const days = daysAgo(p.stage_date)
   let status: 'ok' | 'warn' | 'risk' | 'crit' = 'ok'
   if (days >= t.crit) status = 'crit'
@@ -37,52 +27,8 @@ function priority(p: Project): number {
 
 interface TaskState { project_id: string; task_id: string; status: string }
 
-const TASKS: Record<string, { id: string; name: string; req: boolean }[]> = {
-  evaluation: [
-    { id: 'welcome', name: 'Welcome Call', req: true },
-    { id: 'ia', name: 'IA Confirmation', req: true },
-    { id: 'ub', name: 'UB Confirmation', req: true },
-    { id: 'sched_survey', name: 'Schedule Site Survey', req: true },
-    { id: 'ntp', name: 'NTP Procedure', req: true },
-  ],
-  survey: [
-    { id: 'site_survey', name: 'Site Survey', req: true },
-    { id: 'survey_review', name: 'Survey Review', req: true },
-  ],
-  design: [
-    { id: 'build_design', name: 'Build Design', req: true },
-    { id: 'scope', name: 'Scope of Work', req: true },
-    { id: 'monitoring', name: 'Monitoring', req: true },
-    { id: 'build_eng', name: 'Build Engineering', req: true },
-    { id: 'eng_approval', name: 'Engineering Approval', req: true },
-    { id: 'stamps', name: 'Stamps Required', req: true },
-  ],
-  permit: [
-    { id: 'hoa', name: 'HOA Approval', req: true },
-    { id: 'om_review', name: 'OM Project Review', req: true },
-    { id: 'city_permit', name: 'City Permit Approval', req: true },
-    { id: 'util_permit', name: 'Utility Permit Approval', req: true },
-  ],
-  install: [
-    { id: 'sched_install', name: 'Schedule Installation', req: true },
-    { id: 'inventory', name: 'Inventory Allocation', req: true },
-    { id: 'install_done', name: 'Installation Complete', req: true },
-  ],
-  inspection: [
-    { id: 'insp_review', name: 'Inspection Review', req: true },
-    { id: 'sched_city', name: 'Schedule City Inspection', req: true },
-    { id: 'sched_util', name: 'Schedule Utility Inspection', req: true },
-    { id: 'city_insp', name: 'City Inspection', req: true },
-    { id: 'util_insp', name: 'Utility Inspection', req: true },
-  ],
-  complete: [
-    { id: 'pto', name: 'Permission to Operate', req: true },
-    { id: 'in_service', name: 'In Service', req: true },
-  ],
-}
-
 function getNextTask(p: Project, taskMap: Record<string, string>): string | null {
-  const tasks = TASKS[p.stage] ?? []
+  const tasks = STAGE_TASKS[p.stage] ?? []
   for (const t of tasks) {
     const s = taskMap[t.id] ?? 'Not Ready'
     if (s !== 'Complete') return t.name
@@ -91,7 +37,7 @@ function getNextTask(p: Project, taskMap: Record<string, string>): string | null
 }
 
 function getStuckTasks(p: Project, taskMap: Record<string, string>): string[] {
-  const tasks = TASKS[p.stage] ?? []
+  const tasks = STAGE_TASKS[p.stage] ?? []
   return tasks
     .filter(t => {
       const s = taskMap[t.id] ?? 'Not Ready'

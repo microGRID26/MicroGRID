@@ -2,22 +2,12 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { daysAgo, fmt$, STAGE_LABELS, STAGE_ORDER } from '@/lib/utils'
+import { daysAgo, fmt$, STAGE_LABELS, STAGE_ORDER, SLA_THRESHOLDS } from '@/lib/utils'
 import { ProjectPanel } from '@/components/project/ProjectPanel'
 import type { Project } from '@/types/database'
 
-const SLA: Record<string, { target: number; risk: number; crit: number }> = {
-  evaluation: { target: 3,  risk: 4,  crit: 6  },
-  survey:     { target: 3,  risk: 5,  crit: 10 },
-  design:     { target: 3,  risk: 5,  crit: 10 },
-  permit:     { target: 21, risk: 30, crit: 45 },
-  install:    { target: 5,  risk: 7,  crit: 10 },
-  inspection: { target: 14, risk: 21, crit: 30 },
-  complete:   { target: 3,  risk: 5,  crit: 7  },
-}
-
 function getSLA(p: Project) {
-  const t = SLA[p.stage] ?? { target: 3, risk: 5, crit: 7 }
+  const t = SLA_THRESHOLDS[p.stage] ?? { target: 3, risk: 5, crit: 7 }
   const days = daysAgo(p.stage_date)
   let status: 'ok' | 'warn' | 'risk' | 'crit' = 'ok'
   if (days >= t.crit) status = 'crit'

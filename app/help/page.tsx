@@ -48,12 +48,14 @@ function ForPMs() {
     <div>
       <SectionHeader title="Daily Workflow" />
       <Card title="Command Center">
-        Your home base. Shows blocked projects, critical SLA breaches, overdue tasks, and today's schedule.
-        Start here every morning — projects are sorted by urgency so the most critical work is always at the top.
+        Your home base. Shows projects needing attention (Pending Resolution or Revision Required tasks),
+        blocked projects, critical SLA breaches, stalled projects, aging projects (90+ day cycle), and
+        today's schedule. Start here every morning — sections are sorted by urgency.
       </Card>
       <Card title="My Queue">
-        Shows only your active projects with tasks that need action. Each card shows tasks currently Ready to Start
-        or In Progress. Work top to bottom — overdue tasks appear in red.
+        Shows only your active projects with tasks that need action. Each card shows the next incomplete task,
+        any stuck tasks (Pending/Revision), and SLA status. Work top to bottom — blocked projects appear first,
+        then critical, then at-risk.
       </Card>
       <Card title="Opening a project panel">
         Click any project row to open its detail panel. The panel loads task state, notes, and all project data
@@ -285,8 +287,9 @@ function ForAdmins() {
         Battery Apprentice, MPU Electrician).
       </Card>
       <Card title="SLA Thresholds">
-        Edit the target, risk, and critical day thresholds for each of the 7 pipeline stages. Changes
-        saved here update SLA coloring across all views. Requires the sla_thresholds table in Supabase.
+        Edit the target, risk, and critical day thresholds for each of the 7 pipeline stages. Saves to
+        the sla_thresholds table in Supabase. Note: the live app currently uses the values from this table
+        as reference — the centralized thresholds in code are kept in sync manually.
       </Card>
       <Card title="CRM Info">
         Live stats: project count by stage, AHJ count, utility count, user count, crew count, service call
@@ -319,7 +322,24 @@ function ForAdmins() {
 function WhatsNew() {
   return (
     <div>
-      <SectionHeader title="Session 4 — March 2026" />
+      <SectionHeader title="Session 5 — March 18, 2026" />
+      <Card title="Bug fixes — 6 issues resolved">
+        <Ul items={[
+          'Stage label "Completion" corrected to "Complete" across all views',
+          'Funding page: Days Waiting column now renders correctly (was missing, causing column misalignment)',
+          'BOM tab: React key error fixed — no more console warnings when viewing BOMs',
+          'Command Center: "Needs Attention" section now correctly surfaces projects with Pending Resolution or Revision Required tasks (was always empty before)',
+          'Schedule page: removed unreachable dead code (ghost ProjectPanel that could never open)',
+          'Admin portal: avatar color field unified — was writing to wrong column in some cases',
+        ]} />
+      </Card>
+      <Card title="Code refactor — SLA thresholds and task lists centralized">
+        SLA thresholds and stage task lists were previously copy-pasted in 4 separate files. They now live
+        in a single place (lib/utils.ts) and are imported everywhere. Changing a threshold or task name
+        now only requires editing one file.
+      </Card>
+
+      <SectionHeader title="Session 4 — March 17, 2026" />
       <Card title="Admin portal — full build">
         Gear icon (⚙) in the top nav for Greg Kelsch and Heidi Hildreth. Six modules: AHJ Manager,
         Utility Manager, Users, Crews, SLA Thresholds, CRM Info.

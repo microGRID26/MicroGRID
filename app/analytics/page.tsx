@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { fmt$, fmtDate, daysAgo, STAGE_LABELS, STAGE_ORDER } from '@/lib/utils'
+import { fmt$, fmtDate, daysAgo, STAGE_LABELS, STAGE_ORDER, SLA_THRESHOLDS } from '@/lib/utils'
 import type { Project, ProjectFunding } from '@/types/database'
 
 type Period = 'wtd'|'mtd'|'qtd'|'ytd'|'last7'|'last30'|'last90'
@@ -331,9 +331,8 @@ export default function AnalyticsPage() {
                 <div className="text-xs text-gray-400 mb-3">SLA Health</div>
                 <div className="space-y-2">
                   {(['crit','risk','ok'] as const).map(status => {
-                    const SLA_MAP = { evaluation:{crit:6,risk:4}, survey:{crit:10,risk:5}, design:{crit:10,risk:5}, permit:{crit:45,risk:30}, install:{crit:10,risk:7}, inspection:{crit:30,risk:21}, complete:{crit:7,risk:5} }
                     const count = active.filter(p => {
-                      const t = SLA_MAP[p.stage as keyof typeof SLA_MAP] ?? {crit:7,risk:5}
+                      const t = SLA_THRESHOLDS[p.stage] ?? {crit:7,risk:5}
                       const d = daysAgo(p.stage_date)
                       if (status === 'crit') return d >= t.crit
                       if (status === 'risk') return d >= t.risk && d < t.crit
