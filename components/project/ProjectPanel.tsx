@@ -78,13 +78,6 @@ function Row({ label, value, small }: { label: string; value?: string | null; sm
     <div className="flex gap-2 py-0.5">
       <span className="text-gray-500 text-xs w-28 flex-shrink-0">{label}</span>
       <span className={`text-gray-200 text-xs break-words ${small ? 'text-xs' : ''}`}>{value}</span>
-      {showAhjModal && project.ahj && (
-        <AHJEditModal
-          ahjName={project.ahj}
-          onClose={() => setShowAhjModal(false)}
-          onSaved={() => { setShowAhjModal(false); loadAhjUtil() }}
-        />
-      )}
     </div>
   )
 }
@@ -968,6 +961,13 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
           )}
         </div>
       </div>
+      {showAhjModal && project.ahj && (
+        <AHJEditModal
+          ahjName={project.ahj}
+          onClose={() => setShowAhjModal(false)}
+          onSaved={() => { setShowAhjModal(false); loadAhjUtil() }}
+        />
+      )}
     </div>
   )
 }
