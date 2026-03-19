@@ -462,7 +462,7 @@ export default function FundingPage() {
         <table className="w-full border-collapse text-xs">
           <thead className="bg-gray-950 sticky top-0 z-10">
             <tr>
-              {['MS','Project','Financier','AHJ','Stage','Install','PTO','Contract','Amount','Funded Date','Days','CB','CB Credit','Status','NF Codes','Notes'].map(h => (
+              {['MS','Project','Financier','AHJ','Stage','Install','PTO','Contract','Amount Due','Funded Date','Days','CB','CB Credit','Status','NF Codes','Notes'].map(h => (
                 <th key={h} className="text-left text-xs text-gray-400 font-medium px-2 py-2 border-b border-gray-800 whitespace-nowrap">{h}</th>
               ))}
             </tr>
