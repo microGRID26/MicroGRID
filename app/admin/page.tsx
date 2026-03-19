@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Nav } from '@/components/Nav'
 import { createClient } from '@/lib/supabase/client'
+import { useCurrentUser } from '@/lib/useCurrentUser'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -194,7 +195,7 @@ function SearchBar({ value, onChange, placeholder }: { value: string; onChange: 
 
 // ── AHJ Manager ──────────────────────────────────────────────────────────────
 
-function AHJManager() {
+function AHJManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const supabase = createClient()
   const [ahjs, setAhjs] = useState<AHJ[]>([])
   const [total, setTotal] = useState(0)
@@ -368,12 +369,27 @@ function AHJManager() {
               </div>
             </div>
           </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <button onClick={() => setEditing(null)}
-              className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md transition-colors">
-              Cancel
-            </button>
-            <SaveBtn onClick={save} saving={saving} />
+          <div className="flex justify-between pt-2">
+            {isSuperAdmin ? (
+              <button
+                onClick={async () => {
+                  if (!confirm(`DELETE AHJ "${editing.name}"? Projects referencing it will keep the name as text.`)) return
+                  await (supabase as any).from('ahjs').delete().eq('id', editing.id)
+                  setEditing(null)
+                  setToast('AHJ deleted')
+                  setTimeout(() => setToast(''), 2500)
+                  load()
+                }}
+                className="px-3 py-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded-md transition-colors"
+              >Delete</button>
+            ) : <div />}
+            <div className="flex gap-2">
+              <button onClick={() => setEditing(null)}
+                className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md transition-colors">
+                Cancel
+              </button>
+              <SaveBtn onClick={save} saving={saving} />
+            </div>
           </div>
         </Modal>
       )}
@@ -383,7 +399,7 @@ function AHJManager() {
 
 // ── Utility Manager ───────────────────────────────────────────────────────────
 
-function UtilityManager() {
+function UtilityManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const supabase = createClient()
   const [utilities, setUtilities] = useState<Utility[]>([])
   const [search, setSearch] = useState('')
@@ -485,12 +501,27 @@ function UtilityManager() {
             <Input label="Website" value={draft.website ?? ''} onChange={v => setDraft(d => ({ ...d, website: v }))} />
           </div>
           <Textarea label="Notes" value={draft.notes ?? ''} onChange={v => setDraft(d => ({ ...d, notes: v }))} />
-          <div className="flex justify-end gap-2 pt-2">
-            <button onClick={() => setEditing(null)}
-              className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md transition-colors">
-              Cancel
-            </button>
-            <SaveBtn onClick={save} saving={saving} />
+          <div className="flex justify-between pt-2">
+            {isSuperAdmin ? (
+              <button
+                onClick={async () => {
+                  if (!confirm(`DELETE Utility "${editing.name}"? Projects referencing it will keep the name as text.`)) return
+                  await (supabase as any).from('utilities').delete().eq('id', editing.id)
+                  setEditing(null)
+                  setToast('Utility deleted')
+                  setTimeout(() => setToast(''), 2500)
+                  load()
+                }}
+                className="px-3 py-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded-md transition-colors"
+              >Delete</button>
+            ) : <div />}
+            <div className="flex gap-2">
+              <button onClick={() => setEditing(null)}
+                className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md transition-colors">
+                Cancel
+              </button>
+              <SaveBtn onClick={save} saving={saving} />
+            </div>
           </div>
         </Modal>
       )}
@@ -1323,6 +1354,8 @@ const SIDEBAR_ITEMS: { id: Module; label: string; icon: React.ReactNode; desc: s
 
 export default function AdminPage() {
   const supabase = createClient()
+  const { user: authUser } = useCurrentUser()
+  const isSuperAdmin = authUser?.superAdmin ?? false
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
   const [activeModule, setActiveModule] = useState<Module>('ahj')
@@ -1429,8 +1462,8 @@ export default function AdminPage() {
             <h1 className="text-sm font-semibold text-white">{activeItem?.label}</h1>
           </div>
           <div className="flex-1 overflow-hidden p-6">
-            {activeModule === 'ahj'     && <AHJManager />}
-            {activeModule === 'utility' && <UtilityManager />}
+            {activeModule === 'ahj'     && <AHJManager isSuperAdmin={isSuperAdmin} />}
+            {activeModule === 'utility' && <UtilityManager isSuperAdmin={isSuperAdmin} />}
             {activeModule === 'users'   && <UsersManager />}
             {activeModule === 'crews'   && <CrewsManager />}
             {activeModule === 'sla'     && <SLAManager />}
