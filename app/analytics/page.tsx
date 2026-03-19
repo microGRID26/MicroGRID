@@ -77,12 +77,12 @@ export default function AnalyticsPage() {
 
   const loadData = useCallback(async () => {
     const [projRes, fundRes] = await Promise.all([
-      supabase.from('projects').select('*'),
-      (supabase as any).from('project_funding').select('*'),
+      supabase.from('projects').select('id, name, stage, contract, install_complete_date, stage_date, sale_date, pm, blocker, financier, disposition').neq('disposition', 'In Service'),
+      (supabase as any).from('project_funding').select('project_id, m2_funded_date, m3_funded_date, m2_amount, m3_amount'),
     ])
     if (projRes.data) setProjects(
       (projRes.data as Project[]).filter(p =>
-        p.disposition !== 'In Service' && p.disposition !== 'Loyalty'
+        p.disposition !== 'Loyalty'
       )
     )
     if (fundRes.data) {

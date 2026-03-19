@@ -18,6 +18,7 @@ interface ServiceCall {
   resolved_date: string | null
   pm: string | null
   priority: string | null
+  project?: { name: string; city: string } | null
 }
 
 const STATUS_STYLE: Record<string, string> = {
@@ -34,35 +35,33 @@ const STATUS_LABELS: Record<string, string> = {
 export default function ServicePage() {
   const supabase = createClient()
   const [calls, setCalls] = useState<ServiceCall[]>([])
-  const [projects, setProjects] = useState<Record<string, Project>>({})
   const [selected, setSelected] = useState<Project | null>(null)
+  const [loadingProject, setLoadingProject] = useState(false)
   const [loading, setLoading] = useState(true)
 
   const [statusFilter, setStatusFilter] = useState('all')
   const [search, setSearch] = useState('')
 
   const loadData = useCallback(async () => {
-    const [svcRes, projRes] = await Promise.all([
-      (supabase as any).from('service_calls').select('*').order('created_at', { ascending: false }),
-      supabase.from('projects').select('*'),
-    ])
+    const svcRes = await (supabase as any).from('service_calls').select('id, project_id, status, issue_type, description, created_at, pm, project:projects(name, city)').order('created_at', { ascending: false })
     if (svcRes.data) setCalls(svcRes.data as ServiceCall[])
-    if (projRes.data) {
-      const map: Record<string, Project> = {}
-      projRes.data.forEach((p: any) => { map[p.id] = p as Project })
-      setProjects(map)
-    }
     setLoading(false)
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
 
+  const openProject = async (projectId: string) => {
+    setLoadingProject(true)
+    const { data } = await supabase.from('projects').select('*').eq('id', projectId).single()
+    if (data) setSelected(data as Project)
+    setLoadingProject(false)
+  }
+
   const filtered = calls.filter(c => {
     if (statusFilter !== 'all' && c.status !== statusFilter) return false
     if (search.trim()) {
       const q = search.toLowerCase()
-      const p = projects[c.project_id]
-      if (!p?.name?.toLowerCase().includes(q) && !c.project_id?.toLowerCase().includes(q) && !c.description?.toLowerCase().includes(q)) return false
+      if (!c.project?.name?.toLowerCase().includes(q) && !c.project_id?.toLowerCase().includes(q) && !c.description?.toLowerCase().includes(q)) return false
     }
     return true
   })
@@ -117,24 +116,23 @@ export default function ServicePage() {
             </thead>
             <tbody>
               {filtered.map(call => {
-                const p = projects[call.project_id]
                 return (
-                  <tr key={call.id} onClick={() => p && setSelected(p)}
-                    className={`border-b border-gray-800 ${p ? 'cursor-pointer hover:bg-gray-800' : ''}`}>
+                  <tr key={call.id} onClick={() => openProject(call.project_id)}
+                    className="border-b border-gray-800 cursor-pointer hover:bg-gray-800">
                     <td className="px-3 py-2">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLE[call.status] ?? 'bg-gray-800 text-gray-400'}`}>
                         {STATUS_LABELS[call.status] ?? call.status}
                       </span>
                     </td>
                     <td className="px-3 py-2">
-                      <div className="font-medium text-white">{p?.name ?? call.project_id}</div>
-                      <div className="text-gray-500">{call.project_id} {p?.city ? `· ${p.city}` : ''}</div>
+                      <div className="font-medium text-white">{call.project?.name ?? call.project_id}</div>
+                      <div className="text-gray-500">{call.project_id} {call.project?.city ? `· ${call.project.city}` : ''}</div>
                     </td>
                     <td className="px-3 py-2">
                       {call.issue_type && <div className="text-gray-300">{call.issue_type}</div>}
                       {call.description && <div className="text-gray-500 truncate max-w-xs">{call.description}</div>}
                     </td>
-                    <td className="px-3 py-2 text-gray-400">{call.pm ?? p?.pm ?? '—'}</td>
+                    <td className="px-3 py-2 text-gray-400">{call.pm ?? '—'}</td>
                     <td className="px-3 py-2 text-gray-400">{fmtDate(call.created_at?.slice(0,10))}</td>
                     <td className="px-3 py-2 text-gray-400">{fmtDate(call.scheduled_date) || '—'}</td>
                     <td className="px-3 py-2">

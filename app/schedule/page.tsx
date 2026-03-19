@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Nav } from '@/components/Nav'
 import { ScheduleAssignModal } from '@/components/project/ScheduleAssignModal'
-import type { Project, Schedule, Crew } from '@/types/database'
+import type { Schedule, Crew } from '@/types/database'
 
 const JOB_COLORS: Record<string, { bg: string; text: string }> = {
   survey:     { bg: 'bg-blue-900',   text: 'text-blue-200'   },
@@ -49,7 +49,6 @@ export default function SchedulePage() {
   const supabase = createClient()
   const [crews, setCrews] = useState<Crew[]>([])
   const [schedule, setSchedule] = useState<Schedule[]>([])
-  const [projectMap, setProjectMap] = useState<Record<string, Project>>({})
   const [weekOffset, setWeekOffset] = useState(0)
   const [warehouseFilter, setWarehouseFilter] = useState('all')
   const [jobFilter, setJobFilter] = useState('all')
@@ -64,21 +63,19 @@ export default function SchedulePage() {
   } | null>(null)
 
   const loadData = useCallback(async () => {
-    const [crewRes, schedRes, projRes] = await Promise.all([
-      supabase.from('crews').select('*').eq('active', 'TRUE').order('name'),
-      supabase.from('schedule').select('*'),
-      supabase.from('projects').select('*'),
+    const weekDates = getWeekDates(weekOffset)
+    const weekStartDate = isoDate(weekDates[0])
+    const weekEndDate = isoDate(weekDates[5])
+
+    const [crewRes, schedRes] = await Promise.all([
+      supabase.from('crews').select('id, name, warehouse').eq('active', 'TRUE').order('name'),
+      supabase.from('schedule').select('id, crew_id, date, job_type, time, project_id, notes, status, pm, project:projects(name, city)').gte('date', weekStartDate).lte('date', weekEndDate),
     ])
 
     if (crewRes.data) setCrews(crewRes.data as Crew[])
     if (schedRes.data) setSchedule(schedRes.data as Schedule[])
-    if (projRes.data) {
-      const map: Record<string, Project> = {}
-      projRes.data.forEach((p: any) => { map[p.id] = p as Project })
-      setProjectMap(map)
-    }
     setLoading(false)
-  }, [])
+  }, [weekOffset])
 
   useEffect(() => { loadData() }, [loadData])
 
@@ -187,7 +184,6 @@ export default function SchedulePage() {
                       onClick={() => setAssignModal({ crewId: crew.id, date: iso, scheduleId: null, projectId: null, jobType: 'install' })}
                       className={`px-2 py-2 border-r border-gray-800 align-top min-h-16 cursor-pointer hover:bg-gray-800/50 transition-colors ${isToday ? 'bg-green-950/20' : ''}`}>
                       {jobs.map(job => {
-                        const p = projectMap[job.project_id]
                         const colors = JOB_COLORS[job.job_type] ?? { bg: 'bg-gray-800', text: 'text-gray-300' }
                         return (
                           <div
@@ -196,9 +192,9 @@ export default function SchedulePage() {
                             className={`${colors.bg} ${colors.text} rounded px-2 py-1 mb-1 cursor-pointer hover:opacity-80 transition-opacity`}
                           >
                             {job.time && <div className="text-xs font-bold opacity-90">{fmtTime(job.time)}</div>}
-                            <div className="text-xs font-semibold truncate max-w-32">{p?.name ?? job.project_id}</div>
+                            <div className="text-xs font-semibold truncate max-w-32">{(job as any).project?.name ?? job.project_id}</div>
                             <div className="text-xs opacity-70 uppercase tracking-wide">{JOB_LABELS[job.job_type] ?? job.job_type}</div>
-                            {p?.city && <div className="text-xs opacity-60">{p.city}</div>}
+                            {(job as any).project?.city && <div className="text-xs opacity-60">{(job as any).project.city}</div>}
                             {job.notes && <div className="text-xs opacity-60 truncate">{job.notes}</div>}
                           </div>
                         )

@@ -77,21 +77,20 @@ export default function QueuePage() {
 
   const loadData = useCallback(async () => {
     const pm = userPm
-    const [projRes, taskRes, allProjRes] = await Promise.all([
+    const [projRes, taskRes] = await Promise.all([
       // When no PM selected, load ALL projects so user can see everything
       pm
-        ? supabase.from('projects').select('*').eq('pm', pm)
-        : supabase.from('projects').select('*'),
+        ? supabase.from('projects').select('id, name, city, pm, stage, stage_date, sale_date, contract, blocker, financier, disposition').eq('pm', pm)
+        : supabase.from('projects').select('id, name, city, pm, stage, stage_date, sale_date, contract, blocker, financier, disposition'),
       supabase.from('task_state').select('project_id, task_id, status, reason'),
-      supabase.from('projects').select('pm'),
     ])
 
-    if (projRes.data) setProjects(projRes.data as Project[])
-    if (taskRes.data) setTaskStates(taskRes.data as TaskStateRow[])
-    if (allProjRes.data) {
-      const pms = [...new Set((allProjRes.data as any[]).map(p => p.pm).filter(Boolean))].sort()
-      setAvailablePms(pms)
+    if (projRes.data) {
+      setProjects(projRes.data as Project[])
+      const pms = [...new Set((projRes.data as any[]).map((p: any) => p.pm).filter(Boolean))].sort()
+      setAvailablePms(pms as string[])
     }
+    if (taskRes.data) setTaskStates(taskRes.data as TaskStateRow[])
     setLoading(false)
   }, [userPm])
 

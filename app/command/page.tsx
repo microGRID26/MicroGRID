@@ -363,11 +363,11 @@ export default function CommandPage() {
     if (user) setUser({ email: user.email ?? '' })
 
     const [projRes, taskRes, schedRes] = await Promise.all([
-      supabase.from('projects').select('*').order('stage_date', { ascending: true }),
+      supabase.from('projects').select('id, name, city, pm, stage, stage_date, sale_date, contract, blocker, disposition, address, financier').order('stage_date', { ascending: true }),
       // Include reason — used to surface context on stuck task badges
       supabase.from('task_state').select('project_id, task_id, status, reason, completed_date'),
       supabase.from('schedule')
-        .select('*, project:projects(name)')
+        .select('id, project_id, job_type, time, project:projects(name)')
         .eq('date', new Date().toISOString().slice(0, 10))
         .order('time'),
     ])

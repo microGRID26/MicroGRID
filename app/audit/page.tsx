@@ -35,7 +35,7 @@ export default function AuditPage() {
 
   const loadData = useCallback(async () => {
     const [projRes, taskRes] = await Promise.all([
-      supabase.from('projects').select('*').neq('stage', 'complete'),
+      supabase.from('projects').select('id, name, city, pm, stage, contract, stage_date').neq('stage', 'complete'),
       supabase.from('task_state').select('project_id, task_id, status'),
     ])
     if (projRes.data) setProjects(projRes.data as Project[])

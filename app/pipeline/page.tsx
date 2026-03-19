@@ -38,7 +38,7 @@ export default function PipelinePage() {
   const [sort, setSort] = useState<'name' | 'sla' | 'contract' | 'cycle'>('sla')
 
   const loadData = useCallback(async () => {
-    const { data } = await supabase.from('projects').select('*')
+    const { data } = await supabase.from('projects').select('id, name, city, pm, stage, stage_date, sale_date, contract, blocker, systemkw, financier, ahj, disposition')
     if (data) setProjects(data as Project[])
     setLoading(false)
   }, [])
