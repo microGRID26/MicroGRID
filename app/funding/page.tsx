@@ -104,7 +104,10 @@ export default function FundingPage() {
       let daysWaiting: number | null = null
       if (eligible && !funded) {
         const triggerDate = ms === 'm2' ? p.install_complete_date : ms === 'm3' ? p.pto_date : p.sale_date
-        if (triggerDate) daysWaiting = Math.floor((Date.now() - new Date(triggerDate + 'T00:00:00').getTime()) / 86400000)
+        if (triggerDate) {
+          const d = new Date(triggerDate + 'T00:00:00')
+          if (!isNaN(d.getTime())) daysWaiting = Math.floor((Date.now() - d.getTime()) / 86400000)
+        }
       }
       const row: FundingRow = {
         project: p, funding: f, milestone: ms,

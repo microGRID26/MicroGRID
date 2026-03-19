@@ -100,7 +100,7 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
           setConflict(null)
         }
       })
-  }, [form.crew_id, form.date])
+  }, [form.crew_id, form.date, scheduleId])
 
   async function save() {
     if (!form.project_id && !selectedProject?.id) return
