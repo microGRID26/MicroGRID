@@ -1011,7 +1011,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                   Cancel Project
                 </button>
               )}
-              {currentUser?.admin && (
+              {currentUser?.superAdmin && (
                 <button
                   onClick={async () => {
                     if (!confirm(`DELETE ${project.name} (${project.id})? This cannot be undone.`)) return
@@ -1029,7 +1029,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                     if (onProjectUpdated) onProjectUpdated()
                   }}
                   className="text-[10px] px-2 py-1 rounded text-gray-600 hover:text-red-400 hover:bg-red-900/20 transition-colors"
-                  title="Admin only — permanently delete project and all related data"
+                  title="Super admin only — permanently delete project and all related data"
                 >
                   Delete
                 </button>

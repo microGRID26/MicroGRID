@@ -7,6 +7,7 @@ interface CurrentUser {
   email: string
   name: string
   admin: boolean
+  superAdmin: boolean
 }
 
 let cached: CurrentUser | null = null
@@ -22,11 +23,11 @@ export function useCurrentUser() {
       const email = data.user?.email
       if (!email) { setLoading(false); return }
       const { data: u } = await (supabase as any)
-        .from('users').select('name, admin, email')
+        .from('users').select('name, admin, super_admin, email')
         .eq('email', email).single()
       const resolved: CurrentUser = u
-        ? { email: u.email, name: u.name, admin: u.admin }
-        : { email, name: email.split('@')[0], admin: false }
+        ? { email: u.email, name: u.name, admin: u.admin, superAdmin: u.super_admin === true }
+        : { email, name: email.split('@')[0], admin: false, superAdmin: false }
       cached = resolved
       setUser(resolved)
       setLoading(false)
