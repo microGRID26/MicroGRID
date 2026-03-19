@@ -77,6 +77,7 @@ export interface TaskState {
   project_id: string
   task_id: string
   status: string
+  reason: string | null
   completed_date: string | null
 }
 
@@ -87,11 +88,31 @@ export interface StageHistory {
   entered: string
 }
 
+export interface TaskHistory {
+  id: string
+  project_id: string
+  task_id: string
+  status: string
+  reason: string | null
+  changed_by: string | null
+  changed_at: string
+}
+
 export interface Crew {
   id: string
   name: string
   warehouse: string | null
   active: string | null
+  license_holder: string | null
+  electrician: string | null
+  solar_lead: string | null
+  battery_lead: string | null
+  installer1: string | null
+  installer2: string | null
+  battery_tech1: string | null
+  battery_tech2: string | null
+  battery_apprentice: string | null
+  mpu_electrician: string | null
 }
 
 export interface Schedule {
@@ -144,6 +165,59 @@ export interface ProjectFolder {
   folder_url: string | null
 }
 
+export interface ServiceCall {
+  id: string
+  project_id: string
+  status: string
+  issue_type: string | null
+  description: string | null
+  created_at: string
+  scheduled_date: string | null
+  resolved_date: string | null
+  pm: string | null
+  priority: string | null
+}
+
+export interface AHJ {
+  id: string
+  name: string
+  permit_phone: string | null
+  permit_website: string | null
+  max_duration: number | null
+  electric_code: string | null
+  permit_notes: string | null
+  username: string | null
+  password: string | null
+}
+
+export interface Utility {
+  id: string
+  name: string
+  phone: string | null
+  website: string | null
+  notes: string | null
+}
+
+export interface User {
+  id: string
+  name: string
+  email: string
+  department: string | null
+  position: string | null
+  admin: boolean
+  super_admin: boolean
+  active: boolean
+  color: string | null
+  crew: string | null
+}
+
+export interface SLAThreshold {
+  stage: string
+  target: number
+  risk: number
+  crit: number
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -167,6 +241,11 @@ export type Database = {
         Insert: Omit<StageHistory, 'id'> & { id?: string }
         Update: Partial<StageHistory>
       }
+      task_history: {
+        Row: TaskHistory
+        Insert: Omit<TaskHistory, 'id'> & { id?: string }
+        Update: Partial<TaskHistory>
+      }
       crews: {
         Row: Crew
         Insert: Omit<Crew, 'id'> & { id?: string }
@@ -186,6 +265,36 @@ export type Database = {
         Row: ProjectFolder
         Insert: ProjectFolder
         Update: Partial<ProjectFolder>
+      }
+      service_calls: {
+        Row: ServiceCall
+        Insert: Omit<ServiceCall, 'id'> & { id?: string }
+        Update: Partial<ServiceCall>
+      }
+      ahjs: {
+        Row: AHJ
+        Insert: Omit<AHJ, 'id'> & { id?: string }
+        Update: Partial<AHJ>
+      }
+      utilities: {
+        Row: Utility
+        Insert: Omit<Utility, 'id'> & { id?: string }
+        Update: Partial<Utility>
+      }
+      users: {
+        Row: User
+        Insert: Omit<User, 'id'> & { id?: string }
+        Update: Partial<User>
+      }
+      sla_thresholds: {
+        Row: SLAThreshold
+        Insert: SLAThreshold
+        Update: Partial<SLAThreshold>
+      }
+      nonfunded_codes: {
+        Row: NonfundedCode
+        Insert: NonfundedCode
+        Update: Partial<NonfundedCode>
       }
     }
   }
