@@ -1340,7 +1340,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                     <EditRow label="Contract" field="contract" value={project.contract?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} type="number" />
                     <EditRow label="System kW" field="systemkw" value={project.systemkw?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} type="number" />
                     <SelectEditRow label="Financier" field="financier" value={project.financier} draft={editDraft} editing={editMode} onChange={setEditDraft}
-                      options={['Cash','Edge','Mosaic','Sungage','GoodLeap','Dividend','Sunrun','Tesla','Sunnova','Loanpal','Other']} />
+                      options={['Cash','EDGE','Mosaic','Sungage','GoodLeap','Dividend','Sunrun','Tesla','Sunnova','Loanpal','Other']} />
                     <SelectEditRow label="Financing type" field="financing_type" value={project.financing_type} draft={editDraft} editing={editMode} onChange={setEditDraft}
                       options={['Loan','TPO (Lease, PPA)','Cash']} />
                     <EditRow label="Down payment" field="down_payment" value={project.down_payment?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} type="number" />

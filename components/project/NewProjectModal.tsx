@@ -284,11 +284,17 @@ export function NewProjectModal({ onClose, onCreated, existingIds, pms }: Props)
               </div>
               <div>
                 <label className={labelCls}>Dealer <span className={reqCls}>*</span></label>
-                <input className={inputCls} placeholder="Dealer / partner name" value={form.dealer} onChange={e => set('dealer', e.target.value)} />
+                <select className={inputCls} value={form.dealer} onChange={e => set('dealer', e.target.value)}>
+                  <option value="">Select Dealer...</option>
+                  <option>MicroGRID</option>
+                </select>
               </div>
               <div>
                 <label className={labelCls}>Financier <span className={reqCls}>*</span></label>
-                <input className={inputCls} placeholder="EDGE, Sunrun, etc." value={form.financier} onChange={e => set('financier', e.target.value)} />
+                <select className={inputCls} value={form.financier} onChange={e => set('financier', e.target.value)}>
+                  <option value="">Select Financier...</option>
+                  <option>EDGE</option>
+                </select>
               </div>
               <div>
                 <label className={labelCls}>Contract Value</label>
