@@ -111,16 +111,30 @@ export interface ProjectFunding {
   m1_funded_date: string | null
   m1_cb: number | null
   m1_cb_credit: number | null
+  m1_notes: string | null
+  m1_status: string | null
   m2_amount: number | null
   m2_funded_date: string | null
   m2_cb: number | null
   m2_cb_credit: number | null
+  m2_notes: string | null
+  m2_status: string | null
   m3_amount: number | null
   m3_funded_date: string | null
   m3_projected: number | null
+  m3_notes: string | null
+  m3_status: string | null
   nonfunded_code_1: string | null
   nonfunded_code_2: string | null
   nonfunded_code_3: string | null
+}
+
+export interface NonfundedCode {
+  code: string
+  master_code: string
+  description: string
+  responsible_party: string | null
+  reference: string | null
 }
 
 export interface ProjectFolder {
