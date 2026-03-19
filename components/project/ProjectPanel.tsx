@@ -384,7 +384,7 @@ function SelectEditRow({ label, field, value, draft, editing, onChange, options 
   )
 }
 
-function AutocompleteRow({ label, field, value, draft, editing, onChange, table, searchCol = 'name' }: {
+function AutocompleteRow({ label, field, value, draft, editing, onChange, table, searchCol = 'name', onClickValue }: {
   label: string
   field: string
   value?: string | null
@@ -393,6 +393,7 @@ function AutocompleteRow({ label, field, value, draft, editing, onChange, table,
   onChange: (d: any) => void
   table: 'ahjs' | 'utilities'
   searchCol?: string
+  onClickValue?: () => void
 }) {
   const supabase = createClient()
   const current = field in draft ? draft[field] : value
@@ -428,7 +429,13 @@ function AutocompleteRow({ label, field, value, draft, editing, onChange, table,
     return (
       <div className="flex gap-2 py-0.5">
         <span className="text-gray-500 text-xs w-28 flex-shrink-0">{label}</span>
-        <span className="text-gray-200 text-xs break-words">{value}</span>
+        {onClickValue ? (
+          <button onClick={onClickValue} className="text-green-400 hover:text-green-300 text-xs break-words text-left hover:underline cursor-pointer">
+            {value}
+          </button>
+        ) : (
+          <span className="text-gray-200 text-xs break-words">{value}</span>
+        )}
       </div>
     )
   }
@@ -576,6 +583,9 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   const [taskView, setTaskView] = useState<'current' | 'all' | 'history'>('current')
   const [ahjInfo, setAhjInfo] = useState<any>(null)
   const [utilityInfo, setUtilityInfo] = useState<any>(null)
+  const [ahjEdit, setAhjEdit] = useState<any>(null)
+  const [utilEdit, setUtilEdit] = useState<any>(null)
+  const [refSaving, setRefSaving] = useState(false)
   const [serviceCalls, setServiceCalls] = useState<any[]>([])
   const [stageHistory, setStageHistory] = useState<any[]>([])
   // ── task_history — lazy-loaded only when user opens the History view ─────────
@@ -647,6 +657,46 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       setUtilityInfo(data ?? null)
     }
   }, [pid, project.ahj, project.utility])
+
+  const openAhjEdit = async () => {
+    if (!project.ahj) return
+    const { data } = await (supabase as any).from('ahjs').select('*').ilike('name', `%${project.ahj}%`).limit(1).maybeSingle()
+    if (data) setAhjEdit({ ...data })
+  }
+
+  const saveAhjEdit = async () => {
+    if (!ahjEdit) return
+    setRefSaving(true)
+    await (supabase as any).from('ahjs').update({
+      permit_phone: ahjEdit.permit_phone,
+      permit_website: ahjEdit.permit_website,
+      max_duration: ahjEdit.max_duration,
+      electric_code: ahjEdit.electric_code,
+      permit_notes: ahjEdit.permit_notes,
+    }).eq('id', ahjEdit.id)
+    setRefSaving(false)
+    setAhjEdit(null)
+    loadAhjUtil()
+  }
+
+  const openUtilEdit = async () => {
+    if (!project.utility) return
+    const { data } = await (supabase as any).from('utilities').select('*').ilike('name', `%${project.utility}%`).limit(1).maybeSingle()
+    if (data) setUtilEdit({ ...data })
+  }
+
+  const saveUtilEdit = async () => {
+    if (!utilEdit) return
+    setRefSaving(true)
+    await (supabase as any).from('utilities').update({
+      phone: utilEdit.phone,
+      website: utilEdit.website,
+      notes: utilEdit.notes,
+    }).eq('id', utilEdit.id)
+    setRefSaving(false)
+    setUtilEdit(null)
+    loadAhjUtil()
+  }
 
   const loadFolder = useCallback(async () => {
     const { data } = await (supabase as any).from('project_folders').select('folder_url').eq('project_id', pid).maybeSingle()
@@ -1281,7 +1331,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                     <EditRow label="Site surveyor" field="site_surveyor" value={project.site_surveyor} draft={editDraft} editing={editMode} onChange={setEditDraft} />
                   </Section>
                   <Section title="Permitting">
-                    <AutocompleteRow label="AHJ" field="ahj" value={project.ahj} draft={editDraft} editing={editMode} onChange={setEditDraft} table="ahjs" />
+                    <AutocompleteRow label="AHJ" field="ahj" value={project.ahj} draft={editDraft} editing={editMode} onChange={setEditDraft} table="ahjs" onClickValue={openAhjEdit} />
                     {!editMode && ahjInfo && (
                       <div className="ml-0 mt-1 mb-2 pl-28 space-y-0.5">
                         {ahjInfo.permit_phone && <div className="text-xs text-green-400">{ahjInfo.permit_phone}</div>}
@@ -1291,7 +1341,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                         {ahjInfo.permit_notes && <div className="text-xs text-gray-400 mt-1 bg-gray-800 rounded p-2">{ahjInfo.permit_notes.slice(0,200)}</div>}
                       </div>
                     )}
-                    <AutocompleteRow label="Utility" field="utility" value={project.utility} draft={editDraft} editing={editMode} onChange={setEditDraft} table="utilities" />
+                    <AutocompleteRow label="Utility" field="utility" value={project.utility} draft={editDraft} editing={editMode} onChange={setEditDraft} table="utilities" onClickValue={openUtilEdit} />
                     {!editMode && utilityInfo && (
                       <div className="ml-0 mt-1 mb-2 pl-28 space-y-0.5">
                         {utilityInfo.phone && <div className="text-xs text-green-400">{utilityInfo.phone}</div>}
@@ -1371,6 +1421,90 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
           )}
         </div>
       </div>
+
+      {/* AHJ Edit Popup */}
+      {ahjEdit && (
+        <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center" onClick={() => setAhjEdit(null)}>
+          <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-white">Edit AHJ — {ahjEdit.name}</h3>
+              <button onClick={() => setAhjEdit(null)} className="text-gray-500 hover:text-white text-lg">×</button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Permit Phone</label>
+                <input value={ahjEdit.permit_phone ?? ''} onChange={e => setAhjEdit((d: any) => ({ ...d, permit_phone: e.target.value || null }))}
+                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Permit Website</label>
+                <input value={ahjEdit.permit_website ?? ''} onChange={e => setAhjEdit((d: any) => ({ ...d, permit_website: e.target.value || null }))}
+                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Max Duration (days)</label>
+                  <input type="number" value={ahjEdit.max_duration ?? ''} onChange={e => setAhjEdit((d: any) => ({ ...d, max_duration: e.target.value ? Number(e.target.value) : null }))}
+                    className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Electric Code</label>
+                  <input value={ahjEdit.electric_code ?? ''} onChange={e => setAhjEdit((d: any) => ({ ...d, electric_code: e.target.value || null }))}
+                    className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Permit Notes</label>
+                <textarea rows={3} value={ahjEdit.permit_notes ?? ''} onChange={e => setAhjEdit((d: any) => ({ ...d, permit_notes: e.target.value || null }))}
+                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none resize-none" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setAhjEdit(null)} className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md">Cancel</button>
+              <button onClick={saveAhjEdit} disabled={refSaving}
+                className="px-4 py-1.5 text-xs bg-green-700 hover:bg-green-600 text-white rounded-md font-medium disabled:opacity-50">
+                {refSaving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Utility Edit Popup */}
+      {utilEdit && (
+        <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center" onClick={() => setUtilEdit(null)}>
+          <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-white">Edit Utility — {utilEdit.name}</h3>
+              <button onClick={() => setUtilEdit(null)} className="text-gray-500 hover:text-white text-lg">×</button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Phone</label>
+                <input value={utilEdit.phone ?? ''} onChange={e => setUtilEdit((d: any) => ({ ...d, phone: e.target.value || null }))}
+                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Website</label>
+                <input value={utilEdit.website ?? ''} onChange={e => setUtilEdit((d: any) => ({ ...d, website: e.target.value || null }))}
+                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Notes</label>
+                <textarea rows={3} value={utilEdit.notes ?? ''} onChange={e => setUtilEdit((d: any) => ({ ...d, notes: e.target.value || null }))}
+                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none resize-none" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setUtilEdit(null)} className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md">Cancel</button>
+              <button onClick={saveUtilEdit} disabled={refSaving}
+                className="px-4 py-1.5 text-xs bg-green-700 hover:bg-green-600 text-white rounded-md font-medium disabled:opacity-50">
+                {refSaving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
