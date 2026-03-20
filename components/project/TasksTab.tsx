@@ -36,7 +36,7 @@ interface TasksTabProps {
   project: Project
   taskStates: Record<string, string>
   taskReasons: Record<string, string>
-  taskStatesRaw: { task_id: string; status: string; reason?: string; completed_date?: string | null }[]
+  taskStatesRaw: { task_id: string; status: string; reason?: string; completed_date?: string | null; started_date?: string | null }[]
   taskHistory: any[]
   taskHistoryLoaded: boolean
   stageHistory: any[]
@@ -220,7 +220,9 @@ export function TasksTab({
                   const status = taskStates[task.id] ?? 'Not Ready'
                   const reason = taskReasons[task.id] ?? ''
                   const locked = isLocked(task, taskStates)
-                  const completedDate = taskStatesRaw.find(t => t.task_id === task.id)?.completed_date ?? null
+                  const rawEntry = taskStatesRaw.find(t => t.task_id === task.id)
+                  const completedDate = rawEntry?.completed_date ?? null
+                  const startedDate = (rawEntry as any)?.started_date ?? null
                   const revCount = revisionCounts[task.id] ?? 0
                   const isExpanded = expandedTask === task.id
                   const history = taskHistoryByTask[task.id] ?? []
@@ -269,6 +271,32 @@ export function TasksTab({
                             {revCount} rev
                           </span>
                         )}
+
+                        {/* Duration badge — shows days from started to completed */}
+                        {startedDate && completedDate && (() => {
+                          const s = new Date(String(startedDate).slice(0, 10) + 'T00:00:00').getTime()
+                          const c = new Date(String(completedDate).slice(0, 10) + 'T00:00:00').getTime()
+                          if (isNaN(s) || isNaN(c)) return null
+                          const days = Math.max(0, Math.round((c - s) / 86400000))
+                          return (
+                            <span className="text-[10px] bg-blue-900/40 text-blue-400 px-1.5 py-0.5 rounded font-medium flex-shrink-0">
+                              {days}d
+                            </span>
+                          )
+                        })()}
+
+                        {/* In-progress duration — days since started (not yet complete) */}
+                        {startedDate && !completedDate && status === 'In Progress' && (() => {
+                          const s = new Date(String(startedDate).slice(0, 10) + 'T00:00:00').getTime()
+                          if (isNaN(s)) return null
+                          const days = Math.max(0, Math.round((Date.now() - s) / 86400000))
+                          if (days === 0) return null
+                          return (
+                            <span className="text-[10px] bg-blue-900/20 text-blue-300 px-1.5 py-0.5 rounded font-medium flex-shrink-0">
+                              {days}d
+                            </span>
+                          )
+                        })()}
 
                         {/* Completed date */}
                         {completedDate && (

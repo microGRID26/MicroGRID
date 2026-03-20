@@ -315,8 +315,13 @@ function ChangeOrdersContent() {
                       )}>
                       <td className="px-4 py-3 text-xs text-gray-400 font-mono">CO-{co.id}</td>
                       <td className="px-4 py-3">
-                        <div className="text-xs text-white truncate max-w-[180px]">{co.project?.name ?? co.project_id}</div>
-                        <div className="text-xs text-gray-500">{co.project_id}</div>
+                        <button
+                          onClick={e => { e.stopPropagation(); openProject(co.project_id) }}
+                          className="text-left group"
+                        >
+                          <div className="text-xs text-green-400 group-hover:text-green-300 group-hover:underline truncate max-w-[180px]">{co.project?.name ?? co.project_id}</div>
+                          <div className="text-xs text-gray-500">{co.project_id}</div>
+                        </button>
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-200 truncate max-w-[180px]">{co.title}</td>
                       <td className="px-4 py-3">

@@ -281,7 +281,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   const [tab, setTab] = useState<'tasks' | 'notes' | 'info' | 'bom' | 'files'>('tasks')
   const [taskStates, setTaskStates] = useState<Record<string, string>>({})
   const [taskReasons, setTaskReasons] = useState<Record<string, string>>({})
-  const [taskStatesRaw, setTaskStatesRaw] = useState<{task_id: string; status: string; reason?: string; completed_date?: string | null}[]>([])
+  const [taskStatesRaw, setTaskStatesRaw] = useState<{task_id: string; status: string; reason?: string; completed_date?: string | null; started_date?: string | null}[]>([])
   const [notes, setNotes] = useState<Note[]>([])
   const [newNote, setNewNote] = useState('')
   const [saving, setSaving] = useState(false)
@@ -324,7 +324,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   }
 
   const loadTasks = useCallback(async () => {
-    const { data } = await supabase.from('task_state').select('task_id, status, reason, completed_date').eq('project_id', pid)
+    const { data } = await supabase.from('task_state').select('task_id, status, reason, completed_date, started_date').eq('project_id', pid)
     if (data) {
       const statusMap: Record<string, string> = {}
       const reasonMap: Record<string, string> = {}
@@ -501,13 +501,22 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     if (!needsReason) {
       setTaskReasons(prev => { const n = { ...prev }; delete n[taskId]; return n })
     }
-    await (supabase as any).from('task_state').upsert({
+    const today = new Date().toISOString().slice(0, 10)
+    // Set started_date when task first moves to In Progress (don't overwrite if already set)
+    const existingRaw = taskStatesRaw.find(t => t.task_id === taskId)
+    const startedDate = status === 'In Progress' && !(existingRaw as any)?.started_date
+      ? today : undefined
+
+    const upsertPayload: Record<string, any> = {
       project_id: pid,
       task_id: taskId,
       status,
       reason: needsReason ? (taskReasons[taskId] ?? null) : null,
-      completed_date: status === 'Complete' ? new Date().toISOString().slice(0, 10) : null,
-    }, { onConflict: 'project_id,task_id' })
+      completed_date: status === 'Complete' ? today : null,
+    }
+    if (startedDate) upsertPayload.started_date = startedDate
+
+    await (supabase as any).from('task_state').upsert(upsertPayload, { onConflict: 'project_id,task_id' })
 
     const changedBy = currentUser?.name
       ?? userEmail.split('@')[0]
