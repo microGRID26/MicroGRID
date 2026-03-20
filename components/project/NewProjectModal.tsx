@@ -272,11 +272,11 @@ export function NewProjectModal({ onClose, onCreated, existingIds, pms }: Props)
               </div>
               <div>
                 <label className={labelCls}>Zip Code</label>
-                <input className={inputCls} placeholder="78701" value={form.zip} onChange={e => set('zip', e.target.value)} />
+                <input className={inputCls} inputMode="numeric" pattern="[0-9]*" maxLength={5} placeholder="78701" value={form.zip} onChange={e => set('zip', e.target.value)} />
               </div>
               <div>
                 <label className={labelCls}>Phone <span className={reqCls}>*</span></label>
-                <input className={inputCls} placeholder="(555) 555-5555" value={form.phone} onChange={e => set('phone', e.target.value)} />
+                <input className={inputCls} type="tel" placeholder="(555) 555-5555" value={form.phone} onChange={e => set('phone', e.target.value)} />
               </div>
               <div>
                 <label className={labelCls}>Email <span className={reqCls}>*</span></label>
@@ -326,7 +326,7 @@ export function NewProjectModal({ onClose, onCreated, existingIds, pms }: Props)
                 <label className={labelCls}>Contract Value</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
-                  <input className={inputCls + ' pl-6'} type="number" placeholder="75,000" value={form.contract} onChange={e => set('contract', e.target.value)} />
+                  <input className={inputCls + ' pl-6'} type="number" step="0.01" placeholder="75000" value={form.contract} onChange={e => set('contract', e.target.value)} />
                 </div>
               </div>
               <div>
