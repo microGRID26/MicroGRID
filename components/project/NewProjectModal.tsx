@@ -7,7 +7,7 @@ interface Props {
   onClose: () => void
   onCreated: (id: string) => void
   existingIds: string[]
-  pms: string[]
+  pms: { id: string; name: string }[]
 }
 
 function nextProjectId(existingIds: string[]): string {
@@ -150,7 +150,8 @@ export function NewProjectModal({ onClose, onCreated, existingIds, pms }: Props)
       sale_date: form.sale_date || today,
       stage: form.stage,
       stage_date: today,
-      pm: form.pm || null,
+      pm: pms.find(p => p.id === form.pm)?.name ?? null,
+      pm_id: form.pm || null,
       disposition: form.disposition,
       dealer: form.dealer.trim(),
       financier: form.financier.trim(),
@@ -279,7 +280,7 @@ export function NewProjectModal({ onClose, onCreated, existingIds, pms }: Props)
                 <label className={labelCls}>PM</label>
                 <select className={inputCls} value={form.pm} onChange={e => set('pm', e.target.value)}>
                   <option value="">Select PM...</option>
-                  {pms.map(pm => <option key={pm} value={pm}>{pm}</option>)}
+                  {pms.map(pm => <option key={pm.id} value={pm.id}>{pm.name}</option>)}
                 </select>
               </div>
               <div>

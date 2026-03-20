@@ -40,7 +40,7 @@ export default function PipelinePage() {
   const [sort, setSort] = useState<'name' | 'sla' | 'contract' | 'cycle'>('sla')
 
   const loadData = useCallback(async () => {
-    const { data } = await supabase.from('projects').select('id, name, city, pm, stage, stage_date, sale_date, contract, blocker, systemkw, financier, ahj, disposition')
+    const { data } = await supabase.from('projects').select('id, name, city, pm, pm_id, stage, stage_date, sale_date, contract, blocker, systemkw, financier, ahj, disposition')
     if (data) setProjects(data as Project[])
     setLoading(false)
   }, [])
@@ -48,14 +48,16 @@ export default function PipelinePage() {
   useEffect(() => { loadData() }, [loadData])
 
   // Unique filter values
-  const pms = [...new Set(projects.map(p => p.pm).filter(Boolean))].sort() as string[]
+  const pmMap = new Map<string, string>()
+  projects.forEach(p => { if (p.pm_id && p.pm) pmMap.set(p.pm_id, p.pm) })
+  const pms = [...pmMap.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
   const financiers = [...new Set(projects.map(p => p.financier).filter(Boolean))].sort() as string[]
   const ahjs = [...new Set(projects.map(p => p.ahj).filter(Boolean))].sort() as string[]
 
   // Apply filters — exclude In Service and Loyalty from active pipeline view
   const filtered = projects.filter(p => {
     if (p.disposition === 'In Service' || p.disposition === 'Loyalty') return false
-    if (pmFilter !== 'all' && p.pm !== pmFilter) return false
+    if (pmFilter !== 'all' && p.pm_id !== pmFilter) return false
     if (financierFilter !== 'all' && p.financier !== financierFilter) return false
     if (ahjFilter !== 'all' && p.ahj !== ahjFilter) return false
     if (search.trim()) {
@@ -99,7 +101,7 @@ export default function PipelinePage() {
         <select value={pmFilter} onChange={e => setPmFilter(e.target.value)}
           className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">
           <option value="all">All PMs</option>
-          {pms.map(pm => <option key={pm} value={pm}>{pm}</option>)}
+          {pms.map(pm => <option key={pm.id} value={pm.id}>{pm.name}</option>)}
         </select>
         <select value={financierFilter} onChange={e => setFinancierFilter(e.target.value)}
           className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">

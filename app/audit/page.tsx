@@ -35,7 +35,7 @@ export default function AuditPage() {
 
   const loadData = useCallback(async () => {
     const [projRes, taskRes] = await Promise.all([
-      supabase.from('projects').select('id, name, city, pm, stage, contract, stage_date').neq('stage', 'complete'),
+      supabase.from('projects').select('id, name, city, pm, pm_id, stage, contract, stage_date').neq('stage', 'complete'),
       supabase.from('task_state').select('project_id, task_id, status'),
     ])
     if (projRes.data) setProjects(projRes.data as Project[])
@@ -52,7 +52,9 @@ export default function AuditPage() {
 
   useEffect(() => { loadData() }, [loadData])
 
-  const pms = [...new Set(projects.map(p => p.pm).filter(Boolean))].sort() as string[]
+  const pmMap = new Map<string, string>()
+  projects.forEach(p => { if (p.pm_id && p.pm) pmMap.set(p.pm_id, p.pm) })
+  const pms = [...pmMap.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
 
   function ts(pid: string, tid: string): string {
     return taskStates[pid]?.[tid] ?? 'Not Ready'
@@ -75,7 +77,7 @@ export default function AuditPage() {
   const rows: AuditRow[] = []
 
   projects.forEach(p => {
-    if (pmFilter !== 'all' && p.pm !== pmFilter) return
+    if (pmFilter !== 'all' && p.pm_id !== pmFilter) return
     if (stageFilter && p.stage !== stageFilter) return
     if (search.trim()) {
       const q = search.toLowerCase()
@@ -139,7 +141,7 @@ export default function AuditPage() {
         <select value={pmFilter} onChange={e => setPmFilter(e.target.value)}
           className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">
           <option value="all">All PMs</option>
-          {pms.map(pm => <option key={pm} value={pm}>{pm}</option>)}
+          {pms.map(pm => <option key={pm.id} value={pm.id}>{pm.name}</option>)}
         </select>
         <select value={sort} onChange={e => setSort(e.target.value as AuditSort)}
           className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">

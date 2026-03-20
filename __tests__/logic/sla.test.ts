@@ -13,7 +13,8 @@ function getSLA(stage: string, stage_date: string | null) {
 }
 
 function daysAgoDate(n: number): string {
-  return new Date(Date.now() - n * 86400000).toISOString().slice(0, 10)
+  const d = new Date(); d.setDate(d.getDate() - n)
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 }
 
 describe('getSLA', () => {

@@ -69,7 +69,7 @@ export default function SchedulePage() {
 
     const [crewRes, schedRes] = await Promise.all([
       supabase.from('crews').select('id, name, warehouse').eq('active', 'TRUE').order('name'),
-      supabase.from('schedule').select('id, crew_id, date, job_type, time, project_id, notes, status, pm, project:projects(name, city)').gte('date', weekStartDate).lte('date', weekEndDate),
+      supabase.from('schedule').select('id, crew_id, date, job_type, time, project_id, notes, status, pm, pm_id, project:projects(name, city)').gte('date', weekStartDate).lte('date', weekEndDate),
     ])
 
     if (crewRes.data) setCrews(crewRes.data as Crew[])

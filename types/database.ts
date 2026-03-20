@@ -12,6 +12,7 @@ export interface Project {
   stage: Stage
   stage_date: string | null
   pm: string | null
+  pm_id: string | null
   disposition: string | null
   contract: number | null
   systemkw: number | null
@@ -71,6 +72,7 @@ export interface Note {
   text: string
   time: string
   pm: string | null
+  pm_id: string | null
 }
 
 export interface TaskState {
@@ -125,6 +127,7 @@ export interface Schedule {
   notes: string | null
   status: string
   pm: string | null
+  pm_id: string | null
 }
 
 export interface ProjectFunding {
@@ -175,6 +178,7 @@ export interface ServiceCall {
   scheduled_date: string | null
   resolved_date: string | null
   pm: string | null
+  pm_id: string | null
   priority: string | null
 }
 

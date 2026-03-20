@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 interface CurrentUser {
+  id: string
   email: string
   name: string
   admin: boolean
@@ -23,11 +24,11 @@ export function useCurrentUser() {
       const email = data.user?.email
       if (!email) { setLoading(false); return }
       const { data: u } = await (supabase as any)
-        .from('users').select('name, admin, super_admin, email')
+        .from('users').select('id, name, admin, super_admin, email')
         .eq('email', email).single()
       const resolved: CurrentUser = u
-        ? { email: u.email, name: u.name, admin: u.admin, superAdmin: u.super_admin === true }
-        : { email, name: email.split('@')[0], admin: false, superAdmin: false }
+        ? { id: u.id, email: u.email, name: u.name, admin: u.admin, superAdmin: u.super_admin === true }
+        : { id: '', email, name: email.split('@')[0], admin: false, superAdmin: false }
       cached = resolved
       setUser(resolved)
       setLoading(false)

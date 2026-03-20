@@ -769,6 +769,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       status,
       reason: needsReason ? (taskReasons[taskId] ?? null) : null,
       changed_by: changedBy,
+      pm_id: currentUser?.id ?? null,
     })
     // Invalidate cache so History view reloads fresh on next open
     setTaskHistoryLoaded(false)
@@ -809,6 +810,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       status: taskStates[taskId] ?? 'Not Ready',
       reason: reason || null,
       changed_by: changedBy,
+      pm_id: currentUser?.id ?? null,
     })
     setTaskHistoryLoaded(false)
   }
@@ -824,6 +826,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     await (supabase as any).from('notes').insert({
       project_id: pid, text: newNote.trim(),
       time: new Date().toISOString(), pm,
+      pm_id: currentUser?.id ?? null,
     })
     setNewNote('')
     await loadNotes()

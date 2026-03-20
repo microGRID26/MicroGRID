@@ -77,7 +77,7 @@ export default function AnalyticsPage() {
 
   const loadData = useCallback(async () => {
     const [projRes, fundRes] = await Promise.all([
-      supabase.from('projects').select('id, name, stage, contract, install_complete_date, stage_date, sale_date, pm, blocker, financier, disposition').neq('disposition', 'In Service'),
+      supabase.from('projects').select('id, name, stage, contract, install_complete_date, stage_date, sale_date, pm, pm_id, blocker, financier, disposition').neq('disposition', 'In Service'),
       (supabase as any).from('project_funding').select('project_id, m2_funded_date, m3_funded_date, m2_amount, m3_amount'),
     ])
     if (projRes.data) setProjects(
@@ -146,9 +146,11 @@ export default function AnalyticsPage() {
   const maxMonthCount = Math.max(...months.map(m => m.count), 1)
 
   // PM breakdown
-  const pms = [...new Set(projects.map(p => p.pm).filter(Boolean))] as string[]
-  const pmStats = pms.map(pm => {
-    const ps = projects.filter(p => p.pm === pm)
+  const pmMap = new Map<string, string>()
+  projects.forEach(p => { if (p.pm_id && p.pm) pmMap.set(p.pm_id, p.pm) })
+  const pmPairs = [...pmMap.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
+  const pmStats = pmPairs.map(({ id: pmId, name: pm }) => {
+    const ps = projects.filter(p => p.pm_id === pmId)
     const activePs = ps.filter(p => p.stage !== 'complete')
     return {
       pm,

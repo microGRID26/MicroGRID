@@ -363,7 +363,7 @@ export default function CommandPage() {
     if (user) setUser({ email: user.email ?? '' })
 
     const [projRes, taskRes, schedRes] = await Promise.all([
-      supabase.from('projects').select('id, name, city, pm, stage, stage_date, sale_date, contract, blocker, disposition, address, financier').order('stage_date', { ascending: true }),
+      supabase.from('projects').select('id, name, city, pm, pm_id, stage, stage_date, sale_date, contract, blocker, disposition, address, financier').order('stage_date', { ascending: true }),
       // Include reason — used to surface context on stuck task badges
       supabase.from('task_state').select('project_id, task_id, status, reason, completed_date'),
       supabase.from('schedule')
@@ -404,7 +404,7 @@ export default function CommandPage() {
 
   // Filtered projects
   const filtered = (() => {
-    let result = pmFilter === 'all' ? projects : projects.filter(p => p.pm === pmFilter)
+    let result = pmFilter === 'all' ? projects : projects.filter(p => p.pm_id === pmFilter)
     if (search.trim()) {
       const q = search.toLowerCase().trim()
       result = result.filter(p =>
@@ -426,7 +426,9 @@ export default function CommandPage() {
   )
 
   const sections = classify(filtered, overduePids)
-  const pms = [...new Set(projects.map(p => p.pm).filter(Boolean))].sort() as string[]
+  const pmMap = new Map<string, string>()
+  projects.forEach(p => { if (p.pm_id && p.pm) pmMap.set(p.pm_id, p.pm) })
+  const pms = [...pmMap.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
   const totalContract = filtered.reduce((s, p) => s + (Number(p.contract) || 0), 0)
 
   // When search is active, any section with results is force-expanded — synchronous, no timing issues
@@ -459,7 +461,7 @@ export default function CommandPage() {
           <select value={pmFilter} onChange={e => setPmFilter(e.target.value)}
             className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">
             <option value="all">All PMs</option>
-            {pms.map(pm => <option key={pm} value={pm}>{pm}</option>)}
+            {pms.map(pm => <option key={pm.id} value={pm.id}>{pm.name}</option>)}
           </select>
           <button onClick={loadData} className="text-xs text-gray-500 hover:text-white transition-colors">
             ↻ {Math.round((Date.now() - lastRefresh) / 60000)}m ago

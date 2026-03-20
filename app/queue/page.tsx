@@ -73,7 +73,7 @@ export default function QueuePage() {
     if (typeof window !== 'undefined') return localStorage.getItem('mg_pm') ?? ''
     return ''
   })
-  const [availablePms, setAvailablePms] = useState<string[]>([])
+  const [availablePms, setAvailablePms] = useState<{ id: string; name: string }[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -82,15 +82,16 @@ export default function QueuePage() {
     const [projRes, taskRes] = await Promise.all([
       // When no PM selected, load ALL projects so user can see everything
       pm
-        ? supabase.from('projects').select('id, name, city, pm, stage, stage_date, sale_date, contract, blocker, financier, disposition').eq('pm', pm)
-        : supabase.from('projects').select('id, name, city, pm, stage, stage_date, sale_date, contract, blocker, financier, disposition'),
+        ? supabase.from('projects').select('id, name, city, pm, pm_id, stage, stage_date, sale_date, contract, blocker, financier, disposition').eq('pm_id', pm)
+        : supabase.from('projects').select('id, name, city, pm, pm_id, stage, stage_date, sale_date, contract, blocker, financier, disposition'),
       supabase.from('task_state').select('project_id, task_id, status, reason'),
     ])
 
     if (projRes.data) {
       setProjects(projRes.data as Project[])
-      const pms = [...new Set((projRes.data as any[]).map((p: any) => p.pm).filter(Boolean))].sort()
-      setAvailablePms(pms as string[])
+      const pmMap = new Map<string, string>()
+      ;(projRes.data as any[]).forEach((p: any) => { if (p.pm_id && p.pm) pmMap.set(p.pm_id, p.pm) })
+      setAvailablePms([...pmMap.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)))
     }
     if (taskRes.data) setTaskStates(taskRes.data as TaskStateRow[])
     setLoading(false)
@@ -154,7 +155,7 @@ export default function QueuePage() {
             className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-2 py-1"
           >
             <option value="">All PMs</option>
-            {availablePms.map(pm => <option key={pm} value={pm}>{pm}</option>)}
+            {availablePms.map(pm => <option key={pm.id} value={pm.id}>{pm.name}</option>)}
           </select>
           <span className="text-xs text-gray-500">{live.length} projects</span>
         </>} />

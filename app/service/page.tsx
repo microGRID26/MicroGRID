@@ -43,7 +43,7 @@ export default function ServicePage() {
   const [search, setSearch] = useState('')
 
   const loadData = useCallback(async () => {
-    const svcRes = await (supabase as any).from('service_calls').select('id, project_id, status, issue_type, description, created_at, pm, project:projects(name, city)').order('created_at', { ascending: false })
+    const svcRes = await (supabase as any).from('service_calls').select('id, project_id, status, issue_type, description, created_at, pm, pm_id, project:projects(name, city)').order('created_at', { ascending: false })
     if (svcRes.data) setCalls(svcRes.data as ServiceCall[])
     setLoading(false)
   }, [])

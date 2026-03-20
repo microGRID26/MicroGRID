@@ -20,7 +20,9 @@ describe('daysAgo', () => {
   })
 
   it('returns correct days for past date', () => {
-    const fiveDaysAgo = new Date(Date.now() - 5 * 86400000).toISOString().slice(0, 10)
+    const d = new Date()
+    d.setDate(d.getDate() - 5)
+    const fiveDaysAgo = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
     expect(daysAgo(fiveDaysAgo)).toBe(5)
   })
 

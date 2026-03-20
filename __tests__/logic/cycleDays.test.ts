@@ -8,13 +8,13 @@ function cycleDays(sale_date: string | null, stage_date: string | null): number 
 
 describe('cycleDays', () => {
   it('uses sale_date when available', () => {
-    const tenDaysAgo = new Date(Date.now() - 10 * 86400000).toISOString().slice(0, 10)
-    const fiveDaysAgo = new Date(Date.now() - 5 * 86400000).toISOString().slice(0, 10)
+    const tenDaysAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 10); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}` })()
+    const fiveDaysAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 5); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}` })()
     expect(cycleDays(tenDaysAgo, fiveDaysAgo)).toBe(10)
   })
 
   it('falls back to stage_date when sale_date is null', () => {
-    const fiveDaysAgo = new Date(Date.now() - 5 * 86400000).toISOString().slice(0, 10)
+    const fiveDaysAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 5); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}` })()
     expect(cycleDays(null, fiveDaysAgo)).toBe(5)
   })
 
@@ -24,7 +24,7 @@ describe('cycleDays', () => {
 
   it('falls back to stage_date when sale_date is today (daysAgo returns 0)', () => {
     const today = new Date().toISOString().slice(0, 10)
-    const fiveDaysAgo = new Date(Date.now() - 5 * 86400000).toISOString().slice(0, 10)
+    const fiveDaysAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 5); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}` })()
     // daysAgo(today) = 0, so || falls through to stage_date
     expect(cycleDays(today, fiveDaysAgo)).toBe(5)
   })

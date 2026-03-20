@@ -101,7 +101,7 @@ describe('daysWaiting with malformed dates', () => {
   })
 
   it('computes correctly for valid date', () => {
-    const fiveDaysAgo = new Date(Date.now() - 5 * 86400000).toISOString().slice(0, 10)
+    const fiveDaysAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 5); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}` })()
     const d = new Date(fiveDaysAgo + 'T00:00:00')
     const daysWaiting = !isNaN(d.getTime())
       ? Math.floor((Date.now() - d.getTime()) / 86400000)
