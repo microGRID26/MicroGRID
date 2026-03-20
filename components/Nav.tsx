@@ -42,7 +42,7 @@ interface NavProps {
 }
 
 export function Nav({ active, right, onNewProject }: NavProps) {
-  const { user: currentUser } = useCurrentUser()
+  const { user: currentUser, loading } = useCurrentUser()
 
   async function signOut() {
     const supabase = createClient()
@@ -65,7 +65,7 @@ export function Nav({ active, right, onNewProject }: NavProps) {
         </a>
       ))}
 
-      {currentUser?.isAdmin && (
+      {(loading || currentUser?.isAdmin) && (
         <a href="/admin"
           className={`text-xs px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 ${
             active === 'Admin'

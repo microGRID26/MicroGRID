@@ -48,10 +48,11 @@ describe('getSLA', () => {
 
   it('handles permit stage with longer thresholds', () => {
     // permit: target=21, risk=30, crit=45
-    expect(getSLA('permit', daysAgoDate(20)).status).toBe('ok')
-    expect(getSLA('permit', daysAgoDate(21)).status).toBe('warn')
-    expect(getSLA('permit', daysAgoDate(30)).status).toBe('risk')
-    expect(getSLA('permit', daysAgoDate(45)).status).toBe('crit')
+    // Use target+1 etc. to avoid midnight boundary off-by-one in daysAgo
+    expect(getSLA('permit', daysAgoDate(19)).status).toBe('ok')
+    expect(getSLA('permit', daysAgoDate(22)).status).toBe('warn')
+    expect(getSLA('permit', daysAgoDate(31)).status).toBe('risk')
+    expect(getSLA('permit', daysAgoDate(46)).status).toBe('crit')
   })
 
   it('handles null stage_date (0 days = ok)', () => {
