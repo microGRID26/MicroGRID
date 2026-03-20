@@ -202,12 +202,15 @@ export interface Utility {
   notes: string | null
 }
 
+export type UserRole = 'super_admin' | 'admin' | 'finance' | 'manager' | 'user'
+
 export interface User {
   id: string
   name: string
   email: string
   department: string | null
   position: string | null
+  role: UserRole
   admin: boolean
   super_admin: boolean
   active: boolean

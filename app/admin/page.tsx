@@ -27,12 +27,31 @@ interface Utility {
   notes: string | null
 }
 
+type UserRole = 'super_admin' | 'admin' | 'finance' | 'manager' | 'user'
+
+const ROLE_LABELS: Record<UserRole, string> = {
+  super_admin: 'Super Admin',
+  admin: 'Admin',
+  finance: 'Finance',
+  manager: 'Manager',
+  user: 'User',
+}
+
+const ROLE_COLORS: Record<UserRole, string> = {
+  super_admin: 'bg-red-900/40 text-red-400 border-red-800',
+  admin: 'bg-amber-900/40 text-amber-400 border-amber-800',
+  finance: 'bg-blue-900/40 text-blue-400 border-blue-800',
+  manager: 'bg-purple-900/40 text-purple-400 border-purple-800',
+  user: 'bg-gray-800 text-gray-400 border-gray-700',
+}
+
 interface User {
   id: string
   name: string
   email: string
   department: string | null
   position: string | null
+  role: UserRole
   admin: boolean
   active: boolean
   color: string | null
@@ -531,7 +550,7 @@ function UtilityManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 
 // ── Users ─────────────────────────────────────────────────────────────────────
 
-function UsersManager() {
+function UsersManager({ currentUserRole }: { currentUserRole: UserRole }) {
   const supabase = createClient()
   const [users, setUsers] = useState<User[]>([])
   const [search, setSearch] = useState('')
@@ -553,7 +572,7 @@ function UsersManager() {
   const openEdit = (u: User) => { setEditing(u); setDraft({ ...u }); setCreating(false) }
   const openCreate = () => {
     setEditing(null)
-    setDraft({ name: '', email: '', department: '', position: '', admin: false, active: true, color: AVATAR_COLORS[0] })
+    setDraft({ name: '', email: '', department: '', position: '', role: 'user' as UserRole, admin: false, active: true, color: AVATAR_COLORS[0] })
     setCreating(true)
   }
 
@@ -565,7 +584,8 @@ function UsersManager() {
         email: draft.email,
         department: draft.department,
         position: draft.position,
-        admin: draft.admin ?? false,
+        role: draft.role ?? 'user',
+        admin: (draft.role === 'admin' || draft.role === 'super_admin'),
         active: draft.active ?? true,
         color: draft.color,
       })
@@ -575,7 +595,8 @@ function UsersManager() {
         email: draft.email,
         department: draft.department,
         position: draft.position,
-        admin: draft.admin,
+        role: draft.role,
+        admin: (draft.role === 'admin' || draft.role === 'super_admin'),
         active: draft.active,
         color: draft.color,
       }).eq('id', editing.id)
@@ -616,7 +637,7 @@ function UsersManager() {
         <table className="w-full text-xs">
           <thead className="sticky top-0 bg-gray-900 border-b border-gray-800">
             <tr>
-              {['Name', 'Email', 'Department', 'Position', 'Admin', 'Status'].map(h => (
+              {['Name', 'Email', 'Department', 'Position', 'Role', 'Status'].map(h => (
                 <th key={h} className="text-left px-3 py-2.5 text-gray-400 font-medium">{h}</th>
               ))}
               <th className="px-3 py-2.5 w-10" />
@@ -634,8 +655,10 @@ function UsersManager() {
                       {u.name?.charAt(0) ?? '?'}
                     </div>
                     <span className="text-white font-medium">{u.name}</span>
-                    {u.admin && (
-                      <span className="text-[10px] px-1.5 py-0.5 bg-amber-900/40 text-amber-400 border border-amber-800 rounded">Admin</span>
+                    {u.role && u.role !== 'user' && (
+                      <span className={`text-[10px] px-1.5 py-0.5 border rounded ${ROLE_COLORS[u.role] ?? ROLE_COLORS.user}`}>
+                        {ROLE_LABELS[u.role] ?? u.role}
+                      </span>
                     )}
                   </div>
                 </td>
@@ -643,7 +666,9 @@ function UsersManager() {
                 <td className="px-3 py-2 text-gray-400">{u.department || '—'}</td>
                 <td className="px-3 py-2 text-gray-400">{u.position || '—'}</td>
                 <td className="px-3 py-2">
-                  {u.admin ? <span className="text-amber-400">Yes</span> : <span className="text-gray-600">No</span>}
+                  <span className={`text-[10px] px-1.5 py-0.5 border rounded ${ROLE_COLORS[u.role] ?? ROLE_COLORS.user}`}>
+                    {ROLE_LABELS[u.role] ?? 'User'}
+                  </span>
                 </td>
                 <td className="px-3 py-2"><Badge active={u.active} /></td>
                 <td className="px-3 py-2">
@@ -698,13 +723,22 @@ function UsersManager() {
             </div>
           </div>
           <div className="flex items-center gap-6">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={draft.admin ?? false}
-                onChange={e => setDraft(d => ({ ...d, admin: e.target.checked }))}
-                className="rounded border-gray-600 bg-gray-800 text-amber-500 focus:ring-amber-500" />
-              <span className="text-xs text-gray-300">Admin access</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-400 font-medium">Role</label>
+              <select value={draft.role ?? 'user'}
+                onChange={e => setDraft(d => ({ ...d, role: e.target.value as UserRole }))}
+                className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white
+                           focus:outline-none focus:border-blue-500 transition-colors">
+                <option value="user">User</option>
+                <option value="manager">Manager</option>
+                <option value="finance">Finance</option>
+                <option value="admin">Admin</option>
+                {currentUserRole === 'super_admin' && (
+                  <option value="super_admin">Super Admin</option>
+                )}
+              </select>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer mt-4">
               <input type="checkbox" checked={draft.active ?? true}
                 onChange={e => setDraft(d => ({ ...d, active: e.target.checked }))}
                 className="rounded border-gray-600 bg-gray-800 text-green-500 focus:ring-green-500" />
@@ -1354,29 +1388,12 @@ const SIDEBAR_ITEMS: { id: Module; label: string; icon: React.ReactNode; desc: s
 
 export default function AdminPage() {
   const supabase = createClient()
-  const { user: authUser } = useCurrentUser()
-  const isSuperAdmin = authUser?.superAdmin ?? false
-  const [currentUser, setCurrentUser] = useState<User | null>(null)
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
+  const { user: authUser, loading } = useCurrentUser()
+  const isSuperAdmin = authUser?.isSuperAdmin ?? false
+  const isAdmin = authUser?.isAdmin ?? false
   const [activeModule, setActiveModule] = useState<Module>('ahj')
 
-  useEffect(() => {
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { setIsAdmin(false); return }
-      const { data } = await (supabase as any).from('users').select('*').eq('email', user.email).single()
-      if (data) {
-        setCurrentUser(data)
-        setIsAdmin(data.admin === true)
-      } else {
-        // No user row found — not an admin. User will be provisioned on next login.
-        setIsAdmin(false)
-      }
-    }
-    checkUser()
-  }, [])
-
-  if (isAdmin === null) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
         <div className="text-gray-500 text-sm">Checking permissions…</div>
@@ -1384,10 +1401,10 @@ export default function AdminPage() {
     )
   }
 
-  if (isAdmin === false) {
+  if (!isAdmin) {
     return (
       <div className="min-h-screen bg-gray-950 flex flex-col">
-        <Nav active="Admin" right={currentUser ? (<div className="flex items-center gap-2"><div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: currentUser.color || '#64748b' }}>{currentUser.name?.charAt(0) ?? '?'}</div><span className="text-xs text-gray-400">{currentUser.name}</span></div>) : undefined} />
+        <Nav active="Admin" />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="w-16 h-16 bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -1410,7 +1427,7 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
-      <Nav active="Admin" right={currentUser ? (<div className="flex items-center gap-2"><div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: currentUser.color || '#64748b' }}>{currentUser.name?.charAt(0) ?? '?'}</div><span className="text-xs text-gray-400">{currentUser.name}</span></div>) : undefined} />
+      <Nav active="Admin" />
 
       <div className="flex h-screen overflow-hidden">
         {/* Sidebar */}
@@ -1450,7 +1467,7 @@ export default function AdminPage() {
 
           <div className="p-3 border-t border-gray-800">
             <div className="text-[10px] text-gray-600 text-center">
-              Admin only · {currentUser?.name?.split(' ')[0] ?? ''}
+              Admin only · {authUser?.name?.split(' ')[0] ?? ''}
             </div>
           </div>
         </aside>
@@ -1464,7 +1481,7 @@ export default function AdminPage() {
           <div className="flex-1 overflow-hidden p-6">
             {activeModule === 'ahj'     && <AHJManager isSuperAdmin={isSuperAdmin} />}
             {activeModule === 'utility' && <UtilityManager isSuperAdmin={isSuperAdmin} />}
-            {activeModule === 'users'   && <UsersManager />}
+            {activeModule === 'users'   && <UsersManager currentUserRole={authUser?.role ?? 'user'} />}
             {activeModule === 'crews'   && <CrewsManager />}
             {activeModule === 'sla'     && <SLAManager />}
             {activeModule === 'info'    && <CRMInfo />}

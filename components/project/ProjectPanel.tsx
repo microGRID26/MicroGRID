@@ -1038,7 +1038,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                   Cancel Project
                 </button>
               )}
-              {currentUser?.superAdmin && (
+              {currentUser?.isSuperAdmin && (
                 <button
                   onClick={async () => {
                     if (!confirm(`DELETE ${project.name} (${project.id})? This cannot be undone.`)) return

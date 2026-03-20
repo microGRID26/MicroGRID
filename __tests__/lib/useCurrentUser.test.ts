@@ -12,7 +12,7 @@ describe('useCurrentUser', () => {
       select: vi.fn(() => ({
         eq: vi.fn(() => ({
           single: vi.fn(() => Promise.resolve({
-            data: { name: 'Greg Kelsch', admin: true, email: 'gkelsch@trismartsolar.com' },
+            data: { id: '1', name: 'Greg Kelsch', role: 'super_admin', email: 'gkelsch@trismartsolar.com' },
             error: null,
           })),
         })),
@@ -39,7 +39,9 @@ describe('useCurrentUser', () => {
     })
 
     expect(result.current.user?.name).toBe('Greg Kelsch')
-    expect(result.current.user?.admin).toBe(true)
+    expect(result.current.user?.role).toBe('super_admin')
+    expect(result.current.user?.isAdmin).toBe(true)
+    expect(result.current.user?.isSuperAdmin).toBe(true)
   })
 
   it('falls back to email prefix when no user row', async () => {
@@ -69,7 +71,8 @@ describe('useCurrentUser', () => {
     })
 
     expect(result.current.user?.name).toBe('newuser')
-    expect(result.current.user?.admin).toBe(false)
+    expect(result.current.user?.role).toBe('user')
+    expect(result.current.user?.isAdmin).toBe(false)
   })
 
   it('handles auth failure gracefully', async () => {

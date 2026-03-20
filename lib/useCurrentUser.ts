@@ -2,13 +2,36 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import type { UserRole } from '@/types/database'
 
 interface CurrentUser {
   id: string
   email: string
   name: string
-  admin: boolean
-  superAdmin: boolean
+  role: UserRole
+  isAdmin: boolean      // role is admin or super_admin
+  isSuperAdmin: boolean // role is super_admin
+  isFinance: boolean    // role is finance+
+  isManager: boolean    // role is manager+
+}
+
+const ROLE_LEVEL: Record<UserRole, number> = {
+  super_admin: 5,
+  admin: 4,
+  finance: 3,
+  manager: 2,
+  user: 1,
+}
+
+function buildUser(id: string, email: string, name: string, role: UserRole): CurrentUser {
+  const level = ROLE_LEVEL[role] ?? 1
+  return {
+    id, email, name, role,
+    isAdmin: level >= 4,
+    isSuperAdmin: role === 'super_admin',
+    isFinance: level >= 3,
+    isManager: level >= 2,
+  }
 }
 
 let cached: CurrentUser | null = null
@@ -24,11 +47,11 @@ export function useCurrentUser() {
       const email = data.user?.email
       if (!email) { setLoading(false); return }
       const { data: u } = await (supabase as any)
-        .from('users').select('id, name, admin, super_admin, email')
+        .from('users').select('id, name, email, role')
         .eq('email', email).single()
       const resolved: CurrentUser = u
-        ? { id: u.id, email: u.email, name: u.name, admin: u.admin, superAdmin: u.super_admin === true }
-        : { id: '', email, name: email.split('@')[0], admin: false, superAdmin: false }
+        ? buildUser(u.id, u.email, u.name, u.role ?? 'user')
+        : buildUser('', email, email.split('@')[0], 'user')
       cached = resolved
       setUser(resolved)
       setLoading(false)

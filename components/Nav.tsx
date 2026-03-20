@@ -1,6 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
+import { useCurrentUser } from '@/lib/useCurrentUser'
 import { ConstructionBanner } from '@/components/ConstructionBanner'
 
 // ── Shared nav for all pages ──────────────────────────────────────────────────
@@ -41,6 +42,8 @@ interface NavProps {
 }
 
 export function Nav({ active, right, onNewProject }: NavProps) {
+  const { user: currentUser } = useCurrentUser()
+
   async function signOut() {
     const supabase = createClient()
     await supabase.auth.signOut()
@@ -62,15 +65,17 @@ export function Nav({ active, right, onNewProject }: NavProps) {
         </a>
       ))}
 
-      <a href="/admin"
-        className={`text-xs px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 ${
-          active === 'Admin'
-            ? 'bg-gray-800 text-white'
-            : 'text-gray-400 hover:text-white hover:bg-gray-800'
-        }`}>
-        {GEAR_ICON}
-        Admin
-      </a>
+      {currentUser?.isAdmin && (
+        <a href="/admin"
+          className={`text-xs px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 ${
+            active === 'Admin'
+              ? 'bg-gray-800 text-white'
+              : 'text-gray-400 hover:text-white hover:bg-gray-800'
+          }`}>
+          {GEAR_ICON}
+          Admin
+        </a>
+      )}
 
       <a href="/help"
         className={`text-xs px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 ${
