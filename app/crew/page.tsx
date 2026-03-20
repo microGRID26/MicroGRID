@@ -442,14 +442,14 @@ export default function CrewPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-dvh bg-gray-950 flex items-center justify-center">
         <div className="text-green-400 text-base animate-pulse">Loading jobs...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col" style={{ fontSize: '14px' }}>
+    <div className="min-h-dvh bg-gray-950 flex flex-col" style={{ fontSize: '14px' }}>
       {/* Simple mobile header */}
       <header className="bg-gray-950 border-b border-gray-800 px-4 py-3 flex-shrink-0 sticky top-0 z-40">
         <div className="flex items-center justify-between">

@@ -9,6 +9,8 @@ const inter = Inter({ subsets: ['latin'], preload: false })
 export const metadata: Metadata = {
   title: 'MicroGRID CRM',
   description: 'MicroGRID CRM',
+  themeColor: '#030712',
+  viewport: 'width=device-width, initial-scale=1, viewport-fit=cover',
 }
 
 // ── CONSTRUCTION BANNER ───────────────────────────────────────────────────────
@@ -21,8 +23,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" className="bg-gray-950">
+      <body className={`${inter.className} bg-gray-950`}>
         {children}
         <FeedbackButton />
         <SessionTracker />
