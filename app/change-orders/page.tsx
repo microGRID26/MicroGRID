@@ -101,11 +101,6 @@ const COMPARISON_FIELDS: { label: string; origKey: string; newKey: string; forma
   { label: 'Panel Size', origKey: 'original_panel_size', newKey: 'new_panel_size', format: 'text' },
   { label: 'Panel Type', origKey: 'original_panel_type', newKey: 'new_panel_type', format: 'text' },
   { label: 'System Size (kW)', origKey: 'original_system_size', newKey: 'new_system_size', format: 'number' },
-  { label: 'Lease/PPA Price', origKey: 'original_lease_ppa_price', newKey: 'new_lease_ppa_price', format: 'currency' },
-  { label: 'Lease/PPA Escalator', origKey: 'original_lease_ppa_escalator', newKey: 'new_lease_ppa_escalator', format: 'percent' },
-  { label: 'Loan Amount', origKey: 'original_loan_amount', newKey: 'new_loan_amount', format: 'currency' },
-  { label: 'ADV PMT Schedule', origKey: 'original_adv_pmt_schedule', newKey: 'new_adv_pmt_schedule', format: 'text' },
-  { label: 'Financier Fee %', origKey: 'original_financier_fee', newKey: 'new_financier_fee', format: 'percent' },
 ]
 
 function formatField(value: any, format?: string): string {
@@ -463,7 +458,12 @@ function ChangeOrderDetailPanel({ order, users, currentUser, onClose, onUpdated,
 
   async function updateField(field: string, value: any) {
     const updates = { [field]: value, updated_at: new Date().toISOString() }
-    await (supabase as any).from('change_orders').update(updates).eq('id', co.id)
+    const { error } = await (supabase as any).from('change_orders').update(updates).eq('id', co.id)
+    if (error) {
+      console.error('change_orders update failed:', error)
+      showToast('Save failed')
+      return
+    }
     const updated = { ...co, ...updates }
     setCo(updated)
     onUpdated(updated)
@@ -471,8 +471,31 @@ function ChangeOrderDetailPanel({ order, users, currentUser, onClose, onUpdated,
 
   async function toggleWorkflowStep(key: string) {
     const current = co[key as keyof ChangeOrder]
-    await updateField(key, !current)
-    showToast(!current ? 'Step completed' : 'Step unchecked')
+    const newVal = !current
+    const updates: Record<string, any> = { [key]: newVal, updated_at: new Date().toISOString() }
+
+    // Count completed steps after this toggle
+    let doneAfter = 0
+    for (const step of WORKFLOW_STEPS) {
+      const val = step.key === key ? newVal : co[step.key as keyof ChangeOrder]
+      if (val) doneAfter++
+    }
+
+    // Auto-advance status based on workflow progress
+    if (doneAfter === WORKFLOW_STEPS.length && co.status !== 'Complete') {
+      updates.status = 'Complete'
+    } else if (doneAfter > 0 && co.status === 'Open') {
+      updates.status = 'In Progress'
+    }
+
+    await (supabase as any).from('change_orders').update(updates).eq('id', co.id)
+    const updated = { ...co, ...updates }
+    setCo(updated)
+    onUpdated(updated)
+
+    if (updates.status === 'Complete') showToast('All steps done — marked Complete')
+    else if (updates.status === 'In Progress') showToast('Workflow started — In Progress')
+    else showToast(newVal ? 'Step completed' : 'Step unchecked')
   }
 
   async function addNote() {
@@ -748,10 +771,6 @@ function NewChangeOrderModal({ users, currentUser, onClose, onCreated }: {
       original_panel_count: p.module_qty ?? null,
       original_panel_type: p.module ?? null,
       original_system_size: p.systemkw ?? null,
-      original_loan_amount: p.contract ?? null,
-      original_lease_ppa_escalator: p.tpo_escalator ?? null,
-      original_adv_pmt_schedule: p.financier_adv_pmt ?? null,
-      original_plan_type: p.financing_type ?? null,
     }
     const { data, error } = await (supabase as any).from('change_orders').insert(payload).select('*, project:projects(name, city, pm, pm_id)').single()
     setSaving(false)
@@ -877,8 +896,6 @@ function NewChangeOrderModal({ users, currentUser, onClose, onCreated }: {
                 {(selectedProject as any).module_qty && <div>Panel Count: <span className="text-gray-200">{(selectedProject as any).module_qty}</span></div>}
                 {(selectedProject as any).module && <div>Panel Type: <span className="text-gray-200">{(selectedProject as any).module}</span></div>}
                 {(selectedProject as any).systemkw && <div>System Size: <span className="text-gray-200">{(selectedProject as any).systemkw} kW</span></div>}
-                {(selectedProject as any).contract && <div>Contract: <span className="text-gray-200">{fmt$((selectedProject as any).contract)}</span></div>}
-                {(selectedProject as any).financing_type && <div>Plan Type: <span className="text-gray-200">{(selectedProject as any).financing_type}</span></div>}
               </div>
             </div>
           )}
