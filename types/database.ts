@@ -215,6 +215,17 @@ export interface User {
   crew: string | null
 }
 
+export interface AuditLog {
+  id: number
+  project_id: string
+  field: string
+  old_value: string | null
+  new_value: string | null
+  changed_by: string | null
+  changed_by_id: string | null
+  changed_at: string
+}
+
 export interface SLAThreshold {
   stage: string
   target: number
@@ -299,6 +310,11 @@ export type Database = {
         Row: NonfundedCode
         Insert: NonfundedCode
         Update: Partial<NonfundedCode>
+      }
+      audit_log: {
+        Row: AuditLog
+        Insert: Omit<AuditLog, 'id' | 'changed_at'> & { id?: number; changed_at?: string }
+        Update: Partial<AuditLog>
       }
     }
   }

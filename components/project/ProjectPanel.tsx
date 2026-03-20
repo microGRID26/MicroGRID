@@ -846,6 +846,22 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   async function saveEdits() {
     setEditSaving(true)
     await (supabase as any).from('projects').update(editDraft).eq('id', pid)
+
+    // Audit log: record each changed field
+    const auditEntries = Object.entries(editDraft)
+      .filter(([key, val]) => String(val ?? '') !== String((project as any)[key] ?? ''))
+      .map(([key, val]) => ({
+        project_id: pid,
+        field: key,
+        old_value: (project as any)[key] != null ? String((project as any)[key]) : null,
+        new_value: val != null ? String(val) : null,
+        changed_by: currentUser?.name ?? null,
+        changed_by_id: currentUser?.id ?? null,
+      }))
+    if (auditEntries.length > 0) {
+      void (supabase as any).from('audit_log').insert(auditEntries)
+    }
+
     setProject(p => ({ ...p, ...editDraft }))
     setEditMode(false)
     setEditDraft({})
@@ -899,6 +915,11 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     const today = new Date().toISOString().slice(0, 10)
     await (supabase as any).from('projects').update({ stage: nextStage, stage_date: today }).eq('id', pid)
     await (supabase as any).from('stage_history').insert({ project_id: pid, stage: nextStage, entered: today })
+    void (supabase as any).from('audit_log').insert({
+      project_id: pid, field: 'stage',
+      old_value: project.stage, new_value: nextStage,
+      changed_by: currentUser?.name ?? null, changed_by_id: currentUser?.id ?? null,
+    })
     setProject(p => ({ ...p, stage: nextStage as Project['stage'], stage_date: today }))
     setAdvancing(false)
     onProjectUpdated()
