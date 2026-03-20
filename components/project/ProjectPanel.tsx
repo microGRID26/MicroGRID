@@ -67,6 +67,35 @@ const TASKS: Record<string, { id: string; name: string; pre: string[]; req: bool
   ],
 }
 
+// ── FLAT TASK LOOKUP ─────────────────────────────────────────────────────────
+const ALL_TASKS_FLAT: Record<string, { id: string; name: string; pre: string[]; req: boolean; stage: string }> = {}
+for (const [stage, tasks] of Object.entries(TASKS)) {
+  for (const t of tasks) ALL_TASKS_FLAT[t.id] = { ...t, stage }
+}
+
+// ── CASCADE: find same-stage downstream dependents ──────────────────────────
+function getSameStageDownstream(taskId: string): string[] {
+  const task = ALL_TASKS_FLAT[taskId]
+  if (!task) return []
+  const stage = task.stage
+  const stageTasks = TASKS[stage] ?? []
+  // BFS: find all tasks in this stage that transitively depend on taskId
+  const downstream: string[] = []
+  const queue = [taskId]
+  const visited = new Set<string>()
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    for (const t of stageTasks) {
+      if (!visited.has(t.id) && t.id !== taskId && t.pre.includes(current)) {
+        visited.add(t.id)
+        downstream.push(t.id)
+        queue.push(t.id)
+      }
+    }
+  }
+  return downstream
+}
+
 // ── TASK STATUSES ─────────────────────────────────────────────────────────────
 const TASK_STATUSES = ['Not Ready','Ready To Start','In Progress','Scheduled','Pending Resolution','Revision Required','Complete']
 
@@ -592,7 +621,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   const [editMode, setEditMode] = useState(false)
   const [editDraft, setEditDraft] = useState<Partial<Project>>({})
   const [editSaving, setEditSaving] = useState(false)
-  const [taskView, setTaskView] = useState<'current' | 'all' | 'history'>('current')
+  // taskView state removed — TasksTab manages its own view state now
   const [ahjInfo, setAhjInfo] = useState<any>(null)
   const [utilityInfo, setUtilityInfo] = useState<any>(null)
   const [ahjEdit, setAhjEdit] = useState<any>(null)
@@ -600,9 +629,15 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   const [refSaving, setRefSaving] = useState(false)
   const [serviceCalls, setServiceCalls] = useState<any[]>([])
   const [stageHistory, setStageHistory] = useState<any[]>([])
-  // ── task_history — lazy-loaded only when user opens the History view ─────────
+  // ── task_history ─────────────────────────────────────────────────────────────
   const [taskHistory, setTaskHistory] = useState<any[]>([])
   const [taskHistoryLoaded, setTaskHistoryLoaded] = useState(false)
+  // ── revision cascade confirmation ──────────────────────────────────────────
+  const [cascadeConfirm, setCascadeConfirm] = useState<{
+    taskId: string
+    taskName: string
+    resets: { id: string; name: string; currentStatus: string }[]
+  } | null>(null)
 
   const pid = project.id
   const stageTasks = TASKS[project.stage] ?? []
@@ -745,14 +780,42 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     loadStageHistory()
   }, [initialProject.id])
 
-  // Lazy-load task history — only when the user navigates to History view
+  // Eager-load task history for inline expansion in stage view
   useEffect(() => {
-    if (taskView === 'history' && !taskHistoryLoaded) {
+    if (!taskHistoryLoaded) {
       loadTaskHistory()
     }
-  }, [taskView, taskHistoryLoaded, loadTaskHistory])
+  }, [taskHistoryLoaded, loadTaskHistory])
 
   async function updateTaskStatus(taskId: string, status: string) {
+    // ── Revision Required cascade check ──────────────────────────────────────
+    if (status === 'Revision Required') {
+      const downstream = getSameStageDownstream(taskId)
+      const resets = downstream
+        .filter(id => {
+          const s = taskStates[id] ?? 'Not Ready'
+          return s !== 'Not Ready'
+        })
+        .map(id => ({
+          id,
+          name: ALL_TASKS_FLAT[id]?.name ?? id,
+          currentStatus: taskStates[id] ?? 'Not Ready',
+        }))
+
+      if (resets.length > 0) {
+        // Show confirmation — don't save yet
+        setCascadeConfirm({ taskId, taskName: ALL_TASKS_FLAT[taskId]?.name ?? taskId, resets })
+        // Optimistically update UI for the revised task only
+        setTaskStates(prev => ({ ...prev, [taskId]: status }))
+        return
+      }
+    }
+
+    await applyTaskStatus(taskId, status)
+  }
+
+  // Executes the actual save + optional cascade resets
+  async function applyTaskStatus(taskId: string, status: string, cascadeResets?: string[]) {
     setTaskStates(prev => ({ ...prev, [taskId]: status }))
     const needsReason = status === 'Pending Resolution' || status === 'Revision Required'
     if (!needsReason) {
@@ -778,6 +841,44 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       changed_by: changedBy,
       pm_id: currentUser?.id ?? null,
     })
+
+    // ── Cascade resets — reset downstream tasks to Not Ready ────────────────
+    if (cascadeResets && cascadeResets.length > 0) {
+      const resetUpdates = cascadeResets.map(id => ({
+        project_id: pid,
+        task_id: id,
+        status: 'Not Ready',
+        reason: null,
+        completed_date: null,
+      }))
+      await (supabase as any).from('task_state').upsert(resetUpdates, { onConflict: 'project_id,task_id' })
+
+      // Log each reset to history
+      const historyInserts = cascadeResets.map(id => ({
+        project_id: pid,
+        task_id: id,
+        status: 'Not Ready',
+        reason: null,
+        changed_by: `${changedBy} (cascade)`,
+        pm_id: currentUser?.id ?? null,
+      }))
+      void (supabase as any).from('task_history').insert(historyInserts)
+
+      // Update local state
+      setTaskStates(prev => {
+        const next = { ...prev }
+        for (const id of cascadeResets) next[id] = 'Not Ready'
+        return next
+      })
+      setTaskReasons(prev => {
+        const next = { ...prev }
+        for (const id of cascadeResets) delete next[id]
+        return next
+      })
+
+      showToast(`Reset ${cascadeResets.length} downstream task${cascadeResets.length > 1 ? 's' : ''}`)
+    }
+
     // Invalidate cache so History view reloads fresh on next open
     setTaskHistoryLoaded(false)
 
@@ -1103,8 +1204,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
               taskStatesRaw={taskStatesRaw}
               taskHistory={taskHistory}
               taskHistoryLoaded={taskHistoryLoaded}
-              taskView={taskView}
-              setTaskView={setTaskView}
+              stageHistory={stageHistory}
               updateTaskStatus={updateTaskStatus}
               updateTaskReason={updateTaskReason}
             />
@@ -1197,6 +1297,61 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
               <button onClick={saveAhjEdit} disabled={refSaving}
                 className="px-4 py-1.5 text-xs bg-green-700 hover:bg-green-600 text-white rounded-md font-medium disabled:opacity-50">
                 {refSaving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Revision Cascade Confirmation */}
+      {cascadeConfirm && (
+        <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center" onClick={() => {
+          // Cancel — revert the optimistic update
+          setTaskStates(prev => ({ ...prev, [cascadeConfirm.taskId]: taskStatesRaw.find(t => t.task_id === cascadeConfirm.taskId)?.status ?? 'Not Ready' }))
+          setCascadeConfirm(null)
+        }}>
+          <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-amber-400 text-lg">↩</span>
+              <h3 className="text-sm font-semibold text-white">Revision Required</h3>
+            </div>
+            <p className="text-xs text-gray-300 mb-3">
+              Setting <span className="text-white font-medium">{cascadeConfirm.taskName}</span> to Revision Required
+              will reset {cascadeConfirm.resets.length} downstream task{cascadeConfirm.resets.length > 1 ? 's' : ''} to Not Ready:
+            </p>
+            <div className="bg-gray-800 rounded-lg p-3 mb-4 max-h-48 overflow-y-auto space-y-1.5">
+              {cascadeConfirm.resets.map(r => (
+                <div key={r.id} className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-gray-200">{r.name}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                    r.currentStatus === 'Complete' ? 'bg-green-900 text-green-300' :
+                    r.currentStatus === 'In Progress' ? 'bg-blue-900 text-blue-300' :
+                    r.currentStatus === 'Scheduled' ? 'bg-indigo-900 text-indigo-300' :
+                    'bg-gray-700 text-gray-300'
+                  }`}>{r.currentStatus} → Not Ready</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  // Cancel — revert optimistic update
+                  setTaskStates(prev => ({ ...prev, [cascadeConfirm.taskId]: taskStatesRaw.find(t => t.task_id === cascadeConfirm.taskId)?.status ?? 'Not Ready' }))
+                  setCascadeConfirm(null)
+                }}
+                className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const { taskId, resets } = cascadeConfirm
+                  setCascadeConfirm(null)
+                  applyTaskStatus(taskId, 'Revision Required', resets.map(r => r.id))
+                }}
+                className="px-4 py-1.5 text-xs bg-amber-700 hover:bg-amber-600 text-white rounded-md font-medium"
+              >
+                Reset {cascadeConfirm.resets.length} task{cascadeConfirm.resets.length > 1 ? 's' : ''} & continue
               </button>
             </div>
           </div>

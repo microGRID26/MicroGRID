@@ -28,11 +28,12 @@ function isBlocked(p: Project) { return !!p.blocker }
 function isStalled(p: Project) { return !p.blocker && daysAgo(p.stage_date) >= 5 }
 
 // ── TYPES ─────────────────────────────────────────────────────────────────────
-type Section = 'overdue' | 'blocked' | 'crit' | 'risk' | 'stall' | 'aging' | 'ok' | 'loyalty' | 'inService'
+type Section = 'overdue' | 'blocked' | 'pending' | 'crit' | 'risk' | 'stall' | 'aging' | 'ok' | 'loyalty' | 'inService'
 
 interface Classified {
   overdue: Project[]
   blocked: Project[]
+  pending: Project[]
   crit: Project[]
   risk: Project[]
   stall: Project[]
@@ -55,13 +56,14 @@ interface TaskStateRow {
 interface StuckTask { name: string; status: 'Pending Resolution' | 'Revision Required'; reason: string }
 
 // ── CLASSIFY PROJECTS ─────────────────────────────────────────────────────────
-function classify(projects: Project[], overduePids: Set<string>): Classified {
+function classify(projects: Project[], overduePids: Set<string>, pendingPids: Set<string>): Classified {
   // Loyalty and In Service are separated out — rest are active pipeline
   const pipeline = projects.filter(p => p.disposition !== 'In Service' && p.disposition !== 'Loyalty')
   const active = pipeline.filter(p => p.stage !== 'complete')
   return {
     overdue:   pipeline.filter(p => overduePids.has(p.id)),
     blocked:   active.filter(p => isBlocked(p)),
+    pending:   active.filter(p => !isBlocked(p) && !overduePids.has(p.id) && pendingPids.has(p.id) && getSLA(p).status !== 'crit' && getSLA(p).status !== 'risk'),
     crit:      active.filter(p => !isBlocked(p) && getSLA(p).status === 'crit'),
     risk:      active.filter(p => !isBlocked(p) && getSLA(p).status === 'risk'),
     stall:     active.filter(p => !isBlocked(p) && getSLA(p).status === 'ok' && isStalled(p)),
@@ -351,7 +353,8 @@ export default function CommandPage() {
   const [showNameInput, setShowNameInput] = useState(false)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [collapsed, setCollapsed] = useState<Partial<Record<Section, boolean>>>({
-    aging: true, ok: false, loyalty: true, inService: true,
+    overdue: true, blocked: true, pending: true, crit: true, risk: true,
+    stall: true, aging: true, ok: true, loyalty: true, inService: true,
   })
   const [loading, setLoading] = useState(true)
   const [lastRefresh, setLastRefresh] = useState(Date.now())
@@ -425,7 +428,14 @@ export default function CommandPage() {
       .map(t => t.project_id)
   )
 
-  const sections = classify(filtered, overduePids)
+  // Pending Resolution: projects with any task in Pending Resolution status
+  const pendingPids = new Set(
+    taskStates
+      .filter(t => t.status === 'Pending Resolution')
+      .map(t => t.project_id)
+  )
+
+  const sections = classify(filtered, overduePids, pendingPids)
   const pmMap = new Map<string, string>()
   projects.forEach(p => { if (p.pm_id && p.pm) pmMap.set(p.pm_id, p.pm) })
   const pms = [...pmMap.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
@@ -493,6 +503,9 @@ export default function CommandPage() {
         <Metric label="Blocked" value={sections.blocked.length}
           color={sections.blocked.length ? 'text-red-400' : 'text-white'}
           onClick={() => setCollapsed(c => ({ ...c, blocked: false }))} />
+        <Metric label="Pending" value={sections.pending.length}
+          color={sections.pending.length ? 'text-orange-400' : 'text-white'}
+          onClick={() => setCollapsed(c => ({ ...c, pending: false }))} />
         <Metric label="Critical" value={sections.crit.length}
           color={sections.crit.length ? 'text-red-400' : 'text-white'}
           onClick={() => setCollapsed(c => ({ ...c, crit: false }))} />
@@ -533,6 +546,11 @@ export default function CommandPage() {
             projects={sections.blocked} color="text-red-400" taskMapAll={taskMapAll}
             onSelect={setSelectedProject} selectedId={selectedProject?.id ?? null}
             collapsed={effectiveCollapsed('blocked', sections.blocked.length)} onToggle={() => toggleSection('blocked')} />
+
+          <CommandSection id="pending" title="Pending Resolution"
+            projects={sections.pending} color="text-orange-400" taskMapAll={taskMapAll}
+            onSelect={setSelectedProject} selectedId={selectedProject?.id ?? null}
+            collapsed={effectiveCollapsed('pending', sections.pending.length)} onToggle={() => toggleSection('pending')} />
 
           <CommandSection id="crit" title="Critical — Past SLA"
             projects={sections.crit} color="text-red-400" taskMapAll={taskMapAll}

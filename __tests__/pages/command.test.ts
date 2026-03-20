@@ -27,12 +27,13 @@ function getSLA(p: TestProject) {
   return { days, status, ...t }
 }
 
-function classify(projects: TestProject[], overduePids: Set<string>) {
+function classify(projects: TestProject[], overduePids: Set<string>, pendingPids: Set<string> = new Set()) {
   const pipeline = projects.filter(p => p.disposition !== 'In Service' && p.disposition !== 'Loyalty')
   const active = pipeline.filter(p => p.stage !== 'complete')
   return {
     overdue: pipeline.filter(p => overduePids.has(p.id)),
     blocked: active.filter(p => !!p.blocker),
+    pending: active.filter(p => !p.blocker && !overduePids.has(p.id) && pendingPids.has(p.id) && getSLA(p).status !== 'crit' && getSLA(p).status !== 'risk'),
     crit: active.filter(p => !p.blocker && getSLA(p).status === 'crit'),
     risk: active.filter(p => !p.blocker && getSLA(p).status === 'risk'),
     stall: active.filter(p => !p.blocker && getSLA(p).status === 'ok' && daysAgo(p.stage_date) >= 5),
