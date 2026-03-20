@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 
 const SESSION_KEY = 'microgrid_session_id'
+const SESSION_TS_KEY = 'microgrid_session_ts'
+const SESSION_TTL = 30 * 60 * 1000 // 30 minutes — don't create new session if recent one exists
 
 export function SessionTracker() {
   const { user, loading } = useCurrentUser()
@@ -33,11 +35,22 @@ export function SessionTracker() {
 
       const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/'
 
-      // Check if we already have a session for this browser tab
+      // Check if we already have a session (sessionStorage for this tab, localStorage as fallback)
       const existingSessionId = sessionStorage.getItem(SESSION_KEY)
       if (existingSessionId) {
         initialized.current = true
         startHeartbeat(supabase, existingSessionId)
+        return
+      }
+
+      // Check localStorage — prevent duplicate sessions from mobile Safari re-loading
+      const lastSessionId = localStorage.getItem(SESSION_KEY)
+      const lastSessionTs = localStorage.getItem(SESSION_TS_KEY)
+      if (lastSessionId && lastSessionTs && Date.now() - Number(lastSessionTs) < SESSION_TTL) {
+        // Recent session exists — reuse it
+        sessionStorage.setItem(SESSION_KEY, lastSessionId)
+        initialized.current = true
+        startHeartbeat(supabase, lastSessionId)
         return
       }
 
@@ -62,9 +75,12 @@ export function SessionTracker() {
         }
 
         if (data?.id) {
-          sessionStorage.setItem(SESSION_KEY, String(data.id))
+          const sid = String(data.id)
+          sessionStorage.setItem(SESSION_KEY, sid)
+          localStorage.setItem(SESSION_KEY, sid)
+          localStorage.setItem(SESSION_TS_KEY, String(Date.now()))
           initialized.current = true
-          startHeartbeat(supabase, String(data.id))
+          startHeartbeat(supabase, sid)
         }
       } catch (err) {
         console.error('session insert failed:', err)
@@ -73,6 +89,7 @@ export function SessionTracker() {
 
     function startHeartbeat(sb: any, sid: string) {
       const path = typeof window !== 'undefined' ? window.location.pathname : '/'
+      localStorage.setItem(SESSION_TS_KEY, String(Date.now()))
       ;(sb as any).from('user_sessions').update({ last_active_at: new Date().toISOString(), page: path }).eq('id', sid)
         .then(() => {}).catch((err: any) => console.error('heartbeat failed:', err))
 
