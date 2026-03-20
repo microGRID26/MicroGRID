@@ -7,7 +7,9 @@ import { Nav } from '@/components/Nav'
 import { ProjectPanel } from '@/components/project/ProjectPanel'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import type { Project } from '@/types/database'
-import { ClipboardList, Plus, X, Search, ChevronDown, Check } from 'lucide-react'
+import { ClipboardList, Plus, X, Search, ChevronDown, Check, Pencil } from 'lucide-react'
+import { useSearchParams, ReadonlyURLSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 
 // ── TYPES ────────────────────────────────────────────────────────────────────
 interface ChangeOrder {
@@ -116,6 +118,14 @@ function formatField(value: any, format?: string): string {
 
 // ── MAIN PAGE ────────────────────────────────────────────────────────────────
 export default function ChangeOrdersPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-900 flex items-center justify-center"><div className="text-green-400 text-sm animate-pulse">Loading...</div></div>}>
+      <ChangeOrdersContent />
+    </Suspense>
+  )
+}
+
+function ChangeOrdersContent() {
   const supabase = createClient()
   const { user: currentUser } = useCurrentUser()
   const [orders, setOrders] = useState<ChangeOrder[]>([])
@@ -126,9 +136,11 @@ export default function ChangeOrdersPage() {
   const [users, setUsers] = useState<{ id: string; name: string }[]>([])
 
   // Filters
+  const searchParams = useSearchParams()
+  const projectParam = searchParams.get('project')
   const [statusFilter, setStatusFilter] = useState<string>('active')
   const [pmFilter, setPmFilter] = useState<string>('all')
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState(projectParam ?? '')
 
   // ── DATA LOADING ─────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
@@ -389,14 +401,14 @@ function ChangeOrderDetailPanel({ order, users, onClose, onUpdated, onOpenProjec
 }) {
   const supabase = createClient()
   const [co, setCo] = useState<ChangeOrder>(order)
-  const [notesText, setNotesText] = useState(order.notes ?? '')
+  const [newNote, setNewNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
 
   // Sync when parent changes selection
   useEffect(() => {
     setCo(order)
-    setNotesText(order.notes ?? '')
+    setNewNote('')
   }, [order.id])
 
   function showToast(msg: string) {
@@ -418,12 +430,19 @@ function ChangeOrderDetailPanel({ order, users, onClose, onUpdated, onOpenProjec
     showToast(!current ? 'Step completed' : 'Step unchecked')
   }
 
-  async function saveNotes() {
-    if (notesText === (co.notes ?? '')) return
+  async function addNote() {
+    if (!newNote.trim()) return
     setSaving(true)
-    await updateField('notes', notesText || null)
+    const now = new Date()
+    const stamp = now.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })
+      + ' ' + now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    const by = (order.project as any)?.pm?.split(' ').map((w: string) => w[0]).join('') ?? ''
+    const entry = `${stamp} ${by} - ${newNote.trim()}`
+    const updated = co.notes ? `${entry}\n\n${co.notes}` : entry
+    await updateField('notes', updated)
+    setNewNote('')
     setSaving(false)
-    showToast('Notes saved')
+    showToast('Note added')
   }
 
   const wp = workflowProgress(co)
@@ -496,10 +515,33 @@ function ChangeOrderDetailPanel({ order, users, onClose, onUpdated, onOpenProjec
         </div>
 
         {/* Type / Reason / Origin */}
-        <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-          <span>Type: <span className="text-gray-300">{co.type}</span></span>
-          {co.reason && <><span>·</span><span>Reason: <span className="text-gray-300">{co.reason}</span></span></>}
-          {co.origin && <><span>·</span><span>Origin: <span className="text-gray-300">{co.origin}</span></span></>}
+        <div className="flex items-center gap-3 mt-2 flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-gray-500">Type:</span>
+            <select value={co.type}
+              onChange={e => updateField('type', e.target.value)}
+              className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded px-2 py-1 focus:outline-none focus:border-green-500">
+              {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-gray-500">Reason:</span>
+            <select value={co.reason ?? ''}
+              onChange={e => updateField('reason', e.target.value || null)}
+              className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded px-2 py-1 focus:outline-none focus:border-green-500">
+              <option value="">None</option>
+              {REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-gray-500">Origin:</span>
+            <select value={co.origin ?? ''}
+              onChange={e => updateField('origin', e.target.value || null)}
+              className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded px-2 py-1 focus:outline-none focus:border-green-500">
+              <option value="">None</option>
+              {ORIGINS.map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -560,37 +602,55 @@ function ChangeOrderDetailPanel({ order, users, onClose, onUpdated, onOpenProjec
               const origVal = (co as any)[f.origKey]
               const newVal = (co as any)[f.newKey]
               const changed = newVal != null && newVal !== '' && String(origVal) !== String(newVal)
-              // Skip rows where both are empty
-              if (origVal == null && newVal == null) return null
               return (
-                <div key={f.label} className="grid grid-cols-3 gap-0 px-3 py-1.5 border-b border-gray-800/50 last:border-0">
+                <div key={f.label} className="grid grid-cols-3 gap-0 px-3 py-1.5 border-b border-gray-800/50 last:border-0 items-center">
                   <span className="text-xs text-gray-400">{f.label}</span>
                   <span className="text-xs text-gray-300 text-center">{formatField(origVal, f.format)}</span>
-                  <span className={cn('text-xs text-center', changed ? 'text-green-400 font-medium' : 'text-gray-300')}>
-                    {formatField(newVal, f.format)}
-                  </span>
+                  <div className="flex justify-center">
+                    <input
+                      type={f.format === 'text' ? 'text' : 'number'}
+                      value={newVal ?? ''}
+                      onChange={e => {
+                        const v = e.target.value
+                        const parsed = f.format === 'text' ? (v || null) : (v ? Number(v) : null)
+                        updateField(f.newKey, parsed)
+                      }}
+                      placeholder="-"
+                      className={cn(
+                        'text-xs text-center bg-transparent border-b border-gray-700 focus:border-green-500 focus:outline-none w-20 py-0.5',
+                        changed ? 'text-green-400 font-medium border-green-800' : 'text-gray-400'
+                      )}
+                    />
+                  </div>
                 </div>
               )
             })}
-            {/* Show message if no comparison data */}
-            {COMPARISON_FIELDS.every(f => (co as any)[f.origKey] == null && (co as any)[f.newKey] == null) && (
-              <div className="px-3 py-4 text-xs text-gray-500 text-center">No design data entered yet</div>
-            )}
           </div>
         </div>
 
         {/* Notes */}
         <div>
-          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Notes</div>
-          <textarea
-            value={notesText}
-            onChange={e => setNotesText(e.target.value)}
-            onBlur={saveNotes}
-            rows={4}
-            placeholder="Add notes about this change order..."
-            className="w-full bg-gray-800 text-gray-200 text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none resize-none placeholder-gray-600"
-          />
-          {saving && <div className="text-xs text-gray-500 mt-1">Saving...</div>}
+          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Design Notes</div>
+          <div className="flex gap-2 mb-2">
+            <input
+              value={newNote}
+              onChange={e => setNewNote(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') addNote() }}
+              placeholder="Add a note..."
+              className="flex-1 bg-gray-800 text-gray-200 text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none placeholder-gray-600"
+            />
+            <button onClick={addNote} disabled={!newNote.trim() || saving}
+              className="text-xs px-3 py-2 rounded-lg bg-green-700 hover:bg-green-600 text-white font-medium disabled:opacity-50 transition-colors">
+              {saving ? '...' : 'Add'}
+            </button>
+          </div>
+          {co.notes ? (
+            <div className="bg-gray-800 rounded-lg px-3 py-2 max-h-48 overflow-y-auto">
+              <pre className="text-xs text-gray-300 whitespace-pre-wrap font-sans leading-relaxed">{co.notes}</pre>
+            </div>
+          ) : (
+            <div className="text-xs text-gray-600 text-center py-3">No notes yet</div>
+          )}
         </div>
       </div>
     </div>

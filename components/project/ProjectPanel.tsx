@@ -849,6 +849,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                     await (supabase as any).from('service_calls').delete().eq('project_id', project.id)
                     await (supabase as any).from('project_funding').delete().eq('project_id', project.id)
                     await (supabase as any).from('project_folders').delete().eq('project_id', project.id)
+                    await (supabase as any).from('change_orders').delete().eq('project_id', project.id)
                     await supabase.from('projects').delete().eq('id', project.id)
                     onClose()
                     if (onProjectUpdated) onProjectUpdated()

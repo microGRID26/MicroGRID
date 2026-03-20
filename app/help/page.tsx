@@ -275,6 +275,44 @@ function ForPMs() {
         reason, who changed it, and when.
       </Card>
 
+      <SectionHeader title="Change Orders" />
+      <Card title="What are change orders?">
+        When a system design changes after the initial proposal (usually panel count reduction during engineering),
+        a Homeowner Change Order (HCO) is required. This happens on almost every job — the proposal maxes out
+        the roof, then engineering right-sizes it. The Change Orders page tracks these through a 6-step workflow.
+      </Card>
+      <Card title="Creating a change order">
+        Go to the Change Orders page and click New Change Order. Search for the project — original values
+        (panel count, system size, panel type, plan type) auto-populate from the project data. Set the type,
+        reason, origin, priority, and who it is assigned to.
+      </Card>
+      <Card title="Working a change order">
+        Click any row to open the detail panel. From there you can:
+        <Ul items={[
+          'Change status, priority, type, reason, origin, and assignment via dropdowns',
+          'Check off workflow steps as they complete (saves immediately)',
+          'Enter new design values (new panel count, system size, etc.) — changed values highlight green',
+          'Add timestamped notes to track communication and progress',
+          'Click the project name to open its full project panel',
+        ]} />
+      </Card>
+      <Card title="Workflow steps">
+        Each change order follows this 6-step design workflow:
+        <Ul items={[
+          '1. Design Request Submitted (HCO)',
+          '2. Design In Progress',
+          '3. Design Pending Approval (HCO)',
+          '4. Design Approved (HCO)',
+          '5. Design Complete',
+          '6. Design Complete and Signed (HCO)',
+        ]} />
+        The progress bar in the queue table shows how far along each change order is.
+      </Card>
+      <Card title="Change orders in the project panel">
+        When you open any project panel, the header shows an amber badge (e.g., &quot;2 Change Orders&quot;) if
+        there are active change orders. Click it to jump to the Change Orders page filtered to that project.
+      </Card>
+
       <SectionHeader title="Stage Advancement" />
       <Card title="Advancing a project">
         Open the project panel. The Advance Stage button is in the header. It will tell you which required tasks
@@ -433,6 +471,7 @@ function ForEveryone() {
           'Audit — stuck tasks across all projects',
           'Schedule — weekly crew job grid',
           'Service — service call tickets',
+          'Change Orders — HCO/change order queue with workflow tracking',
           'Funding — M1/M2/M3 milestone tracker',
           'Admin — AHJ, utilities, users, crews, SLA settings (admins only)',
         ]} />
