@@ -122,7 +122,7 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
     if (scheduleId) {
       result = await (supabase as any).from('schedule').update(record).eq('id', scheduleId)
     } else {
-      result = await (supabase as any).from('schedule').insert(record)
+      result = await (supabase as any).from('schedule').insert({ id: crypto.randomUUID(), ...record })
     }
     setSaving(false)
     if (result.error) {
