@@ -205,7 +205,7 @@ export function NewProjectModal({ onClose, onCreated, existingIds, pms }: Props)
 
     // ── Auto-create Google Drive folder structure ────────────────────────
     try {
-      const driveRes = await fetch('https://script.google.com/macros/s/AKfycbwiR1RUldEBYpMz-Gm6td3NWLmHin-9eDpWmPVCUU-NP3w3tf2j8HxR33M3yi2NcKJT/exec', {
+      const driveRes = await fetch('https://script.google.com/macros/s/AKfycbzQY8s4U51KatxMY-y0aXfpYIBDWL4IqhpiAMHm3dWvH94OlrdCN2UovgQz_zO1qknV/exec', {
         method: 'POST',
         body: JSON.stringify({ project_id: id, customer_name: form.name.trim() }),
         redirect: 'follow',
