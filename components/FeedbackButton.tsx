@@ -142,7 +142,10 @@ export function FeedbackButton() {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-16 right-5 z-[200] bg-green-700 text-white text-xs px-4 py-2 rounded-md shadow-lg">
+        <div className={cn(
+          'fixed bottom-16 right-5 z-[200] text-white text-xs px-4 py-2 rounded-md shadow-lg',
+          toast.includes('Failed') ? 'bg-red-700' : 'bg-green-700'
+        )}>
           {toast}
         </div>
       )}

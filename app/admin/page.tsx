@@ -1392,32 +1392,43 @@ const STATUS_COLORS: Record<string, string> = {
 
 function FeedbackManager() {
   const supabase = createClient()
-  const [entries, setEntries] = useState<FeedbackEntry[]>([])
   const [filterType, setFilterType] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [toast, setToast] = useState('')
 
+  const [allEntries, setAllEntries] = useState<FeedbackEntry[]>([])
+
   const load = useCallback(async () => {
-    let q = (supabase as any).from('feedback').select('*').order('created_at', { ascending: false })
-    if (filterType) q = q.eq('type', filterType)
-    if (filterStatus) q = q.eq('status', filterStatus)
-    const { data } = await q
-    setEntries(data ?? [])
-  }, [filterType, filterStatus])
+    const { data } = await (supabase as any).from('feedback').select('*').order('created_at', { ascending: false })
+    setAllEntries(data ?? [])
+  }, [])
 
   useEffect(() => { load() }, [load])
 
+  // Filter client-side from all entries
+  const entries = allEntries.filter(e => {
+    if (filterType && e.type !== filterType) return false
+    if (filterStatus && e.status !== filterStatus) return false
+    return true
+  })
+
   const updateField = async (id: number, field: string, value: string) => {
-    await (supabase as any).from('feedback').update({ [field]: value }).eq('id', id)
-    setEntries(prev => prev.map(e => e.id === id ? { ...e, [field]: value } : e))
+    const { error } = await (supabase as any).from('feedback').update({ [field]: value }).eq('id', id)
+    if (error) {
+      console.error('feedback update failed:', error)
+      setToast('Update failed')
+      setTimeout(() => setToast(''), 2000)
+      return
+    }
+    setAllEntries(prev => prev.map(e => e.id === id ? { ...e, [field]: value } : e))
     setToast('Updated')
     setTimeout(() => setToast(''), 2000)
   }
 
-  // Counts
+  // Counts from ALL entries (unfiltered)
   const typeCounts: Record<string, number> = {}
   const statusCounts: Record<string, number> = {}
-  entries.forEach(e => {
+  allEntries.forEach(e => {
     typeCounts[e.type] = (typeCounts[e.type] || 0) + 1
     statusCounts[e.status] = (statusCounts[e.status] || 0) + 1
   })
