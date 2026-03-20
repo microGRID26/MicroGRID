@@ -28,7 +28,7 @@ function getSLA(p: TestProject) {
 }
 
 function classify(projects: TestProject[], overduePids: Set<string>, pendingPids: Set<string> = new Set()) {
-  const pipeline = projects.filter(p => p.disposition !== 'In Service' && p.disposition !== 'Loyalty')
+  const pipeline = projects.filter(p => p.disposition !== 'In Service' && p.disposition !== 'Loyalty' && p.disposition !== 'Cancelled')
   const active = pipeline.filter(p => p.stage !== 'complete')
   return {
     overdue: pipeline.filter(p => overduePids.has(p.id)),

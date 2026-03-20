@@ -534,7 +534,8 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
         reason: null,
         changed_by: `${changedBy} (cascade)`,
       }))
-      void (supabase as any).from('task_history').insert(historyInserts)
+      const { error: cascadeHistErr } = await (supabase as any).from('task_history').insert(historyInserts)
+      if (cascadeHistErr) console.error('cascade history insert failed:', cascadeHistErr)
 
       // Update local state
       setTaskStates(prev => {

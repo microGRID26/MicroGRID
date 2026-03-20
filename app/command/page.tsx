@@ -57,8 +57,8 @@ interface StuckTask { name: string; status: 'Pending Resolution' | 'Revision Req
 
 // ── CLASSIFY PROJECTS ─────────────────────────────────────────────────────────
 function classify(projects: Project[], overduePids: Set<string>, pendingPids: Set<string>): Classified {
-  // Loyalty and In Service are separated out — rest are active pipeline
-  const pipeline = projects.filter(p => p.disposition !== 'In Service' && p.disposition !== 'Loyalty')
+  // Loyalty, In Service, and Cancelled are separated out — rest are active pipeline
+  const pipeline = projects.filter(p => p.disposition !== 'In Service' && p.disposition !== 'Loyalty' && p.disposition !== 'Cancelled')
   const active = pipeline.filter(p => p.stage !== 'complete')
   return {
     overdue:   pipeline.filter(p => overduePids.has(p.id)),
