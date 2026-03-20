@@ -877,12 +877,12 @@ function ForEveryone() {
           'Queue — your projects only, tasks needing action',
           'Pipeline — Kanban board view by stage',
           'Analytics — charts, leadership dashboard, PM stats',
-          'Audit — stuck tasks across all projects',
-          'Schedule — weekly crew job grid',
+          'Schedule — weekly crew job grid with Job Brief panel',
           'Service — service call tickets',
-          'Change Orders — HCO/change order queue with workflow tracking',
           'Funding — M1/M2/M3 milestone tracker',
-          'Admin — AHJ, utilities, users, crews, SLA settings (admins only)',
+          'Change Orders — HCO/change order queue with workflow tracking',
+          'Admin — AHJ, utilities, users, crews, SLA, audit trail, task audit, feedback (admins only)',
+          'Crew (/crew) — mobile-optimized daily job view for field crews',
         ]} />
       </Card>
       <Card title="Searching projects">
