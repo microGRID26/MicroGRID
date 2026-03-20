@@ -491,6 +491,8 @@ function ChangeOrderDetailPanel({ order, users, currentUser, onClose, onUpdated,
       updates.status = 'Complete'
     } else if (doneAfter > 0 && co.status === 'Open') {
       updates.status = 'In Progress'
+    } else if (doneAfter === 0 && co.status === 'In Progress') {
+      updates.status = 'Open'
     }
 
     await (supabase as any).from('change_orders').update(updates).eq('id', co.id)

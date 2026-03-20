@@ -539,6 +539,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
         status: 'Not Ready',
         reason: null,
         completed_date: null,
+        started_date: null,
       }))
       await (supabase as any).from('task_state').upsert(resetUpdates, { onConflict: 'project_id,task_id' })
 
@@ -572,9 +573,10 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     setTaskHistoryLoaded(false)
 
     // ── Auto-populate project date when task is marked Complete ────────────
+    // Only set if the field is currently empty — never overwrite manual entries
     if (status === 'Complete') {
       const dateField = TASK_DATE_FIELDS[taskId]
-      if (dateField) {
+      if (dateField && !(project as any)[dateField]) {
         const today = new Date().toISOString().slice(0, 10)
         await (supabase as any).from('projects').update({ [dateField]: today }).eq('id', pid)
         setProject(p => ({ ...p, [dateField]: today }))
