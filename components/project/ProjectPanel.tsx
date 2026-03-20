@@ -745,6 +745,29 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   }
 
   async function saveEdits() {
+    // Validate phone if changed
+    if (editDraft.phone) {
+      const phoneDigits = String(editDraft.phone).replace(/[\s\-().+]/g, '')
+      if (!/^\d{10,}$/.test(phoneDigits)) {
+        showToast('Phone must be a valid number (at least 10 digits)')
+        return
+      }
+    }
+    // Validate email if changed
+    if (editDraft.email) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(editDraft.email).trim())) {
+        showToast('Email must be a valid email address')
+        return
+      }
+    }
+    // Validate consultant email if changed
+    if (editDraft.consultant_email) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(editDraft.consultant_email).trim())) {
+        showToast('Consultant email must be a valid email address')
+        return
+      }
+    }
+
     setEditSaving(true)
     await (supabase as any).from('projects').update(editDraft).eq('id', pid)
 
