@@ -49,9 +49,11 @@ function ForPMs() {
     <div>
       <SectionHeader title="Daily Workflow" />
       <Card title="Command Center">
-        Your home base. Shows projects needing attention (Pending Resolution or Revision Required tasks),
-        blocked projects, critical SLA breaches, stalled projects, aging projects (90+ day cycle), and
-        today's schedule. Start here every morning — sections are sorted by urgency.
+        Your home base. Projects are grouped by urgency into collapsible sections: Overdue Tasks, Blocked,
+        Pending Resolution, Critical (past SLA), At Risk, Stalled (no movement 5+ days), Aging (90+ day cycle),
+        On Track, Loyalty, and In Service. Metric cards at the top show counts — click any card to expand that
+        section. All sections start collapsed; expand the ones you need. Stuck task badges (red for Pending
+        Resolution, amber for Revision Required) appear inline below each project row.
       </Card>
       <Card title="My Queue">
         Shows only your active projects with tasks that need action. Each card shows the next incomplete task,
@@ -63,30 +65,93 @@ function ForPMs() {
         from the server. Tabs across the top: Tasks, Notes, Info, BOM, Files.
       </Card>
 
-      <SectionHeader title="Tasks" />
-      <Card title="How tasks unlock">
-        Tasks unlock automatically when their prerequisites are complete. A task showing Not Ready is waiting on
-        something else. You cannot change a locked task.
+      <SectionHeader title="Task System" />
+      <Card title="Stage navigation">
+        The Tasks tab opens with a row of stage pills across the top — one for each pipeline stage. Each pill
+        shows a completion fraction (e.g., Design 6/12). A green dot marks the current stage. Click any pill to
+        view that stage's tasks without leaving the panel. Use this to check work done in earlier stages or
+        preview what's ahead.
+      </Card>
+      <Card title="Stage progress header">
+        Below the stage pills, the header shows the stage name, a CURRENT badge (if viewing the active stage),
+        days in stage with SLA color coding (green/amber/red), a stuck task count, and a progress bar. The bar
+        turns amber or red when SLA thresholds are breached.
+      </Card>
+      <Card title="Task table layout">
+        Each task is a single row with these elements left to right:
         <Ul items={[
-          'Complete prerequisite tasks first',
-          'The dependent task will unlock to Ready to Start automatically',
-          'You will see this reflected immediately in your queue',
+          '* (asterisk) — required task. Tasks without * are optional',
+          'Expand arrow (▸) — click to expand inline history for that task',
+          'Task name — bold for required, dimmed for optional, with (opt) label',
+          'Revision count badge — amber badge showing how many times this task has been revised (e.g., "2 rev")',
+          'Completed date — when the task was marked Complete',
+          'Status dropdown — select the current status',
+        ]} />
+      </Card>
+      <Card title="Row color coding">
+        Each row has a colored left border and subtle background tint based on its status:
+        <Ul items={[
+          'Green border — Complete',
+          'Red border — Pending Resolution (waiting on external action)',
+          'Amber border — Revision Required (needs rework)',
+          'Blue border — In Progress',
+          'Indigo border — Scheduled',
+          'No border — Not Ready or Ready To Start',
         ]} />
       </Card>
       <Card title="Task statuses">
         Each task moves through these statuses:
         <Ul items={[
-          'Not Ready — prerequisites not done yet',
+          'Not Ready — prerequisites not done yet (task is locked)',
           'Ready to Start — prerequisites done, waiting to begin',
           'In Progress — actively being worked',
-          'Pending Resolution — blocked, waiting on external action',
-          'Revision Required — needs rework',
+          'Scheduled — work is scheduled for a specific date',
+          'Pending Resolution — blocked, waiting on external action (select a reason)',
+          'Revision Required — needs rework (select a reason, triggers cascade reset)',
           'Complete — done',
         ]} />
       </Card>
+      <Card title="How tasks unlock (prerequisites)">
+        Tasks with a lock icon are waiting on prerequisite tasks to be completed first. You cannot change a
+        locked task. When all prerequisites are Complete, the task automatically unlocks to its current status
+        (usually Ready To Start). The prerequisite chain flows within and across stages — for example, Engineering
+        Approval requires Build Engineering, which requires Scope of Work.
+      </Card>
       <Card title="Required vs optional tasks">
-        Tasks marked (opt) are optional — they do not block stage advancement. Required tasks must all be
-        Complete before you can advance to the next stage.
+        Tasks marked with * are required — they must all be Complete before you can advance to the next stage.
+        Tasks marked (opt) are optional and do not block stage advancement. Optional tasks like WP1, Production
+        Addendum, or Reroof Procedure are only relevant for certain projects.
+      </Card>
+      <Card title="Reasons (Pending Resolution & Revision Required)">
+        When you set a task to Pending Resolution or Revision Required, a reason dropdown appears below the row.
+        Select the specific reason — this is visible across the system (Command Center, Queue, Audit page).
+        Some tasks without predefined reasons show a free-text input instead. Always set a reason so other PMs
+        and leadership can see why a task is stuck.
+      </Card>
+      <Card title="Revision Required — cascade reset">
+        When you set a task to Revision Required, the system checks for downstream tasks in the same stage that
+        have already been worked on. If any exist, a confirmation dialog appears listing exactly which tasks will
+        be reset to Not Ready. This is because downstream work may be invalid if the upstream task changes. For
+        example, setting Build Design to Revision Required will reset Scope of Work, Build Engineering, and
+        Engineering Approval back to Not Ready.
+        <Ul items={[
+          'The cascade only resets tasks within the same stage',
+          'Only tasks that are NOT already "Not Ready" are listed',
+          'You can cancel the dialog to abort the revision',
+          'All resets are logged to task history with a (cascade) marker',
+          'Cross-stage tasks (e.g., permits after a design revision) must be reset manually if needed',
+        ]} />
+      </Card>
+      <Card title="Inline task history">
+        Click the ▸ arrow next to any task name to expand its revision history. This shows every status change
+        for that task in chronological order — date, time, new status, reason, and who made the change. Use this
+        to see how many times a task has been revised and why. The revision count badge (e.g., "2 rev") shows at
+        a glance how many times the task entered Revision Required status.
+      </Card>
+      <Card title="Full History view">
+        Toggle from Stage View to Full History using the buttons at the top of the Tasks tab. Full History shows
+        a chronological log of all task changes across all stages for this project, most recent first. Each entry
+        shows the stage, task name, status, reason, who changed it, and when.
       </Card>
 
       <SectionHeader title="Stage Advancement" />
