@@ -369,15 +369,41 @@ export default function CommandPage() {
       supabase.from('projects').select('id, name, city, pm, pm_id, stage, stage_date, sale_date, contract, blocker, disposition, address, financier').order('stage_date', { ascending: true }),
       // Include reason — used to surface context on stuck task badges
       supabase.from('task_state').select('project_id, task_id, status, reason, completed_date'),
-      supabase.from('schedule')
-        .select('id, project_id, job_type, time, project:projects(name)')
+      (supabase as any).from('schedule')
+        .select('id, project_id, job_type, time, status, crew_id')
         .eq('date', new Date().toISOString().slice(0, 10))
+        .neq('status', 'cancelled')
         .order('time'),
     ])
 
     if (projRes.data) setProjects(projRes.data as Project[])
     if (taskRes.data) setTaskStates(taskRes.data as TaskStateRow[])
-    if (schedRes.data) setTodaySchedule(schedRes.data as any)
+
+    // Enrich schedule entries with project names and crew names
+    if (schedRes.data) {
+      const rawJobs = schedRes.data as any[]
+      // Batch-fetch project names
+      const schedPids = [...new Set(rawJobs.map((j: any) => j.project_id).filter(Boolean))]
+      const projNameMap: Record<string, string> = {}
+      if (schedPids.length > 0) {
+        const { data: pData } = await supabase.from('projects').select('id, name').in('id', schedPids)
+        if (pData) pData.forEach((p: any) => { projNameMap[p.id] = p.name })
+      }
+      // Batch-fetch crew names
+      const schedCids = [...new Set(rawJobs.map((j: any) => j.crew_id).filter(Boolean))]
+      const crewNameMap: Record<string, string> = {}
+      if (schedCids.length > 0) {
+        const { data: cData } = await supabase.from('crews').select('id, name').in('id', schedCids)
+        if (cData) cData.forEach((c: any) => { crewNameMap[c.id] = c.name })
+      }
+      // Merge names onto schedule entries
+      rawJobs.forEach((j: any) => {
+        j.project_name = projNameMap[j.project_id] ?? null
+        j.crew_name = crewNameMap[j.crew_id] ?? null
+      })
+      setTodaySchedule(rawJobs as any)
+    }
+
     setLastRefresh(Date.now())
     setLoading(false)
   }, [])
@@ -525,14 +551,22 @@ export default function CommandPage() {
       {/* ── TODAY'S SCHEDULE WIDGET ───────────────────────────────────────── */}
       {todaySchedule.length > 0 && (
         <div className="bg-gray-900 border-b border-gray-800 px-4 py-2">
-          <div className="text-xs text-green-400 font-bold uppercase tracking-wider mb-2">Today's Schedule</div>
+          <div className="text-xs text-green-400 font-bold uppercase tracking-wider mb-2">Today&apos;s Schedule ({todaySchedule.length})</div>
           <div className="flex gap-3 overflow-x-auto pb-1">
-            {todaySchedule.map(job => (
-              <div key={job.id} className="flex-shrink-0 bg-gray-800 rounded-lg px-3 py-2 min-w-[160px]">
-                <div className="text-xs font-medium text-white">{(job as any).project?.name ?? job.project_id}</div>
-                <div className="text-xs text-gray-400 mt-0.5">{job.job_type} · {job.time ?? 'TBD'}</div>
-              </div>
-            ))}
+            {todaySchedule.map(job => {
+              const j = job as any
+              const statusColor = j.status === 'complete' ? 'bg-green-400' : j.status === 'in_progress' ? 'bg-amber-400' : 'bg-blue-400'
+              return (
+                <div key={job.id} className="flex-shrink-0 bg-gray-800 rounded-lg px-3 py-2 min-w-[180px]">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusColor}`} />
+                    <span className="text-xs font-medium text-white truncate">{j.project_name ?? job.project_id}</span>
+                  </div>
+                  <div className="text-xs text-gray-400">{job.job_type} · {job.time ?? 'TBD'}</div>
+                  {j.crew_name && <div className="text-xs text-gray-500 mt-0.5">{j.crew_name}</div>}
+                </div>
+              )
+            })}
           </div>
         </div>
       )}

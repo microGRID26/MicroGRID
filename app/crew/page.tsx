@@ -431,11 +431,61 @@ export default function CrewPage() {
 
     if (error) {
       setToast('Failed to update status')
-    } else {
-      setToast(newStatus === 'in_progress' ? 'Job started' : 'Job marked complete')
-      // Optimistically update local state
-      setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: newStatus } : j))
+      return
     }
+
+    // Auto-complete corresponding task when job is marked complete
+    if (newStatus === 'complete') {
+      const job = jobs.find(j => j.id === jobId)
+      if (job) {
+        const JOB_TO_TASK: Record<string, string> = {
+          install: 'install_done',
+          survey: 'site_survey',
+          inspection: 'city_insp',
+        }
+        const taskId = JOB_TO_TASK[job.job_type]
+        if (taskId) {
+          const today = new Date().toISOString().slice(0, 10)
+          try {
+            await (supabase as any).from('task_state').upsert({
+              project_id: job.project_id,
+              task_id: taskId,
+              status: 'Complete',
+              completed_date: today,
+              started_date: today,
+            }, { onConflict: 'project_id,task_id' })
+
+            await (supabase as any).from('task_history').insert({
+              project_id: job.project_id,
+              task_id: taskId,
+              status: 'Complete',
+              changed_by: 'Crew (schedule)',
+            })
+
+            // Auto-populate project date field if empty
+            const TASK_DATE: Record<string, string> = {
+              install_done: 'install_complete_date',
+              site_survey: 'survey_date',
+              city_insp: 'city_inspection_date',
+            }
+            const dateField = TASK_DATE[taskId]
+            if (dateField) {
+              const { data: proj } = await supabase.from('projects').select(dateField).eq('id', job.project_id).single()
+              if (proj && !(proj as any)[dateField]) {
+                await (supabase as any).from('projects').update({ [dateField]: today }).eq('id', job.project_id)
+              }
+            }
+          } catch (e) {
+            // Task update is best-effort — don't block the status change
+            console.error('Failed to auto-complete task:', e)
+          }
+        }
+      }
+    }
+
+    setToast(newStatus === 'in_progress' ? 'Job started' : 'Job marked complete')
+    // Optimistically update local state
+    setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: newStatus } : j))
   }
 
   const todayFormatted = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })

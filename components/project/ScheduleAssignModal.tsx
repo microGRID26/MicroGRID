@@ -178,6 +178,19 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
       record.wifi_info = installDetails.wifi_info || null
       record.msp_upgrade = installDetails.msp_upgrade || null
     }
+    // Auto-populate PM from the project if not already set
+    if (!scheduleId) {
+      try {
+        const { data: projPm } = await supabase.from('projects').select('pm, pm_id').eq('id', pid).single()
+        if (projPm) {
+          record.pm = (projPm as any).pm
+          record.pm_id = (projPm as any).pm_id
+        }
+      } catch (e) {
+        // Best-effort — don't block the save
+      }
+    }
+
     let result
     if (scheduleId) {
       result = await (supabase as any).from('schedule').update(record).eq('id', scheduleId)
@@ -189,6 +202,74 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
       setError(result.error.message ?? 'Failed to save job. Please try again.')
       return
     }
+
+    // Fix 2: When creating a NEW schedule entry, mark the scheduling task as "Scheduled"
+    if (!scheduleId) {
+      const JOB_TO_SCHED_TASK: Record<string, string> = {
+        install: 'sched_install',
+        survey: 'sched_survey',
+        inspection: 'sched_city',
+      }
+      const schedTaskId = JOB_TO_SCHED_TASK[form.job_type]
+      if (schedTaskId) {
+        try {
+          await (supabase as any).from('task_state').upsert({
+            project_id: pid,
+            task_id: schedTaskId,
+            status: 'Scheduled',
+          }, { onConflict: 'project_id,task_id' })
+        } catch (e) {
+          // Best-effort — don't block the save callback
+          console.error('Failed to mark scheduling task:', e)
+        }
+      }
+    }
+
+    // When saving with status 'complete' (edit or new), auto-complete the job task
+    if (form.status === 'complete') {
+      const JOB_TO_TASK: Record<string, string> = {
+        install: 'install_done',
+        survey: 'site_survey',
+        inspection: 'city_insp',
+      }
+      const taskId = JOB_TO_TASK[form.job_type]
+      if (taskId) {
+        const today = new Date().toISOString().slice(0, 10)
+        try {
+          await (supabase as any).from('task_state').upsert({
+            project_id: pid,
+            task_id: taskId,
+            status: 'Complete',
+            completed_date: today,
+            started_date: today,
+          }, { onConflict: 'project_id,task_id' })
+
+          await (supabase as any).from('task_history').insert({
+            project_id: pid,
+            task_id: taskId,
+            status: 'Complete',
+            changed_by: 'Crew (schedule)',
+          })
+
+          // Auto-populate project date field if empty
+          const TASK_DATE: Record<string, string> = {
+            install_done: 'install_complete_date',
+            site_survey: 'survey_date',
+            city_insp: 'city_inspection_date',
+          }
+          const dateField = TASK_DATE[taskId]
+          if (dateField) {
+            const { data: proj } = await supabase.from('projects').select(dateField).eq('id', pid).single()
+            if (proj && !(proj as any)[dateField]) {
+              await (supabase as any).from('projects').update({ [dateField]: today }).eq('id', pid)
+            }
+          }
+        } catch (e) {
+          console.error('Failed to auto-complete task:', e)
+        }
+      }
+    }
+
     onSaved()
   }
 

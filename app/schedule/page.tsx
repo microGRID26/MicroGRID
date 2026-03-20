@@ -63,6 +63,7 @@ export default function SchedulePage() {
   const [warehouseFilter, setWarehouseFilter] = useState('all')
   const [jobFilter, setJobFilter] = useState('all')
   const [showCancelled, setShowCancelled] = useState(false)
+  const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
 
   const [assignModal, setAssignModal] = useState<{
@@ -164,6 +165,16 @@ export default function SchedulePage() {
     if (jobFilter !== 'all') {
       filtered = filtered.filter(j => j.job_type === jobFilter)
     }
+    // Search narrows results — does not bypass other filters (see CLAUDE.md filter pattern)
+    if (search.trim()) {
+      const q = search.toLowerCase().trim()
+      filtered = filtered.filter(j => {
+        const proj = (j as any).project
+        const projName = (proj?.name ?? '').toLowerCase()
+        const projId = (j.project_id ?? '').toLowerCase()
+        return projName.includes(q) || projId.includes(q)
+      })
+    }
     return filtered
   }
 
@@ -213,6 +224,13 @@ export default function SchedulePage() {
           <button onClick={() => setWeekOffset(0)} className="text-xs text-green-400 hover:text-green-300">Today</button>
         )}
         <div className="ml-4 flex items-center gap-2">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search projects..."
+            className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-3 py-1.5 w-40 focus:outline-none focus:border-green-500 placeholder-gray-500"
+          />
           <select value={warehouseFilter} onChange={e => setWarehouseFilter(e.target.value)}
             className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">
             <option value="all">All Warehouses</option>
