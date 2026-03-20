@@ -203,6 +203,26 @@ export function NewProjectModal({ onClose, onCreated, existingIds, pms }: Props)
       )
     }
 
+    // ── Auto-create Google Drive folder structure ────────────────────────
+    try {
+      const driveRes = await fetch('https://script.google.com/macros/s/AKfycbwiR1RUldEBYpMz-Gm6td3NWLmHin-9eDpWmPVCUU-NP3w3tf2j8HxR33M3yi2NcKJT/exec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ project_id: id, customer_name: form.name.trim() }),
+      })
+      const driveData = await driveRes.json()
+      if (driveData.folder_url) {
+        await (supabase as any).from('project_folders').upsert(
+          { project_id: id, folder_url: driveData.folder_url },
+          { onConflict: 'project_id' }
+        )
+      } else {
+        console.error('Drive folder creation failed:', driveData.error)
+      }
+    } catch (driveErr) {
+      console.error('Drive folder creation error:', driveErr)
+    }
+
     setSaving(false)
     onCreated(id)
   }
