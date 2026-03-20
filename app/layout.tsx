@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { FeedbackButton } from '@/components/FeedbackButton'
+import { SessionTracker } from '@/components/SessionTracker'
 
 const inter = Inter({ subsets: ['latin'], preload: false })
 
@@ -24,6 +25,7 @@ export default function RootLayout({
       <body className={inter.className}>
         {children}
         <FeedbackButton />
+        <SessionTracker />
       </body>
     </html>
   )
