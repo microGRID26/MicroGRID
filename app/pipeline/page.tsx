@@ -54,9 +54,9 @@ export default function PipelinePage() {
   const financiers = [...new Set(projects.map(p => p.financier).filter(Boolean))].sort() as string[]
   const ahjs = [...new Set(projects.map(p => p.ahj).filter(Boolean))].sort() as string[]
 
-  // Apply filters — exclude In Service and Loyalty from active pipeline view
+  // Apply filters — exclude In Service, Loyalty, and Cancelled from active pipeline view
   const filtered = projects.filter(p => {
-    if (p.disposition === 'In Service' || p.disposition === 'Loyalty') return false
+    if (p.disposition === 'In Service' || p.disposition === 'Loyalty' || p.disposition === 'Cancelled') return false
     if (pmFilter !== 'all' && p.pm_id !== pmFilter) return false
     if (financierFilter !== 'all' && p.financier !== financierFilter) return false
     if (ahjFilter !== 'all' && p.ahj !== ahjFilter) return false
