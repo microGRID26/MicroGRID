@@ -77,14 +77,10 @@ export default function AnalyticsPage() {
 
   const loadData = useCallback(async () => {
     const [projRes, fundRes] = await Promise.all([
-      supabase.from('projects').select('id, name, stage, contract, install_complete_date, stage_date, sale_date, pm, pm_id, blocker, financier, disposition').neq('disposition', 'In Service'),
+      supabase.from('projects').select('id, name, stage, contract, install_complete_date, stage_date, sale_date, pm, pm_id, blocker, financier, disposition').not('disposition', 'in', '("In Service","Loyalty","Cancelled")'),
       (supabase as any).from('project_funding').select('project_id, m2_funded_date, m3_funded_date, m2_amount, m3_amount'),
     ])
-    if (projRes.data) setProjects(
-      (projRes.data as Project[]).filter(p =>
-        p.disposition !== 'Loyalty'
-      )
-    )
+    if (projRes.data) setProjects(projRes.data as Project[])
     if (fundRes.data) {
       const map: Record<string, ProjectFunding> = {}
       fundRes.data.forEach((f: any) => { map[f.project_id] = f })

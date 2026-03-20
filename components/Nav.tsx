@@ -66,7 +66,7 @@ export function Nav({ active, right, onNewProject }: NavProps) {
         </a>
       ))}
 
-      {(loading || currentUser?.isAdmin) && (
+      {(!loading && currentUser?.isAdmin) && (
         <a href="/admin"
           className={`text-xs px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 ${
             active === 'Admin'

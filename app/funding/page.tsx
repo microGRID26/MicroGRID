@@ -286,7 +286,7 @@ export default function FundingPage() {
 
   const loadData = useCallback(async () => {
     const [projRes, fundRes, nfRes] = await Promise.all([
-      supabase.from('projects').select('id, name, city, financier, ahj, install_complete_date, pto_date, contract, sale_date, stage'),
+      supabase.from('projects').select('id, name, city, financier, ahj, install_complete_date, pto_date, contract, sale_date, stage, disposition').not('disposition', 'in', '("In Service","Loyalty","Cancelled")'),
       (supabase as any).from('project_funding').select('*'),
       (supabase as any).from('nonfunded_codes').select('*').order('master_code').order('code'),
     ])

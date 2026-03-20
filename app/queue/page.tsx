@@ -114,8 +114,9 @@ export default function QueuePage() {
     }
   }
 
-  // In Service projects are legacy — PMs are done with them, exclude entirely
-  const live = projects.filter(p => p.disposition !== 'In Service')
+  // In Service and Cancelled projects excluded — PMs are done with them
+  // Loyalty projects remain per CLAUDE.md (PMs still actively manage them)
+  const live = projects.filter(p => p.disposition !== 'In Service' && p.disposition !== 'Cancelled')
 
   // Apply search filter
   const searched = search.trim()
