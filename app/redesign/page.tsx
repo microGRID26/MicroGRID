@@ -1119,6 +1119,23 @@ export default function RedesignPage() {
                   <FileDown className="w-3.5 h-3.5" />
                   Download DXF (AutoCAD)
                 </button>
+                <button
+                  onClick={() => {
+                    const svg = document.getElementById('sld-svg')
+                    if (!svg) return
+                    const clone = svg.cloneNode(true) as SVGElement
+                    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+                    const win = window.open('', '_blank')
+                    if (!win) return
+                    win.document.write(`<!DOCTYPE html><html><head><title>SLD - ${existing.projectName}</title><style>@page{size:landscape;margin:0.25in}body{margin:0;padding:0;background:white}svg{width:100%;height:auto}</style></head><body>${clone.outerHTML}</body></html>`)
+                    win.document.close()
+                    setTimeout(() => win.print(), 500)
+                  }}
+                  className="text-xs text-blue-400 hover:text-blue-300 border border-blue-700 hover:border-blue-500 rounded-md px-3 py-1.5 transition-colors flex items-center gap-1.5"
+                >
+                  <FileDown className="w-3.5 h-3.5" />
+                  Print / Save as PDF
+                </button>
               </div>
               <div className="overflow-x-auto bg-white rounded-lg p-4">
                 <SingleLineDiagram
