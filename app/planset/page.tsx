@@ -77,21 +77,21 @@ function today(): string {
 
 // ── SHARED SVG COMPONENTS ───────────────────────────────────────────────────
 
-const SHEET_W = 1100
-const SHEET_H = 850
+const SHEET_W = 1300
+const SHEET_H = 900
 
 function DrawingBorder() {
   return (
     <>
-      <rect x="5" y="5" width="1090" height="840" fill="none" stroke="#111" strokeWidth="2" />
-      <rect x="9" y="9" width="1082" height="832" fill="none" stroke="#111" strokeWidth="0.5" />
+      <rect x="5" y="5" width={SHEET_W - 10} height={SHEET_H - 10} fill="none" stroke="#111" strokeWidth="2" />
+      <rect x="9" y="9" width={SHEET_W - 18} height={SHEET_H - 18} fill="none" stroke="#111" strokeWidth="0.5" />
     </>
   )
 }
 
 function TitleBlock({ sheetName, sheetNumber }: { sheetName: string; sheetNumber: string }) {
-  const bx = 770 // block X
-  const by = 720 // block Y
+  const bx = SHEET_W - 330 // block X
+  const by = SHEET_H - 130 // block Y
   const bw = 310
   const bh = 118
   return (
@@ -394,7 +394,7 @@ function SheetPV5() {
 
       {/* ── PV ARRAYS ── */}
       {stringGroups.map((strings, inv) => {
-        const baseX = inv === 0 ? 30 : 560
+        const baseX = inv === 0 ? 30 : 650
         const moduleW = 8
         const moduleH = 14
 
@@ -456,7 +456,7 @@ function SheetPV5() {
 
       {/* ── INVERTERS ── */}
       {stringGroups.map((strings, inv) => {
-        const cx = inv === 0 ? 200 : 730
+        const cx = inv === 0 ? 220 : 850
         const invY = 370
         const invW = 180
         const invH = 70
@@ -563,11 +563,11 @@ function SheetPV5() {
       })}
 
       {/* ── EXISTING HOME PANEL BUS BAR (y=565) ── */}
-      <line x1="60" y1={565} x2={W - 200} y2={565} stroke="#111" strokeWidth="3" />
-      <text x={(W - 200) / 2 + 30} y={558} textAnchor="middle" fontSize="7" fontWeight="bold">
+      <line x1="60" y1={565} x2={W - 350} y2={565} stroke="#111" strokeWidth="3" />
+      <text x={460} y={558} textAnchor="middle" fontSize="7" fontWeight="bold">
         (E) EXISTING HOME ELECTRICAL PANEL
       </text>
-      <text x={(W - 200) / 2 + 30} y={578} textAnchor="middle" fontSize="6" fill="#666">
+      <text x={460} y={578} textAnchor="middle" fontSize="6" fill="#666">
         200A RATED, 240V, SINGLE PHASE
       </text>
 
@@ -577,42 +577,45 @@ function SheetPV5() {
       <text x="45" y={625} textAnchor="middle" fontSize="5.5">TO LOADS</text>
 
       {/* Existing PV breaker */}
-      <line x1="400" y1={565} x2="400" y2={605} stroke="#111" strokeWidth="1" strokeDasharray="4,3" />
-      <Breaker x={400} y={585} label="(E) 40A PV" amps="BREAKER" />
-      <text x="400" y={625} textAnchor="middle" fontSize="5" fill="#666">(E) EXISTING ENPHASE</text>
-      <text x="400" y={633} textAnchor="middle" fontSize="5" fill="#666">IQ7PLUS SYSTEM</text>
+      <line x1="500" y1={565} x2="500" y2={605} stroke="#111" strokeWidth="1" strokeDasharray="4,3" />
+      <Breaker x={500} y={585} label="(E) 40A PV" amps="BREAKER" />
+      <text x="500" y={625} textAnchor="middle" fontSize="5" fill="#666">(E) EXISTING ENPHASE</text>
+      <text x="500" y={633} textAnchor="middle" fontSize="5" fill="#666">IQ7PLUS SYSTEM</text>
 
       {/* ── GENERATION DISCONNECT → RGM → METER → GRID ── */}
-      <line x1={W - 200} y1={565} x2={W - 170} y2={565} stroke="#111" strokeWidth="1.5" />
+      <line x1={W - 350} y1={565} x2={W - 310} y2={565} stroke="#111" strokeWidth="1.5" />
 
-      <rect x={W - 175} y={552} width={60} height={24} fill="none" stroke="#111" strokeWidth="1" />
-      <text x={W - 145} y={562} textAnchor="middle" fontSize="5">(N) GENERATION</text>
-      <text x={W - 145} y={570} textAnchor="middle" fontSize="5">DISCONNECT</text>
+      <rect x={W - 318} y={550} width={70} height={28} fill="none" stroke="#111" strokeWidth="1" />
+      <text x={W - 283} y={562} textAnchor="middle" fontSize="5.5">(N) GENERATION</text>
+      <text x={W - 283} y={572} textAnchor="middle" fontSize="5.5">DISCONNECT</text>
 
-      <line x1={W - 115} y1={565} x2={W - 98} y2={565} stroke="#111" strokeWidth="1.5" />
+      <line x1={W - 248} y1={565} x2={W - 210} y2={565} stroke="#111" strokeWidth="1.5" />
 
       {/* Revenue Grade Meter */}
-      <rect x={W - 98} y={554} width={42} height={22} fill="none" stroke="#111" strokeWidth="0.8" />
-      <text x={W - 77} y={563} textAnchor="middle" fontSize="4">(N) RGM</text>
-      <text x={W - 77} y={570} textAnchor="middle" fontSize="3.5">PC-PRO-RGM-W2-BA-L</text>
+      <rect x={W - 215} y={551} width={60} height={26} fill="none" stroke="#111" strokeWidth="0.8" />
+      <text x={W - 185} y={562} textAnchor="middle" fontSize="4.5">(N) RGM</text>
+      <text x={W - 185} y={571} textAnchor="middle" fontSize="4">PC-PRO-RGM-W2-BA-L</text>
 
-      <line x1={W - 56} y1={565} x2={W - 43} y2={565} stroke="#111" strokeWidth="1.5" />
+      <line x1={W - 155} y1={565} x2={W - 110} y2={565} stroke="#111" strokeWidth="1.5" />
 
       {/* Utility Meter */}
-      <circle cx={W - 25} cy={565} r="18" fill="none" stroke="#111" strokeWidth="1.5" />
-      <text x={W - 25} y={562} textAnchor="middle" fontSize="7" fontWeight="bold">M</text>
-      <text x={W - 25} y={572} textAnchor="middle" fontSize="5">kWh</text>
-      <text x={W - 25} y={542} textAnchor="middle" fontSize="5" fill="#666">(E) BIDIRECTIONAL</text>
-      <text x={W - 25} y={535} textAnchor="middle" fontSize="5" fill="#666">UTILITY METER</text>
+      <circle cx={W - 85} cy={565} r="22" fill="none" stroke="#111" strokeWidth="1.5" />
+      <text x={W - 85} y={562} textAnchor="middle" fontSize="8" fontWeight="bold">M</text>
+      <text x={W - 85} y={574} textAnchor="middle" fontSize="5.5">kWh</text>
+      <text x={W - 85} y={537} textAnchor="middle" fontSize="5.5" fill="#666">(E) BIDIRECTIONAL</text>
+      <text x={W - 85} y={528} textAnchor="middle" fontSize="5.5" fill="#666">UTILITY METER</text>
 
-      <text x={W - 25} y={595} textAnchor="middle" fontSize="5.5" fill="#666">TO UTILITY GRID</text>
-      <text x={W - 25} y={604} textAnchor="middle" fontSize="4.5" fill="#999">CENTERPOINT ENERGY</text>
+      <line x1={W - 63} y1={565} x2={W - 35} y2={565} stroke="#111" strokeWidth="1.5" />
+      <text x={W - 25} y={558} fontSize="6" fill="#666">TO UTILITY</text>
+      <text x={W - 25} y={568} fontSize="6" fill="#666">GRID</text>
+      <text x={W - 25} y={580} fontSize="5" fill="#999">CENTERPOINT</text>
+      <text x={W - 25} y={589} fontSize="5" fill="#999">ENERGY</text>
 
       {/* 10 FT MAX notation */}
-      <line x1={W - 190} y1={530} x2={W - 10} y2={530} stroke="#111" strokeWidth="0.5" />
-      <text x={W - 100} y={527} textAnchor="middle" fontSize="5.5" fontWeight="bold">10&apos; MAX</text>
-      <line x1={W - 190} y1={528} x2={W - 190} y2={534} stroke="#111" strokeWidth="0.5" />
-      <line x1={W - 10} y1={528} x2={W - 10} y2={534} stroke="#111" strokeWidth="0.5" />
+      <line x1={W - 340} y1={525} x2={W - 40} y2={525} stroke="#111" strokeWidth="0.5" />
+      <text x={W - 190} y={522} textAnchor="middle" fontSize="5.5" fontWeight="bold">10&apos; MAX</text>
+      <line x1={W - 340} y1={523} x2={W - 340} y2={530} stroke="#111" strokeWidth="0.5" />
+      <line x1={W - 40} y1={523} x2={W - 40} y2={530} stroke="#111" strokeWidth="0.5" />
 
       {/* ── GROUND SYSTEM ── */}
       <line x1="100" y1={565} x2="100" y2={635} stroke="#111" strokeWidth="1" />
