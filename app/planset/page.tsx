@@ -287,7 +287,7 @@ function SheetPV1() {
       ))}
 
       {/* ── CODE REFERENCES ── */}
-      <rect x="25" y="465" width="165" height="148" fill="none" stroke="#111" strokeWidth="1" />
+      <rect x="25" y="465" width="165" height="160" fill="none" stroke="#111" strokeWidth="1" />
       <rect x="25" y="465" width="165" height="18" fill="#111" />
       <text x="107" y="478" fontSize="8" fontWeight="bold" fill="white" textAnchor="middle">CODE REFERENCES</text>
       {codeRefs.map((ref, i) => (
@@ -295,7 +295,7 @@ function SheetPV1() {
       ))}
 
       {/* ── UNIT INDEX ── */}
-      <rect x="200" y="465" width="175" height="148" fill="none" stroke="#111" strokeWidth="1" />
+      <rect x="200" y="465" width="175" height="160" fill="none" stroke="#111" strokeWidth="1" />
       <rect x="200" y="465" width="175" height="18" fill="#111" />
       <text x="287" y="478" fontSize="8" fontWeight="bold" fill="white" textAnchor="middle">UNIT INDEX</text>
       {unitIndex.map(([abbr, def], i) => (
@@ -306,13 +306,13 @@ function SheetPV1() {
       ))}
 
       {/* ── SHEET INDEX ── */}
-      <rect x="25" y="623" width="350" height="85" fill="none" stroke="#111" strokeWidth="1" />
-      <rect x="25" y="623" width="350" height="18" fill="#111" />
-      <text x="200" y="636" fontSize="8" fontWeight="bold" fill="white" textAnchor="middle">SHEET INDEX</text>
+      <rect x="25" y="635" width="350" height="85" fill="none" stroke="#111" strokeWidth="1" />
+      <rect x="25" y="635" width="350" height="18" fill="#111" />
+      <text x="200" y="648" fontSize="8" fontWeight="bold" fill="white" textAnchor="middle">SHEET INDEX</text>
       {sheetIndex.map(([num, title], i) => (
         <g key={i}>
-          <text x="32" y={656 + i * 13} fontSize="6.5" fontWeight="bold" fill="#111">{num}</text>
-          <text x="80" y={656 + i * 13} fontSize="6.5" fill="#333">{title}</text>
+          <text x="32" y={668 + i * 13} fontSize="6.5" fontWeight="bold" fill="#111">{num}</text>
+          <text x="80" y={668 + i * 13} fontSize="6.5" fill="#333">{title}</text>
         </g>
       ))}
 
@@ -604,39 +604,39 @@ function SheetPV5() {
       <text x="650" y={643} textAnchor="middle" fontSize="4" fill="#999">22kW NG GENERATOR</text>
 
       {/* ── GENERATION DISCONNECT → RGM → METER → GRID ── */}
-      <line x1={W - 380} y1={550} x2={W - 340} y2={550} stroke="#111" strokeWidth="1.5" />
+      <line x1={W - 380} y1={550} x2={W - 398} y2={550} stroke="#111" strokeWidth="1.5" />
 
-      <rect x={W - 348} y={536} width={70} height={28} fill="none" stroke="#111" strokeWidth="1" />
-      <text x={W - 313} y={548} textAnchor="middle" fontSize="5.5">(N) GENERATION</text>
-      <text x={W - 313} y={558} textAnchor="middle" fontSize="5.5">DISCONNECT</text>
+      <rect x={W - 398} y={536} width={70} height={28} fill="none" stroke="#111" strokeWidth="1" />
+      <text x={W - 363} y={548} textAnchor="middle" fontSize="5.5">(N) GENERATION</text>
+      <text x={W - 363} y={558} textAnchor="middle" fontSize="5.5">DISCONNECT</text>
 
-      <line x1={W - 278} y1={550} x2={W - 245} y2={550} stroke="#111" strokeWidth="1.5" />
+      <line x1={W - 328} y1={550} x2={W - 295} y2={550} stroke="#111" strokeWidth="1.5" />
 
       {/* Revenue Grade Meter */}
-      <rect x={W - 250} y={537} width={65} height={26} fill="none" stroke="#111" strokeWidth="0.8" />
-      <text x={W - 218} y={548} textAnchor="middle" fontSize="4.5">(N) RGM</text>
-      <text x={W - 218} y={557} textAnchor="middle" fontSize="3.8">PC-PRO-RGM-W2-BA-L</text>
+      <rect x={W - 300} y={537} width={65} height={26} fill="none" stroke="#111" strokeWidth="0.8" />
+      <text x={W - 268} y={548} textAnchor="middle" fontSize="4.5">(N) RGM</text>
+      <text x={W - 268} y={557} textAnchor="middle" fontSize="3.8">PC-PRO-RGM-W2-BA-L</text>
 
-      <line x1={W - 185} y1={550} x2={W - 145} y2={550} stroke="#111" strokeWidth="1.5" />
+      <line x1={W - 235} y1={550} x2={W - 195} y2={550} stroke="#111" strokeWidth="1.5" />
 
       {/* Utility Meter */}
-      <circle cx={W - 120} cy={550} r="22" fill="none" stroke="#111" strokeWidth="1.5" />
-      <text x={W - 120} y={548} textAnchor="middle" fontSize="8" fontWeight="bold">M</text>
-      <text x={W - 120} y={560} textAnchor="middle" fontSize="5.5">kWh</text>
-      <text x={W - 120} y={522} textAnchor="middle" fontSize="5" fill="#666">(E) BIDIRECTIONAL</text>
-      <text x={W - 120} y={514} textAnchor="middle" fontSize="5" fill="#666">UTILITY METER</text>
+      <circle cx={W - 170} cy={550} r="22" fill="none" stroke="#111" strokeWidth="1.5" />
+      <text x={W - 170} y={548} textAnchor="middle" fontSize="8" fontWeight="bold">M</text>
+      <text x={W - 170} y={560} textAnchor="middle" fontSize="5.5">kWh</text>
+      <text x={W - 170} y={522} textAnchor="middle" fontSize="5" fill="#666">(E) BIDIRECTIONAL</text>
+      <text x={W - 170} y={514} textAnchor="middle" fontSize="5" fill="#666">UTILITY METER</text>
 
-      <line x1={W - 98} y1={550} x2={W - 75} y2={550} stroke="#111" strokeWidth="1.5" />
-      <text x={W - 70} y={543} fontSize="6" fill="#666">TO UTILITY</text>
-      <text x={W - 70} y={553} fontSize="6" fill="#666">GRID</text>
-      <text x={W - 70} y={565} fontSize="5" fill="#999">CENTERPOINT</text>
-      <text x={W - 70} y={574} fontSize="5" fill="#999">ENERGY</text>
+      <line x1={W - 148} y1={550} x2={W - 125} y2={550} stroke="#111" strokeWidth="1.5" />
+      <text x={W - 120} y={543} fontSize="6" fill="#666">TO UTILITY</text>
+      <text x={W - 120} y={553} fontSize="6" fill="#666">GRID</text>
+      <text x={W - 120} y={565} fontSize="5" fill="#999">CENTERPOINT</text>
+      <text x={W - 120} y={574} fontSize="5" fill="#999">ENERGY</text>
 
       {/* 10 FT MAX notation */}
-      <line x1={W - 370} y1={510} x2={W - 80} y2={510} stroke="#111" strokeWidth="0.5" />
-      <text x={W - 225} y={507} textAnchor="middle" fontSize="5.5" fontWeight="bold">10&apos; MAX</text>
-      <line x1={W - 370} y1={508} x2={W - 370} y2={515} stroke="#111" strokeWidth="0.5" />
-      <line x1={W - 80} y1={508} x2={W - 80} y2={515} stroke="#111" strokeWidth="0.5" />
+      <line x1={W - 420} y1={510} x2={W - 130} y2={510} stroke="#111" strokeWidth="0.5" />
+      <text x={W - 275} y={507} textAnchor="middle" fontSize="5.5" fontWeight="bold">10&apos; MAX</text>
+      <line x1={W - 420} y1={508} x2={W - 420} y2={515} stroke="#111" strokeWidth="0.5" />
+      <line x1={W - 130} y1={508} x2={W - 130} y2={515} stroke="#111" strokeWidth="0.5" />
 
       {/* ── GROUND SYSTEM ── */}
       <line x1="100" y1={550} x2="100" y2={610} stroke="#111" strokeWidth="1" />
@@ -700,7 +700,7 @@ function SheetPV51() {
     {
       title: 'INVERTER LABEL',
       nec: 'NEC 690.54',
-      x: 25, y: 65, w: 500, h: 120,
+      x: 25, y: 65, w: 500, h: 140,
       lines: [
         'CAUTION: DUAL POWER SOURCE',
         '',
@@ -717,7 +717,7 @@ function SheetPV51() {
     {
       title: 'AC DISCONNECT LABEL',
       nec: 'NEC 690.14(C)',
-      x: 25, y: 200, w: 500, h: 95,
+      x: 25, y: 220, w: 500, h: 110,
       lines: [
         'AC DISCONNECT — SOLAR PHOTOVOLTAIC SYSTEM',
         '',
@@ -731,7 +731,7 @@ function SheetPV51() {
     {
       title: 'PV DISCONNECT LABEL',
       nec: 'NEC 690.13',
-      x: 25, y: 310, w: 500, h: 110,
+      x: 25, y: 345, w: 500, h: 120,
       lines: [
         'DC DISCONNECT — PHOTOVOLTAIC SYSTEM',
         '',
@@ -746,7 +746,7 @@ function SheetPV51() {
     {
       title: 'MAIN PANEL LABEL',
       nec: 'NEC 705.12',
-      x: 550, y: 65, w: 500, h: 95,
+      x: 550, y: 65, w: 500, h: 110,
       lines: [
         'WARNING: SOLAR PHOTOVOLTAIC SYSTEM CONNECTED',
         '',
@@ -760,7 +760,7 @@ function SheetPV51() {
     {
       title: 'UTILITY METER LABEL',
       nec: 'NEC 705.10',
-      x: 550, y: 175, w: 500, h: 80,
+      x: 550, y: 190, w: 500, h: 100,
       lines: [
         'NET METERING — PHOTOVOLTAIC SYSTEM',
         '',
@@ -773,7 +773,7 @@ function SheetPV51() {
     {
       title: 'BATTERY WARNING LABEL',
       nec: 'NEC 706.30',
-      x: 550, y: 270, w: 500, h: 110,
+      x: 550, y: 305, w: 500, h: 130,
       borderColor: '#cc0000',
       lines: [
         'WARNING: BATTERY ENERGY STORAGE SYSTEM',
@@ -790,7 +790,7 @@ function SheetPV51() {
     {
       title: 'RAPID SHUTDOWN LABEL',
       nec: 'NEC 690.12',
-      x: 550, y: 395, w: 500, h: 85,
+      x: 550, y: 450, w: 500, h: 110,
       borderColor: '#cc0000',
       lines: [
         'RAPID SHUTDOWN SYSTEM',
@@ -1066,7 +1066,7 @@ function SheetPV7() {
     {
       title: 'SOLAR PV SYSTEM CONNECTED',
       nec: 'NEC 690.54',
-      x: 25, y: 70, w: 320, h: 110,
+      x: 25, y: 70, w: 320, h: 125,
       color: 'red',
       lines: [
         'WARNING',
@@ -1082,7 +1082,7 @@ function SheetPV7() {
     {
       title: 'ELECTRIC SHOCK HAZARD',
       nec: 'NEC 690.31(G)',
-      x: 365, y: 70, w: 320, h: 110,
+      x: 365, y: 70, w: 320, h: 125,
       color: 'red',
       lines: [
         'DANGER',
@@ -1097,7 +1097,8 @@ function SheetPV7() {
     {
       title: 'DUAL POWER SOURCE',
       nec: 'NEC 705.12',
-      x: 705, y: 70, w: 320, h: 110,
+
+      x: 705, y: 70, w: 320, h: 125,
       color: 'yellow',
       lines: [
         'CAUTION',
@@ -1112,7 +1113,7 @@ function SheetPV7() {
     {
       title: 'PHOTOVOLTAIC POWER SOURCE',
       nec: 'NEC 690.53',
-      x: 25, y: 200, w: 320, h: 130,
+      x: 25, y: 215, w: 320, h: 140,
       color: 'black',
       lines: [
         'PHOTOVOLTAIC POWER SOURCE',
@@ -1129,7 +1130,7 @@ function SheetPV7() {
     {
       title: 'BATTERY STORAGE WARNING',
       nec: 'NEC 706.30',
-      x: 365, y: 200, w: 320, h: 130,
+      x: 365, y: 215, w: 320, h: 140,
       color: 'red',
       lines: [
         'WARNING: BATTERY STORAGE SYSTEM',
@@ -1146,7 +1147,7 @@ function SheetPV7() {
     {
       title: 'RAPID SHUTDOWN SWITCH',
       nec: 'NEC 690.12',
-      x: 705, y: 200, w: 320, h: 130,
+      x: 705, y: 215, w: 320, h: 140,
       color: 'red',
       lines: [
         'RAPID SHUTDOWN',
@@ -1163,7 +1164,7 @@ function SheetPV7() {
     {
       title: 'AC DISCONNECT',
       nec: 'NEC 690.14',
-      x: 25, y: 355, w: 320, h: 100,
+      x: 25, y: 375, w: 320, h: 110,
       color: 'yellow',
       lines: [
         'AC DISCONNECT',
@@ -1178,7 +1179,7 @@ function SheetPV7() {
     {
       title: 'POINT OF INTERCONNECTION',
       nec: 'NEC 705.10',
-      x: 365, y: 355, w: 320, h: 100,
+      x: 365, y: 375, w: 320, h: 110,
       color: 'black',
       lines: [
         'POINT OF INTERCONNECTION',
@@ -1236,11 +1237,11 @@ function SheetPV7() {
       })}
 
       {/* Installation note */}
-      <text x="25" y="490" fontSize="7" fontWeight="bold" fill="#111">INSTALLATION NOTES:</text>
-      <text x="25" y="505" fontSize="6" fill="#333">1. ALL LABELS SHALL BE CLEARLY VISIBLE AND NOT OBSTRUCTED BY EQUIPMENT OR WIRING.</text>
-      <text x="25" y="517" fontSize="6" fill="#333">2. LABELS SHALL BE INSTALLED AT EACH DISCONNECT MEANS, JUNCTION BOX, AND POINT OF CONNECTION.</text>
-      <text x="25" y="529" fontSize="6" fill="#333">3. WARNING LABELS WITH RED BORDERS SHALL USE REFLECTIVE OR HIGH-VISIBILITY MATERIALS.</text>
-      <text x="25" y="541" fontSize="6" fill="#333">4. ALL LABELS SHALL BE LEGIBLE FROM A DISTANCE OF AT LEAST 3 FEET.</text>
+      <text x="25" y="510" fontSize="7" fontWeight="bold" fill="#111">INSTALLATION NOTES:</text>
+      <text x="25" y="525" fontSize="6" fill="#333">1. ALL LABELS SHALL BE CLEARLY VISIBLE AND NOT OBSTRUCTED BY EQUIPMENT OR WIRING.</text>
+      <text x="25" y="537" fontSize="6" fill="#333">2. LABELS SHALL BE INSTALLED AT EACH DISCONNECT MEANS, JUNCTION BOX, AND POINT OF CONNECTION.</text>
+      <text x="25" y="549" fontSize="6" fill="#333">3. WARNING LABELS WITH RED BORDERS SHALL USE REFLECTIVE OR HIGH-VISIBILITY MATERIALS.</text>
+      <text x="25" y="561" fontSize="6" fill="#333">4. ALL LABELS SHALL BE LEGIBLE FROM A DISTANCE OF AT LEAST 3 FEET.</text>
 
       <TitleBlock sheetName="WARNING LABELS" sheetNumber="PV-7" />
     </svg>
@@ -1262,7 +1263,7 @@ function SheetPV71() {
   const placards: Placard[] = [
     {
       title: 'INVERTER PLACARD',
-      x: 25, y: 70, w: 500, h: 180,
+      x: 25, y: 70, w: 500, h: 190,
       rows: [
         ['EQUIPMENT', `(${PROJECT.inverterCount}) ${PROJECT.inverterModel}`],
         ['MANUFACTURER', 'DURACELL / HUBBLE TECHNOLOGY'],
@@ -1280,7 +1281,7 @@ function SheetPV71() {
     },
     {
       title: 'BATTERY PLACARD',
-      x: 550, y: 70, w: 500, h: 180,
+      x: 550, y: 70, w: 500, h: 190,
       rows: [
         ['EQUIPMENT', `(${PROJECT.batteryCount}) ${PROJECT.batteryModel}`],
         ['MANUFACTURER', 'DURACELL / HUBBLE TECHNOLOGY'],
@@ -1298,7 +1299,7 @@ function SheetPV71() {
     },
     {
       title: 'PV MODULE PLACARD',
-      x: 25, y: 275, w: 500, h: 160,
+      x: 25, y: 280, w: 500, h: 165,
       rows: [
         ['MODULE', `${PROJECT.panelModel}`],
         ['QUANTITY', `${PROJECT.panelCount} MODULES`],
@@ -1314,7 +1315,7 @@ function SheetPV71() {
     },
     {
       title: 'SYSTEM PLACARD',
-      x: 550, y: 275, w: 500, h: 160,
+      x: 550, y: 280, w: 500, h: 165,
       rows: [
         ['SYSTEM DC CAPACITY', `${PROJECT.systemDcKw.toFixed(2)} kW DC`],
         ['SYSTEM AC CAPACITY', `${PROJECT.systemAcKw} kW AC`],
@@ -1330,7 +1331,7 @@ function SheetPV71() {
     },
     {
       title: 'EMERGENCY PLACARD',
-      x: 25, y: 460, w: 500, h: 130,
+      x: 25, y: 460, w: 500, h: 145,
       rows: [
         ['RAPID SHUTDOWN', 'AC DISCONNECT LOCATION: ADJACENT TO INVERTERS'],
         ['UTILITY DISCONNECT', 'MAIN BREAKER AT ELECTRICAL PANEL'],
