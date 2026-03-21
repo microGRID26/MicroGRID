@@ -39,12 +39,12 @@ const PROJECT = {
   utility: 'CenterPoint Energy',
   meter: '88 353 523',
   esid: '1008901020901254810117',
-  contractor: 'TriSMART Solar',
-  contractorAddress: '600 Northpark Central Dr Ste 140',
-  contractorCity: 'Houston TX 77073',
+  contractor: 'MicroGRID Energy',
+  contractorAddress: '15200 E Hardy Rd',
+  contractorCity: 'Houston, TX 77060',
   contractorPhone: '(888) 485-5551',
   contractorLicense: '32259',
-  contractorEmail: 'engineering@trismartsolar.com',
+  contractorEmail: 'engineering@microgridenergy.com',
   // Existing system
   existingPanelModel: 'Silfab SIL-370 HC',
   existingPanelWattage: 370,
@@ -500,9 +500,9 @@ function SheetPV5() {
               x2={cx - invW / 2 - 90} y2={invY + invH / 2}
               stroke="#111" strokeWidth="1.5" />
             <WireLabel x={cx - invW / 2 - 88} y={invY + invH / 2 - 8}
-              text={'(2) #8 AWG CU THWN-2'} />
+              text={'(2) #4/0 AWG CU THWN-2'} />
             <WireLabel x={cx - invW / 2 - 88} y={invY + invH / 2 + 18}
-              text={'1" EMT TYPE CONDUIT'} />
+              text={'2" EMT TYPE CONDUIT'} />
 
             <rect x={cx - invW / 2 - 160} y={invY - 5} width={62} height={invH + 10}
               fill="none" stroke="#111" strokeWidth="1.5" />
@@ -533,6 +533,8 @@ function SheetPV5() {
               fill="none" stroke="#111" strokeWidth="0.8" />
             <text x={cx + invW / 2 + 60} y={invY + 16} textAnchor="middle" fontSize="4.5">(N) DCCGRGL</text>
             <text x={cx + invW / 2 + 60} y={invY + 24} textAnchor="middle" fontSize="4">DURACELL MONITORING GW</text>
+            <text x={cx + invW / 2 + 60} y={invY + 32} textAnchor="middle" fontSize="3.5" fill="#666">CT CLAMPS ON MAIN SERVICE</text>
+            <text x={cx + invW / 2 + 60} y={invY + 37} textAnchor="middle" fontSize="3.5" fill="#666">ENTRANCE CONDUCTORS</text>
 
             {/* Wireless Bridge */}
             <line x1={cx + invW / 2 + 60} y1={invY + 30}
@@ -557,7 +559,7 @@ function SheetPV5() {
             <WireLabel x={cx + 8} y={invY + invH + 60}
               text={'1-1/4" EMT TYPE CONDUIT'} />
 
-            <Breaker x={cx} y={545} label={'(N) 125A PV'} amps="BREAKER" />
+            <Breaker x={cx} y={545} label={'(N) 100A BACKFEED'} amps="BREAKER" />
           </g>
         )
       })}
@@ -581,6 +583,14 @@ function SheetPV5() {
       <Breaker x={500} y={585} label="(E) 40A PV" amps="BREAKER" />
       <text x="500" y={625} textAnchor="middle" fontSize="5" fill="#666">(E) EXISTING ENPHASE</text>
       <text x="500" y={633} textAnchor="middle" fontSize="5" fill="#666">IQ7PLUS SYSTEM</text>
+
+      {/* Generator Ready Circuit (future) */}
+      <line x1="650" y1={565} x2="650" y2={620} stroke="#111" strokeWidth="1" strokeDasharray="4,3" />
+      <rect x="620" y={620} width="60" height="24" fill="none" stroke="#111" strokeWidth="1" strokeDasharray="4,3" />
+      <text x="650" y={633} textAnchor="middle" fontSize="5" fill="#666">(FUTURE) 100A</text>
+      <text x="650" y={640} textAnchor="middle" fontSize="5" fill="#666">AC INPUT</text>
+      <text x="650" y={655} textAnchor="middle" fontSize="4.5" fill="#999">FUTURE PLUG-AND-PLAY CONNECTION</text>
+      <text x="650" y={663} textAnchor="middle" fontSize="4.5" fill="#999">FOR 22kW NATURAL GAS GENERATOR</text>
 
       {/* ── GENERATION DISCONNECT → RGM → METER → GRID ── */}
       <line x1={W - 350} y1={565} x2={W - 310} y2={565} stroke="#111" strokeWidth="1.5" />
@@ -731,7 +741,7 @@ function SheetPV51() {
         '',
         `SOLAR SYSTEM: ${PROJECT.systemDcKw.toFixed(2)} kW DC / ${PROJECT.systemAcKw} kW AC`,
         `BATTERY STORAGE: ${PROJECT.totalStorageKwh} kWh`,
-        `PV BACKFEED BREAKER: (${PROJECT.inverterCount}) 125A, 240V`,
+        `PV BACKFEED BREAKER: (${PROJECT.inverterCount}) 100A, 240V`,
         'CAUTION: DO NOT EXCEED BUS RATING WHEN ADDING BREAKERS',
         'SEE NEC 705.12 FOR 120% BUS BAR RATING RULE',
       ],
@@ -865,8 +875,8 @@ function SheetPV6() {
   const acVDrop = (2 * acRunFt * acCurrentPerInv * wireResistance['#4']) / 1000
   const acVDropPct = (acVDrop / 240) * 100
 
-  // Battery wiring
-  const battCurrentPerStack = PROJECT.batteryCapacity * 1000 / 51.2 // rough max charge/discharge
+  // Battery wiring — VPP discharge at 23kW continuous
+  const battCurrentPerStack = 23000 / 51.2 // VPP discharge: 23kW / 51.2V = ~449A
   const battCurrent125 = battCurrentPerStack * 1.25
 
   // OCPD
@@ -957,8 +967,8 @@ function SheetPV6() {
               `${PROJECT.totalStorageKwh} kWh TOTAL`,
               `${battCurrentPerStack.toFixed(1)}A`,
               `${battCurrent125.toFixed(1)}A`,
-              '#8 AWG CU THWN-2',
-              '1" EMT',
+              '#4/0 AWG CU THWN-2',
+              '2" EMT',
             ].map((val, j) => (
               <text key={j} x={[25, 150, 265, 370, 470, 560, 700][j]}
                 y={acY + 90 + rowH + 11} fontSize="5.5" fill="#333">{val}</text>
@@ -972,7 +982,7 @@ function SheetPV6() {
             ))}
             {[
               ['STRING FUSE', `Isc × 1.56 = ${PROJECT.panelIsc} × 1.56`, `${stringFuseCalc.toFixed(1)}A`, `${stringFuseSize}A`, '600V DC'],
-              ['PV BREAKER (per INV)', 'Per inverter AC output rating', `${acCurrent125.toFixed(1)}A`, '125A', '240V AC'],
+              ['PV BREAKER (per INV)', 'Per inverter AC output rating', `${acCurrent125.toFixed(1)}A`, '100A', '240V AC'],
               ['MAIN BREAKER', 'Per system total AC capacity', `${(acCurrent125 * PROJECT.inverterCount).toFixed(1)}A`, '200A', '240V AC'],
             ].map((row, i) => (
               <g key={i}>

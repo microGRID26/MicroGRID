@@ -350,9 +350,9 @@ function SingleLineDiagram({ existing, target, results }: {
               x2={cx - invW / 2 - 100} y2={invY + invH / 2}
               stroke="#111" strokeWidth="1.5" />
             <WireLabel x={cx - invW / 2 - 98} y={invY + invH / 2 - 8}
-              text={`(2) #8 AWG CU THWN-2`} />
+              text={`(2) #4/0 AWG CU THWN-2`} />
             <WireLabel x={cx - invW / 2 - 98} y={invY + invH / 2 + 20}
-              text={`1" EMT TYPE CONDUIT`} />
+              text={`2" EMT TYPE CONDUIT`} />
 
             {/* Battery stack box — 180px from inverter center */}
             <rect x={cx - invW / 2 - 180} y={invY - 5} width={70} height={invH + 10}
@@ -384,6 +384,8 @@ function SingleLineDiagram({ existing, target, results }: {
               fill="none" stroke="#111" strokeWidth="0.8" />
             <text x={cx + invW / 2 + 70} y={invY + 18} textAnchor="middle" fontSize="4.5">(N) DCCGRGL</text>
             <text x={cx + invW / 2 + 70} y={invY + 26} textAnchor="middle" fontSize="4.5">DURACELL MONITORING GATEWAY</text>
+            <text x={cx + invW / 2 + 70} y={invY + 34} textAnchor="middle" fontSize="3.5" fill="#666">CT CLAMPS ON MAIN SERVICE</text>
+            <text x={cx + invW / 2 + 70} y={invY + 39} textAnchor="middle" fontSize="3.5" fill="#666">ENTRANCE CONDUCTORS</text>
 
             {/* Wireless Bridge (below gateway) */}
             <line x1={cx + invW / 2 + 70} y1={invY + 32}
@@ -411,7 +413,7 @@ function SingleLineDiagram({ existing, target, results }: {
               text={`1-1/4" EMT TYPE CONDUIT`} />
 
             {/* PV Breaker on bus */}
-            <Breaker x={cx} y={645} label={`(N) 125A PV`} amps="BREAKER" />
+            <Breaker x={cx} y={645} label={`(N) 100A BACKFEED`} amps="BREAKER" />
           </g>
         )
       })}
@@ -435,6 +437,14 @@ function SingleLineDiagram({ existing, target, results }: {
       <Breaker x={500} y={690} label="(E) 40A PV" amps="BREAKER" />
       <text x="500" y={730} textAnchor="middle" fontSize="5" fill="#666">(E) EXISTING ENPHASE</text>
       <text x="500" y={738} textAnchor="middle" fontSize="5" fill="#666">IQ7PLUS SYSTEM</text>
+
+      {/* Generator Ready Circuit (future) */}
+      <line x1="650" y1={665} x2="650" y2={720} stroke="#111" strokeWidth="1" strokeDasharray="4,3" />
+      <rect x="620" y={720} width="60" height="24" fill="none" stroke="#111" strokeWidth="1" strokeDasharray="4,3" />
+      <text x="650" y={733} textAnchor="middle" fontSize="5" fill="#666">(FUTURE) 100A</text>
+      <text x="650" y={740} textAnchor="middle" fontSize="5" fill="#666">AC INPUT</text>
+      <text x="650" y={755} textAnchor="middle" fontSize="4.5" fill="#999">FUTURE PLUG-AND-PLAY CONNECTION</text>
+      <text x="650" y={763} textAnchor="middle" fontSize="4.5" fill="#999">FOR 22kW NATURAL GAS GENERATOR</text>
 
       {/* ── GENERATION DISCONNECT → RGM → METER → GRID (right side) ── */}
       <line x1={W - 250} y1={665} x2={W - 200} y2={665} stroke="#111" strokeWidth="1.5" />
