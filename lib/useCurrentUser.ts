@@ -55,6 +55,9 @@ export function useCurrentUser() {
       cached = resolved
       setUser(resolved)
       setLoading(false)
+    }).catch((err) => {
+      console.error('useCurrentUser: failed to load user', err)
+      setLoading(false)
     })
   }, [])
 

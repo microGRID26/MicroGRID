@@ -700,8 +700,10 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       const updatedStates = { ...taskStates, [taskId]: status }
       const { ok } = canAdvance(project.stage, updatedStates)
       if (ok && nextStage) {
-        await (supabase as any).from('projects').update({ stage: nextStage, stage_date: today }).eq('id', pid)
-        await (supabase as any).from('stage_history').insert({ project_id: pid, stage: nextStage, entered: today })
+        const { error: advErr } = await (supabase as any).from('projects').update({ stage: nextStage, stage_date: today }).eq('id', pid)
+        if (advErr) { console.error('auto stage advance failed:', advErr); showToast('Failed to auto-advance stage'); return }
+        const { error: histErr } = await (supabase as any).from('stage_history').insert({ project_id: pid, stage: nextStage, entered: today })
+        if (histErr) { console.error('stage_history insert failed:', histErr); showToast('Failed to log stage history') }
         const { error: auditErr } = await (supabase as any).from('audit_log').insert({
           project_id: pid, field: 'stage',
           old_value: project.stage, new_value: nextStage,
@@ -746,11 +748,12 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     if (!newNote.trim()) return
     setSaving(true)
     const pm = currentUser?.name ?? userEmail.split('@')[0] ?? 'PM'
-    await (supabase as any).from('notes').insert({
+    const { error: noteErr } = await (supabase as any).from('notes').insert({
       project_id: pid, text: newNote.trim(),
       time: new Date().toISOString(), pm,
       pm_id: currentUser?.id ?? null,
     })
+    if (noteErr) { console.error('note insert failed:', noteErr); showToast('Failed to add note'); setSaving(false); return }
     setNewNote('')
     await loadNotes()
     setSaving(false)

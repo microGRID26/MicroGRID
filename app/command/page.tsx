@@ -377,6 +377,10 @@ export default function CommandPage() {
         .order('time'),
     ])
 
+    if (projRes.error) console.error('projects load failed:', projRes.error)
+    if (taskRes.error) console.error('task_state load failed:', taskRes.error)
+    if (schedRes.error) console.error('schedule load failed:', schedRes.error)
+
     if (projRes.data) setProjects(projRes.data as Project[])
     if (taskRes.data) setTaskStates(taskRes.data as TaskStateRow[])
 
@@ -387,14 +391,16 @@ export default function CommandPage() {
       const schedPids = [...new Set(rawJobs.map((j: any) => j.project_id).filter(Boolean))]
       const projNameMap: Record<string, string> = {}
       if (schedPids.length > 0) {
-        const { data: pData } = await supabase.from('projects').select('id, name').in('id', schedPids)
+        const { data: pData, error: pError } = await supabase.from('projects').select('id, name').in('id', schedPids)
+        if (pError) console.error('schedule project names load failed:', pError)
         if (pData) pData.forEach((p: any) => { projNameMap[p.id] = p.name })
       }
       // Batch-fetch crew names
       const schedCids = [...new Set(rawJobs.map((j: any) => j.crew_id).filter(Boolean))]
       const crewNameMap: Record<string, string> = {}
       if (schedCids.length > 0) {
-        const { data: cData } = await supabase.from('crews').select('id, name').in('id', schedCids)
+        const { data: cData, error: cError } = await supabase.from('crews').select('id, name').in('id', schedCids)
+        if (cError) console.error('schedule crew names load failed:', cError)
         if (cData) cData.forEach((c: any) => { crewNameMap[c.id] = c.name })
       }
       // Merge names onto schedule entries

@@ -503,7 +503,11 @@ function ChangeOrderDetailPanel({ order, users, currentUser, onClose, onUpdated,
       updates.status = 'Open'
     }
 
-    await (supabase as any).from('change_orders').update(updates).eq('id', co.id)
+    const { error } = await (supabase as any).from('change_orders').update(updates).eq('id', co.id)
+    if (error) {
+      console.error('Failed to update workflow step:', error)
+      return
+    }
     const updated = { ...co, ...updates }
     setCo(updated)
     onUpdated(updated)

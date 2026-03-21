@@ -87,6 +87,9 @@ export default function QueuePage() {
       supabase.from('task_state').select('project_id, task_id, status, reason'),
     ])
 
+    if (projRes.error) console.error('projects load failed:', projRes.error)
+    if (taskRes.error) console.error('task_state load failed:', taskRes.error)
+
     if (projRes.data) {
       setProjects(projRes.data as Project[])
       const pmMap = new Map<string, string>()

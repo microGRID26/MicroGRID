@@ -15,11 +15,18 @@ export async function GET(request: Request) {
     // Auto-provision user row on first login
     const { data: { user } } = await supabase.auth.getUser()
     if (user?.email) {
-      await (supabase as any).rpc('provision_user', {
+      const { error: provisionError } = await (supabase as any).rpc('provision_user', {
         p_email: user.email,
         p_name: user.user_metadata?.full_name ?? user.email.split('@')[0],
       })
+      if (provisionError) {
+        console.error('Failed to provision user:', provisionError)
+      }
     }
+  }
+
+  if (!code) {
+    return NextResponse.redirect(`${origin}/login?error=no_code`)
   }
 
   return NextResponse.redirect(`${origin}/command`)
