@@ -23,7 +23,7 @@ function makeProject(o: Partial<TestProject> = {}): TestProject {
 }
 
 function getSLA(p: TestProject) {
-  const t = SLA_THRESHOLDS[p.stage] ?? { target: 3, risk: 5, crit: 7 }
+  const _t = SLA_THRESHOLDS[p.stage] ?? { target: 3, risk: 5, crit: 7 }
   const days = daysAgo(p.stage_date)
   return { days }
 }

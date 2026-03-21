@@ -35,7 +35,7 @@ describe('middleware cookie error handling', () => {
     // Simulates the middleware pattern: cookie setting failure should not crash
     let crashed = false
     try {
-      const setAll = (cookies: any[]) => {
+      const setAll = (_cookies: any[]) => {
         try {
           throw new Error('Cookie write failed')
         } catch {

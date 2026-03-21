@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { FeedbackButton } from '@/components/FeedbackButton'
@@ -9,8 +9,13 @@ const inter = Inter({ subsets: ['latin'], preload: false })
 export const metadata: Metadata = {
   title: 'MicroGRID CRM',
   description: 'MicroGRID CRM',
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
   themeColor: '#030712',
-  viewport: 'width=device-width, initial-scale=1, viewport-fit=cover',
 }
 
 // ── CONSTRUCTION BANNER ───────────────────────────────────────────────────────
