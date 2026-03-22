@@ -261,7 +261,8 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
           if (dateField) {
             const { data: proj } = await supabase.from('projects').select(dateField).eq('id', pid).single()
             if (proj && !(proj as any)[dateField]) {
-              await (supabase as any).from('projects').update({ [dateField]: today }).eq('id', pid)
+              const { error: dateErr } = await (supabase as any).from('projects').update({ [dateField]: today }).eq('id', pid)
+              if (dateErr) console.error('date field update failed:', dateErr)
             }
           }
         } catch (e) {

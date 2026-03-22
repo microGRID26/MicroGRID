@@ -668,13 +668,15 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     // ── Auto-flip disposition when In Service task status changes ─────────
     if (taskId === 'in_service') {
       if (status === 'Complete') {
-        await (supabase as any).from('projects').update({ disposition: 'In Service' }).eq('id', pid)
+        const { error: dispErr } = await (supabase as any).from('projects').update({ disposition: 'In Service' }).eq('id', pid)
+        if (dispErr) { console.error('disposition update failed:', dispErr); showToast('Update failed'); return }
         setProject(p => ({ ...p, disposition: 'In Service' }))
         onProjectUpdated()
         showToast('Project marked In Service ✓')
         return // skip auto-advance toast below
       } else if (project.disposition === 'In Service') {
-        await (supabase as any).from('projects').update({ disposition: 'Sale' }).eq('id', pid)
+        const { error: dispErr2 } = await (supabase as any).from('projects').update({ disposition: 'Sale' }).eq('id', pid)
+        if (dispErr2) { console.error('disposition revert failed:', dispErr2); showToast('Update failed'); return }
         setProject(p => ({ ...p, disposition: 'Sale' }))
         onProjectUpdated()
         showToast('Disposition reverted to Sale')
@@ -891,7 +893,8 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       setAdvancing(false)
       return
     }
-    await (supabase as any).from('stage_history').insert({ project_id: pid, stage: nextStage, entered: today })
+    const { error: histErr } = await (supabase as any).from('stage_history').insert({ project_id: pid, stage: nextStage, entered: today })
+    if (histErr) console.error('stage_history insert failed:', histErr)
     const { error: auditErr3 } = await (supabase as any).from('audit_log').insert({
       project_id: pid, field: 'stage',
       old_value: project.stage, new_value: nextStage,
@@ -1005,7 +1008,8 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                 <button
                   onClick={async () => {
                     if (!confirm('Reactivate this project? It will return to the active pipeline.')) return
-                    await (supabase as any).from('projects').update({ disposition: 'Sale' }).eq('id', project.id)
+                    const { error: reactErr } = await (supabase as any).from('projects').update({ disposition: 'Sale' }).eq('id', project.id)
+                    if (reactErr) { console.error('reactivate failed:', reactErr); showToast('Reactivate failed'); return }
                     setProject(p => ({ ...p, disposition: 'Sale' }))
                     if (onProjectUpdated) onProjectUpdated()
                   }}
@@ -1017,7 +1021,8 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                 <button
                   onClick={async () => {
                     if (!confirm(`Cancel ${project.name}? It will be removed from the active pipeline.`)) return
-                    await (supabase as any).from('projects').update({ disposition: 'Cancelled' }).eq('id', project.id)
+                    const { error: cancelErr } = await (supabase as any).from('projects').update({ disposition: 'Cancelled' }).eq('id', project.id)
+                    if (cancelErr) { console.error('cancel failed:', cancelErr); showToast('Cancel failed'); return }
                     setProject(p => ({ ...p, disposition: 'Cancelled' }))
                     if (onProjectUpdated) onProjectUpdated()
                   }}

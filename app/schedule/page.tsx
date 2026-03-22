@@ -228,7 +228,8 @@ export default function SchedulePage() {
 
     for (const job of dayJobs) {
       // Update schedule status
-      await (supabase as any).from('schedule').update({ status: 'complete' }).eq('id', job.id)
+      const { error: schedErr } = await (supabase as any).from('schedule').update({ status: 'complete' }).eq('id', job.id)
+      if (schedErr) { console.error('batch schedule update failed:', schedErr); continue }
 
       // Task sync
       const taskId = JOB_TO_TASK[job.job_type]
