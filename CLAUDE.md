@@ -45,7 +45,7 @@ The Supabase client is globally mocked in `vitest.setup.ts`. Tests focus on busi
 
 All pages are in `app/*/page.tsx` as client components (`"use client"`). Each page fetches its own data via the Supabase browser client on mount and subscribes to realtime changes. Root `/` redirects to `/command`.
 
-Key pages: `/command` (SLA dashboard), `/queue` (PM-filtered list), `/pipeline` (visual stage grid), `/analytics`, `/audit` (task compliance), `/schedule` (crew calendar), `/service`, `/funding` (M1/M2/M3 milestones), `/change-orders` (HCO/change order queue with 6-step workflow), `/admin`, `/help`.
+Key pages: `/command` (SLA dashboard), `/queue` (PM-filtered task-based worklist with collapsible sections), `/pipeline` (visual stage grid), `/analytics`, `/audit` (task compliance), `/schedule` (crew calendar), `/service`, `/funding` (M1/M2/M3 milestones with sortable columns), `/change-orders` (HCO/change order queue with 6-step workflow), `/admin`, `/help`.
 
 ### Data Layer
 
@@ -57,7 +57,7 @@ Key pages: `/command` (SLA dashboard), `/queue` (PM-filtered list), `/pipeline` 
 ### Shared Code
 
 - `lib/utils.ts` — `cn()` (clsx+twMerge), `fmt$()`, `fmtDate()`, `daysAgo()`, `escapeIlike()` (sanitizes user input for Supabase `.ilike()` queries), `STAGE_LABELS`, `STAGE_ORDER`, `SLA_THRESHOLDS`, `STAGE_TASKS` (task definitions per stage)
-- `lib/tasks.ts` — single source of truth for task definitions, statuses, reasons, and cascade helper. Exports: `TASKS`, `TASK_STATUSES`, `STATUS_STYLE`, `PENDING_REASONS`, `REVISION_REASONS`, `ALL_TASKS_MAP`, `ALL_TASKS_FLAT`, `TASK_TO_STAGE`, `TASK_DATE_FIELDS` (11 task→project date mappings), `getSameStageDownstream()` (BFS for revision cascade). Includes cycle detection at module load.
+- `lib/tasks.ts` — single source of truth for task definitions, statuses, reasons, and cascade helper. Exports: `TASKS`, `TASK_STATUSES`, `STATUS_STYLE`, `PENDING_REASONS`, `REVISION_REASONS`, `ALL_TASKS_MAP`, `ALL_TASKS_FLAT`, `TASK_TO_STAGE`, `TASK_DATE_FIELDS` (11 task→project date mappings), `getSameStageDownstream()` (BFS for revision cascade), `AHJ_REQUIRED_TASKS` (AHJ-conditional task requirements), `isTaskRequired()` (checks if a task is required given an AHJ). Includes cycle detection at module load.
 - `lib/export-utils.ts` — CSV export with field picker (50+ fields, grouped)
 - `types/database.ts` — full TypeScript types for all Supabase tables
 - `components/Nav.tsx` — shared navigation bar with right-side slot for page controls
@@ -68,8 +68,8 @@ Key pages: `/command` (SLA dashboard), `/queue` (PM-filtered list), `/pipeline` 
 ### Key Database Tables
 
 - **projects** — PK is `id` TEXT (format `PROJ-XXXXX`). `stage` field is the pipeline position. `blocker` non-null = blocked.
-- **task_state** — composite key `(project_id, task_id)`. Statuses: Complete, Pending Resolution, Revision Required, In Progress, Scheduled, Ready To Start, Not Ready. Includes `reason` field.
-- **notes** — per-project timestamped notes
+- **task_state** — composite key `(project_id, task_id)`. Statuses: Complete, Pending Resolution, Revision Required, In Progress, Scheduled, Ready To Start, Not Ready. Includes `reason` field, `notes` (per-task notes text), and `follow_up_date`. RLS is open to all authenticated users (`USING true`, `WITH CHECK true`).
+- **notes** — per-project timestamped notes. Can optionally include `task_id` to associate a note with a specific task (per-task notes).
 - **schedule** — crew assignments with `job_type` (survey/install/inspection/service)
 - **project_funding** — M1/M2/M3 milestone amounts, dates, CB credits
 - **stage_history** — audit trail of stage transitions
@@ -87,6 +87,10 @@ SLA thresholds are centralized in `lib/utils.ts` (`SLA_THRESHOLDS`). Command Cen
 
 Each pipeline stage has defined tasks in `STAGE_TASKS` (lib/utils.ts). Tasks have prerequisite chains and are tracked in the `task_state` table. "Stuck" tasks (Pending Resolution or Revision Required) surface as badges throughout the UI with their `reason` field.
 
+Tasks support **per-task notes** (stored in the `notes` table with a `task_id` foreign key, timestamped with author) and **per-task follow-up dates** (stored on `task_state.follow_up_date`). Follow-up dates surface in the Queue page's "Follow-ups Today" section.
+
+**AHJ-conditional requirements**: WP1 and WPI 2&8 are normally optional but become required for projects in Corpus Christi and Texas City. This is controlled by `AHJ_REQUIRED_TASKS` in `lib/tasks.ts` and checked via the `isTaskRequired()` helper.
+
 ### Automation Engine
 
 When task statuses change in ProjectPanel, a chain of automations fires:
@@ -98,10 +102,74 @@ When task statuses change in ProjectPanel, a chain of automations fires:
 5. **Task duration tracking** — `started_date` auto-set when a task moves to In Progress; duration calculated on completion.
 6. **Revision cascade** — setting a task to Revision Required resets all downstream tasks (within the same stage) to Not Ready, with confirmation dialog. Also clears corresponding auto-populated dates.
 7. **Auto-set In Service disposition** — completing the In Service task sets `disposition = 'In Service'`.
+8. **Auto-set dependent tasks to Ready To Start** — when a task is marked Complete, all tasks whose prerequisites are now fully met are automatically set to "Ready To Start". This works across stage boundaries.
 
 ### Google Drive Integration
 
 New projects auto-create a folder structure in the MicroGRID Projects shared Google Drive via a Google Apps Script webhook. The script creates 16 subfolders (01 Proposal through 20 Cases). The Drive folder URL is saved to the `project_folders` table and accessible from the Files tab in ProjectPanel.
+
+### Queue Page (Task-Based Sections)
+
+The Queue page (`/queue`) was redesigned with task-based sections instead of a flat priority-sorted list. Sections are collapsible (all start collapsed except Follow-ups Today):
+
+1. **Follow-ups Today** — projects with task-level or project-level `follow_up_date` that is today or overdue
+2. **City Permit Ready** — projects where `city_permit` task status is "Ready To Start"
+3. **City Permit Submitted** — projects where `city_permit` task is In Progress, Scheduled, Pending Resolution, or Revision Required
+4. **Utility Permit Submitted** — same as above for `util_permit` task
+5. **Utility Inspection Ready** — projects where `util_insp` task is "Ready To Start"
+6. **Utility Inspection Submitted** — same active statuses for `util_insp`
+7. **Blocked** — projects with a non-null `blocker`
+8. **Active** — everything not in a special section and not complete
+9. **Complete** — projects in the `complete` stage
+
+PM filter uses `pm_id` (user UUID) stored in localStorage as `mg_pm`. PM dropdown is populated from distinct PMs on loaded projects.
+
+### Disposition Workflow
+
+Disposition transitions are constrained: Sale -> Loyalty -> Cancelled. You cannot skip from Sale directly to Cancelled. The allowed transitions per current state are defined in `InfoTab.tsx`:
+
+- **Sale** (or null): can move to Sale or Loyalty
+- **Loyalty**: can move to Sale, Loyalty, or Cancelled
+- **In Service**: can move to Sale or In Service
+- **Cancelled**: can move to Loyalty or Cancelled
+
+### PM Dropdown
+
+The PM field in the project Info tab is a dropdown populated from the `users` table (queried with `.eq('active', true).order('name')`). Selecting a PM sets both `pm` (display name) and `pm_id` (user UUID) on the project.
+
+### Predecessor Chain (Updated)
+
+Key predecessor changes from session 13:
+- **Stamps Required** — has no prerequisites (was previously dependent on `eng_approval`), remains optional
+- **Check Point 1** — requires `eng_approval`, `city_permit`, `util_permit`, AND `ntp`. Now **required** (was optional).
+- **Schedule Installation** — requires `checkpoint1` (was previously `om_review`)
+
+### Supabase Configuration
+
+- `pgrst.db_max_rows` = 50000 (increased to support task_state queries)
+- All project queries use `.limit(2000)`
+- All task_state queries use `.limit(50000)`
+- `task_state` RLS is open to all authenticated users (`USING true`, `WITH CHECK true`)
+
+### New Database Fields (Migration 012)
+
+Added in `supabase/012-new-fields.sql`:
+- `projects.follow_up_date` — DATE, PM follow-up queue date
+- `projects.reinspection_fee` — NUMERIC, re-inspection fee amount
+- `task_state.notes` — TEXT, per-task notes
+- `task_state.follow_up_date` — DATE (added via Supabase dashboard, not in migration file)
+- `notes.task_id` — associates a note with a specific task for per-task notes
+- Dropped `not_eligible` defaults from `project_funding.m1_status`, `m2_status`, `m3_status`
+
+### Funding Page Updates
+
+- Funding statuses simplified to three values: Submitted (`Sub`), Funded (`Fun`), Rejected (`Rej`)
+- Column headers are sortable (click to sort by any column)
+- Text visibility improved for dark theme
+
+### Permit Fee Fields
+
+The Info tab now includes `permit_fee` and `reinspection_fee` fields in the Permitting section, both displayed as currency.
 
 ## Style Conventions
 
