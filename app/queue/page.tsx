@@ -139,13 +139,14 @@ export default function QueuePage() {
 
   const sorted = useMemo(() => [...searched].sort((a, b) => priority(a) - priority(b)), [searched])
   const blocked = useMemo(() => sorted.filter(p => p.blocker), [sorted])
-  const active = useMemo(() => sorted.filter(p => !p.blocker && p.stage !== 'complete'), [sorted])
   const complete = useMemo(() => sorted.filter(p => p.stage === 'complete'), [sorted])
+
+  // Project IDs in special buckets (to exclude from Active)
+  const specialIds = useMemo(() => new Set<string>(), [])
 
   // Follow-ups: projects with task-level or project-level follow_up_date today or overdue
   const followUps = useMemo(() => {
     const today = new Date().toISOString().split('T')[0]
-    // Build map of project_id → earliest task follow-up date + task name
     const taskFollowUpMap: Record<string, { date: string; taskName: string }> = {}
     for (const t of taskStates) {
       if (t.follow_up_date && t.follow_up_date <= today) {
@@ -161,6 +162,41 @@ export default function QueuePage() {
       .map(p => ({ ...p, _taskFollowUp: taskFollowUpMap[p.id] ?? null, _followUpDate: taskFollowUpMap[p.id]?.date ?? p.follow_up_date }))
       .sort((a, b) => (a._followUpDate ?? '').localeCompare(b._followUpDate ?? ''))
   }, [sorted, taskStates])
+
+  // Task-based queue sections
+  const cityPermitReady = useMemo(() => sorted.filter(p => {
+    const s = taskMap[p.id]?.city_permit?.status
+    return s === 'Ready To Start'
+  }), [sorted, taskMap])
+
+  const permitsSubmitted = useMemo(() => sorted.filter(p => {
+    const city = taskMap[p.id]?.city_permit?.status
+    const util = taskMap[p.id]?.util_permit?.status
+    return (city && city !== 'Complete' && city !== 'Not Ready' && city !== 'Ready To Start') ||
+           (util && util !== 'Complete' && util !== 'Not Ready' && util !== 'Ready To Start')
+  }), [sorted, taskMap])
+
+  const utilPermitSubmitted = useMemo(() => sorted.filter(p => {
+    const s = taskMap[p.id]?.util_permit?.status
+    return s && s !== 'Complete' && s !== 'Not Ready' && s !== 'Ready To Start'
+  }), [sorted, taskMap])
+
+  const utilInspReady = useMemo(() => sorted.filter(p => {
+    const s = taskMap[p.id]?.util_insp?.status
+    return s === 'Ready To Start'
+  }), [sorted, taskMap])
+
+  // Active = everything not blocked, not complete, not in a special section
+  const active = useMemo(() => {
+    const specialPids = new Set([
+      ...cityPermitReady.map(p => p.id),
+      ...permitsSubmitted.map(p => p.id),
+      ...utilInspReady.map(p => p.id),
+      ...blocked.map(p => p.id),
+      ...complete.map(p => p.id),
+    ])
+    return sorted.filter(p => !specialPids.has(p.id) && p.stage !== 'complete')
+  }, [sorted, cityPermitReady, permitsSubmitted, utilInspReady, blocked, complete])
 
   if (loading) {
     return (
@@ -257,6 +293,36 @@ export default function QueuePage() {
               </div>
             ))}
           </div>
+
+        {cityPermitReady.length > 0 && (
+          <div className="mb-6">
+            <button onClick={() => toggleBucket('cityPermit')} className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-2 flex items-center gap-2 w-full text-left hover:text-blue-300 transition-colors">
+              <span className="text-[10px]">{collapsed.cityPermit ? '▸' : '▾'}</span>
+              📋 City Permit Approval — Ready to Start ({cityPermitReady.length})
+            </button>
+            {!collapsed.cityPermit && cityPermitReady.map(p => <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} />)}
+          </div>
+        )}
+
+        {permitsSubmitted.length > 0 && (
+          <div className="mb-6">
+            <button onClick={() => toggleBucket('permitsSubmitted')} className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2 flex items-center gap-2 w-full text-left hover:text-indigo-300 transition-colors">
+              <span className="text-[10px]">{collapsed.permitsSubmitted ? '▸' : '▾'}</span>
+              📄 Permits Submitted — Pending Approval ({permitsSubmitted.length})
+            </button>
+            {!collapsed.permitsSubmitted && permitsSubmitted.map(p => <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} />)}
+          </div>
+        )}
+
+        {utilInspReady.length > 0 && (
+          <div className="mb-6">
+            <button onClick={() => toggleBucket('utilInsp')} className="text-xs font-bold text-teal-400 uppercase tracking-wider mb-2 flex items-center gap-2 w-full text-left hover:text-teal-300 transition-colors">
+              <span className="text-[10px]">{collapsed.utilInsp ? '▸' : '▾'}</span>
+              ⚡ Utility Inspection — Ready to Start ({utilInspReady.length})
+            </button>
+            {!collapsed.utilInsp && utilInspReady.map(p => <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} />)}
+          </div>
+        )}
 
         {blocked.length > 0 && (
           <div className="mb-6">
