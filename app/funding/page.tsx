@@ -435,46 +435,46 @@ export default function FundingPage() {
       <Nav active="Funding" />
 
       {/* Stats bar */}
-      <div className="bg-gray-900 border-b border-gray-800 flex items-center gap-5 px-6 py-3 flex-shrink-0 flex-wrap">
+      <div className="bg-gray-900 border-b border-gray-800 flex items-center justify-between px-6 py-4 flex-shrink-0 flex-wrap gap-y-3">
         <div>
           <div className="text-xs text-gray-500">Projects</div>
-          <div className="text-xl font-bold text-white font-mono">{stats.totalProjects}</div>
-          <div className="text-[10px] text-gray-600 font-mono">{fmt$(stats.totalContract)}</div>
+          <div className="text-2xl font-bold text-white font-mono">{stats.totalProjects}</div>
+          <div className="text-xs text-gray-500 font-mono">{fmt$(stats.totalContract)}</div>
         </div>
-        <div className="border-l border-gray-700 pl-5">
+        <div className="border-l border-gray-700 pl-6">
           <div className="text-xs text-gray-500">M2 Eligible</div>
-          <div className="text-xl font-bold text-amber-400 font-mono">{stats.m2Eligible}</div>
+          <div className="text-2xl font-bold text-amber-400 font-mono">{stats.m2Eligible}</div>
         </div>
         <div>
           <div className="text-xs text-gray-500">M3 Eligible</div>
-          <div className="text-xl font-bold text-amber-400 font-mono">{stats.m3Eligible}</div>
+          <div className="text-2xl font-bold text-amber-400 font-mono">{stats.m3Eligible}</div>
         </div>
-        <div className="border-l border-gray-700 pl-5">
+        <div className="border-l border-gray-700 pl-6">
           <div className="text-xs text-gray-500">Ready to Submit</div>
-          <div className="text-xl font-bold text-amber-400 font-mono">{stats.readyToStart}</div>
-          {stats.readyAmount > 0 && <div className="text-[10px] text-gray-500 font-mono">{fmt$(stats.readyAmount)}</div>}
+          <div className="text-2xl font-bold text-amber-400 font-mono">{stats.readyToStart}</div>
+          {stats.readyAmount > 0 && <div className="text-xs text-gray-500 font-mono">{fmt$(stats.readyAmount)}</div>}
         </div>
         <div>
           <div className="text-xs text-gray-500">Submitted</div>
-          <div className="text-xl font-bold text-blue-400 font-mono">{stats.submitted}</div>
-          {stats.submittedAmount > 0 && <div className="text-[10px] text-gray-500 font-mono">{fmt$(stats.submittedAmount)}</div>}
+          <div className="text-2xl font-bold text-blue-400 font-mono">{stats.submitted}</div>
+          {stats.submittedAmount > 0 && <div className="text-xs text-gray-500 font-mono">{fmt$(stats.submittedAmount)}</div>}
         </div>
         {stats.needsAttention > 0 && <div>
           <div className="text-xs text-gray-500">Needs Attention</div>
-          <div className="text-xl font-bold text-red-400 font-mono">{stats.needsAttention}</div>
+          <div className="text-2xl font-bold text-red-400 font-mono">{stats.needsAttention}</div>
         </div>}
-        <div className="border-l border-gray-700 pl-5">
+        <div className="border-l border-gray-700 pl-6">
           <div className="text-xs text-gray-500">Funded</div>
-          <div className="text-xl font-bold text-green-400 font-mono">{stats.funded}</div>
-          <div className="text-[10px] text-gray-500 font-mono">{fmt$(stats.fundedAmount)}</div>
+          <div className="text-2xl font-bold text-green-400 font-mono">{stats.funded}</div>
+          <div className="text-xs text-gray-500 font-mono">{fmt$(stats.fundedAmount)}</div>
         </div>
         {stats.outstanding > 0 && <div>
           <div className="text-xs text-gray-500">Outstanding</div>
-          <div className="text-xl font-bold text-white font-mono">{fmt$(stats.outstanding)}</div>
+          <div className="text-2xl font-bold text-white font-mono">{fmt$(stats.outstanding)}</div>
         </div>}
         {stats.withNf > 0 && <div>
           <div className="text-xs text-gray-500">NF Codes</div>
-          <div className="text-xl font-bold text-red-400 font-mono">{stats.withNf}</div>
+          <div className="text-2xl font-bold text-red-400 font-mono">{stats.withNf}</div>
         </div>}
       </div>
 
