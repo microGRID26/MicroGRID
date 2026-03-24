@@ -23,8 +23,25 @@ Complete documentation of the NOVA CRM pipeline, task system, automation engine,
 
 Projects move through 7 stages in order. Each stage has required and optional tasks. A stage auto-advances when all required tasks are marked Complete.
 
-```
-Evaluation ──▶ Survey ──▶ Design ──▶ Permit ──▶ Install ──▶ Inspection ──▶ Complete
+```mermaid
+flowchart LR
+    eval["Evaluation"]
+    survey["Site Survey"]
+    design["Design"]
+    permit["Permitting"]
+    install["Installation"]
+    inspection["Inspection"]
+    complete["Complete"]
+
+    eval --> survey --> design --> permit --> install --> inspection --> complete
+
+    style eval fill:#1a365d,stroke:#3182ce,color:#fff
+    style survey fill:#1a365d,stroke:#3182ce,color:#fff
+    style design fill:#1a365d,stroke:#3182ce,color:#fff
+    style permit fill:#1a365d,stroke:#3182ce,color:#fff
+    style install fill:#1a365d,stroke:#3182ce,color:#fff
+    style inspection fill:#1a365d,stroke:#3182ce,color:#fff
+    style complete fill:#065f46,stroke:#10b981,color:#fff
 ```
 
 ### Stage Summary
@@ -49,194 +66,211 @@ Evaluation ──▶ Survey ──▶ Design ──▶ Permit ──▶ Install 
 
 All 5 tasks are independent (no prerequisites). They can be worked in any order.
 
-```
-┌─────────────────────────┐
-│    EVALUATION STAGE     │
-│     (all parallel)      │
-├─────────────────────────┤
-│                         │
-│  Welcome Call ········· │  REQ
-│  IA Confirmation ······ │  REQ
-│  UB Confirmation ······ │  REQ
-│  Schedule Site Survey · │  REQ  ──▶ (unlocks Site Survey in next stage)
-│  NTP Procedure ········ │  REQ  ──▶ (unlocks Check Point 1 in permit stage)
-│                         │
-└─────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph EVALUATION["EVALUATION STAGE (all parallel)"]
+        welcome["Welcome Call<br/><i>REQ</i>"]
+        ia["IA Confirmation<br/><i>REQ</i>"]
+        ub["UB Confirmation<br/><i>REQ</i>"]
+        sched_survey["Schedule Site Survey<br/><i>REQ</i>"]
+        ntp["NTP Procedure<br/><i>REQ</i>"]
+    end
+
+    sched_survey -. "unlocks" .-> next1(("Site Survey<br/>(survey stage)"))
+    ntp -. "unlocks" .-> next2(("Check Point 1<br/>(permit stage)"))
+
+    style welcome fill:#1e40af,stroke:#3b82f6,color:#fff
+    style ia fill:#1e40af,stroke:#3b82f6,color:#fff
+    style ub fill:#1e40af,stroke:#3b82f6,color:#fff
+    style sched_survey fill:#1e40af,stroke:#3b82f6,color:#fff
+    style ntp fill:#1e40af,stroke:#3b82f6,color:#fff
+    style next1 fill:#374151,stroke:#6b7280,color:#9ca3af
+    style next2 fill:#374151,stroke:#6b7280,color:#9ca3af
 ```
 
 ### Survey Stage
 
 Linear chain. Site Survey requires Schedule Site Survey (from evaluation).
 
-```
-┌─────────────────────────┐
-│      SURVEY STAGE       │
-├─────────────────────────┤
-│                         │
-│  Schedule Site Survey   │  (evaluation stage, already complete)
-│          │              │
-│          ▼              │
-│  Site Survey ·········· │  REQ
-│          │              │
-│          ▼              │
-│  Survey Review ········ │  REQ  ──▶ (unlocks Build Design in design stage)
-│                         │
-└─────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph SURVEY["SURVEY STAGE"]
+        prev(("Schedule Site Survey<br/>(eval, complete)")) --> site_survey["Site Survey<br/><i>REQ</i>"]
+        site_survey --> survey_review["Survey Review<br/><i>REQ</i>"]
+    end
+
+    survey_review -. "unlocks" .-> next(("Build Design<br/>(design stage)"))
+
+    style prev fill:#374151,stroke:#6b7280,color:#9ca3af
+    style site_survey fill:#1e40af,stroke:#3b82f6,color:#fff
+    style survey_review fill:#1e40af,stroke:#3b82f6,color:#fff
+    style next fill:#374151,stroke:#6b7280,color:#9ca3af
 ```
 
 ### Design Stage
 
 The most complex stage. Scope of Work is the main branching point.
 
+```mermaid
+flowchart TB
+    subgraph DESIGN["DESIGN STAGE"]
+        prev(("Survey Review<br/>(survey, complete)")) --> build_design["Build Design<br/><i>REQ</i>"]
+        build_design --> scope["Scope of Work<br/><i>REQ</i>"]
+
+        scope --> monitoring["Monitoring<br/><i>REQ</i>"]
+        scope --> build_eng["Build Engineering<br/><i>REQ</i>"]
+        build_eng --> eng_approval["Engineering Approval<br/><i>REQ</i>"]
+
+        scope --> wp1["WP1<br/><i>OPT*</i>"]
+        scope --> prod_add["Production Addendum<br/><i>OPT</i>"]
+        scope --> new_ia["Create New IA<br/><i>OPT</i>"]
+        scope --> reroof["Reroof Procedure<br/><i>OPT</i>"]
+        scope --> onsite_redesign["OnSite Redesign<br/><i>OPT</i>"]
+        scope --> quote_ext["Quote — Ext. Scope<br/><i>OPT</i>"]
+
+        stamps["Stamps Required<br/><i>OPT (standalone)</i>"]
+    end
+
+    eng_approval -. "unlocks 4 permit tasks" .-> next(("Permit Stage"))
+
+    style prev fill:#374151,stroke:#6b7280,color:#9ca3af
+    style build_design fill:#1e40af,stroke:#3b82f6,color:#fff
+    style scope fill:#1e40af,stroke:#3b82f6,color:#fff
+    style monitoring fill:#1e40af,stroke:#3b82f6,color:#fff
+    style build_eng fill:#1e40af,stroke:#3b82f6,color:#fff
+    style eng_approval fill:#1e40af,stroke:#3b82f6,color:#fff
+    style stamps fill:#4b5563,stroke:#9ca3af,color:#d1d5db
+    style wp1 fill:#4b5563,stroke:#9ca3af,color:#d1d5db
+    style prod_add fill:#4b5563,stroke:#9ca3af,color:#d1d5db
+    style new_ia fill:#4b5563,stroke:#9ca3af,color:#d1d5db
+    style reroof fill:#4b5563,stroke:#9ca3af,color:#d1d5db
+    style onsite_redesign fill:#4b5563,stroke:#9ca3af,color:#d1d5db
+    style quote_ext fill:#4b5563,stroke:#9ca3af,color:#d1d5db
+    style next fill:#374151,stroke:#6b7280,color:#9ca3af
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│                          DESIGN STAGE                                │
-├──────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  Survey Review (survey stage, already complete)                      │
-│       │                                                              │
-│       ▼                                                              │
-│  Build Design ·················· REQ                                 │
-│       │                                                              │
-│       ▼                                                              │
-│  Scope of Work ················· REQ                                 │
-│       │                                                              │
-│       ├──▶ Monitoring ·········· REQ                                 │
-│       │                                                              │
-│       ├──▶ Build Engineering ··· REQ                                 │
-│       │         │                                                    │
-│       │         ▼                                                    │
-│       │    Engineering Approval · REQ  ──▶ (unlocks 4 permit tasks)  │
-│       │                                                              │
-│       ├──▶ WP1 ················· OPT  (REQ for Corpus Christi,       │
-│       │                                     Texas City)              │
-│       ├──▶ Production Addendum · OPT                                 │
-│       ├──▶ Create New IA ······· OPT                                 │
-│       ├──▶ Reroof Procedure ···· OPT                                 │
-│       ├──▶ OnSite Redesign ····· OPT                                 │
-│       └──▶ Quote — Ext. Scope ·· OPT                                │
-│                                                                      │
-│  Stamps Required ··············· OPT  (no prerequisites, standalone) │
-│                                                                      │
-└──────────────────────────────────────────────────────────────────────┘
-```
+
+\* WP1 is required for Corpus Christi and Texas City AHJs.
 
 ### Permit Stage
 
 Four tasks branch from Engineering Approval. Check Point 1 is a convergence gate.
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                          PERMIT STAGE                                │
-├──────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  Engineering Approval (design stage, already complete)               │
-│       │                                                              │
-│       ├──▶ HOA Approval ············ REQ                             │
-│       │                                                              │
-│       ├──▶ OM Project Review ······· REQ                             │
-│       │                                                              │
-│       ├──▶ City Permit Approval ···· REQ ──┐                        │
-│       │                                     │                        │
-│       ├──▶ Utility Permit Approval · REQ ──┤                        │
-│       │                                     │                        │
-│       └──────────────────────────────────┐ │                        │
-│                                           │ │                        │
-│  NTP Procedure (evaluation, complete) ───┤ │                        │
-│                                           ▼ ▼                        │
-│                              Check Point 1 ······ REQ               │
-│                   (requires: eng_approval + city_permit              │
-│                    + util_permit + ntp — convergence gate)           │
-│                                                                      │
-│  Revise IA ······················ OPT  (no prerequisites)            │
-│                                                                      │
-└──────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph PERMIT["PERMIT STAGE"]
+        eng(("Engineering Approval<br/>(design, complete)")) --> hoa["HOA Approval<br/><i>REQ</i>"]
+        eng --> om["OM Project Review<br/><i>REQ</i>"]
+        eng --> city_permit["City Permit Approval<br/><i>REQ</i>"]
+        eng --> util_permit["Utility Permit Approval<br/><i>REQ</i>"]
 
-  Check Point 1 prerequisites (all 4 must be Complete):
-  ├── Engineering Approval (from design stage)
-  ├── City Permit Approval
-  ├── Utility Permit Approval
-  └── NTP Procedure (from evaluation stage)
+        ntp_done(("NTP Procedure<br/>(eval, complete)")) --> checkpoint1
+
+        eng --> checkpoint1["Check Point 1<br/><i>REQ (convergence gate)</i>"]
+        city_permit --> checkpoint1
+        util_permit --> checkpoint1
+
+        revise_ia["Revise IA<br/><i>OPT (standalone)</i>"]
+    end
+
+    checkpoint1 -. "unlocks" .-> next(("Schedule Install<br/>(install stage)"))
+
+    style eng fill:#374151,stroke:#6b7280,color:#9ca3af
+    style ntp_done fill:#374151,stroke:#6b7280,color:#9ca3af
+    style hoa fill:#1e40af,stroke:#3b82f6,color:#fff
+    style om fill:#1e40af,stroke:#3b82f6,color:#fff
+    style city_permit fill:#1e40af,stroke:#3b82f6,color:#fff
+    style util_permit fill:#1e40af,stroke:#3b82f6,color:#fff
+    style checkpoint1 fill:#7c2d12,stroke:#ea580c,color:#fff
+    style revise_ia fill:#4b5563,stroke:#9ca3af,color:#d1d5db
+    style next fill:#374151,stroke:#6b7280,color:#9ca3af
 ```
+
+Check Point 1 prerequisites (all 4 must be Complete):
+- Engineering Approval (from design stage)
+- City Permit Approval
+- Utility Permit Approval
+- NTP Procedure (from evaluation stage)
 
 ### Install Stage
 
 Linear after Check Point 1, with one optional standalone task.
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                         INSTALL STAGE                                │
-├──────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  Check Point 1 (permit stage, already complete)                      │
-│       │                                                              │
-│       ▼                                                              │
-│  Schedule Installation ······ REQ                                    │
-│       │                                                              │
-│       ├──▶ Inventory Allocation · REQ                                │
-│       │                                                              │
-│       └──▶ Installation Complete · REQ ──▶ (triggers M2 funding,    │
-│                                              unlocks inspection)     │
-│                                                                      │
-│  Electrical Onsite Redesign · OPT  (no prerequisites)               │
-│                                                                      │
-└──────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph INSTALL["INSTALL STAGE"]
+        cp1(("Check Point 1<br/>(permit, complete)")) --> sched_install["Schedule Installation<br/><i>REQ</i>"]
+        sched_install --> inventory["Inventory Allocation<br/><i>REQ</i>"]
+        sched_install --> install_done["Installation Complete<br/><i>REQ</i>"]
+
+        elec_redesign["Electrical Onsite Redesign<br/><i>OPT (standalone)</i>"]
+    end
+
+    install_done -. "triggers M2 funding +<br/>unlocks inspection" .-> next(("Inspection Stage"))
+
+    style cp1 fill:#374151,stroke:#6b7280,color:#9ca3af
+    style sched_install fill:#1e40af,stroke:#3b82f6,color:#fff
+    style inventory fill:#1e40af,stroke:#3b82f6,color:#fff
+    style install_done fill:#1e40af,stroke:#3b82f6,color:#fff
+    style elec_redesign fill:#4b5563,stroke:#9ca3af,color:#d1d5db
+    style next fill:#374151,stroke:#6b7280,color:#9ca3af
 ```
 
 ### Inspection Stage
 
 Two parallel tracks (city and utility) converge from Inspection Review.
 
+```mermaid
+flowchart TB
+    subgraph INSPECTION["INSPECTION STAGE"]
+        install(("Install Complete<br/>(install, complete)")) --> insp_review["Inspection Review<br/><i>REQ</i>"]
+
+        insp_review --> sched_city["Schedule City Inspection<br/><i>REQ</i>"]
+        sched_city --> city_insp["City Inspection<br/><i>REQ</i>"]
+
+        insp_review --> sched_util["Schedule Utility Inspection<br/><i>REQ</i>"]
+        sched_util --> util_insp["Utility Inspection<br/><i>REQ</i>"]
+
+        insp_review --> city_upd["City Permit Update<br/><i>OPT</i>"]
+        insp_review --> util_upd["Utility Permit Update<br/><i>OPT</i>"]
+
+        install --> wpi28["WPI 2 & 8<br/><i>OPT*</i>"]
+    end
+
+    util_insp -. "unlocks" .-> next(("PTO<br/>(complete stage)"))
+
+    style install fill:#374151,stroke:#6b7280,color:#9ca3af
+    style insp_review fill:#1e40af,stroke:#3b82f6,color:#fff
+    style sched_city fill:#1e40af,stroke:#3b82f6,color:#fff
+    style city_insp fill:#1e40af,stroke:#3b82f6,color:#fff
+    style sched_util fill:#1e40af,stroke:#3b82f6,color:#fff
+    style util_insp fill:#1e40af,stroke:#3b82f6,color:#fff
+    style city_upd fill:#4b5563,stroke:#9ca3af,color:#d1d5db
+    style util_upd fill:#4b5563,stroke:#9ca3af,color:#d1d5db
+    style wpi28 fill:#4b5563,stroke:#9ca3af,color:#d1d5db
+    style next fill:#374151,stroke:#6b7280,color:#9ca3af
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│                        INSPECTION STAGE                              │
-├──────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  Installation Complete (install stage, already complete)              │
-│       │                                                              │
-│       ▼                                                              │
-│  Inspection Review ············ REQ                                  │
-│       │                                                              │
-│       ├──▶ Schedule City Inspection ···· REQ                         │
-│       │         │                                                    │
-│       │         ▼                                                    │
-│       │    City Inspection ············· REQ                         │
-│       │                                                              │
-│       ├──▶ Schedule Utility Inspection · REQ                         │
-│       │         │                                                    │
-│       │         ▼                                                    │
-│       │    Utility Inspection ·········· REQ ──▶ (unlocks PTO)      │
-│       │                                                              │
-│       ├──▶ City Permit Update ·········· OPT                         │
-│       │                                                              │
-│       └──▶ Utility Permit Update ······· OPT                         │
-│                                                                      │
-│  WPI 2 & 8 ···················· OPT  (prereq: install_done)         │
-│                        (REQ for Corpus Christi, Texas City)           │
-│                                                                      │
-└──────────────────────────────────────────────────────────────────────┘
-```
+
+\* WPI 2 & 8 is required for Corpus Christi and Texas City AHJs.
 
 ### Complete Stage
 
 Linear chain. Final two tasks close out the project.
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                         COMPLETE STAGE                               │
-├──────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  Utility Inspection (inspection stage, already complete)              │
-│       │                                                              │
-│       ▼                                                              │
-│  Permission to Operate (PTO) · REQ ──▶ (triggers M3 funding,       │
-│       │                                  sets pto_date)              │
-│       ▼                                                              │
-│  In Service ··················· REQ ──▶ (sets disposition to         │
-│                                          "In Service",               │
-│                                          sets in_service_date)       │
-│                                                                      │
-└──────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph COMPLETE["COMPLETE STAGE"]
+        util_insp_done(("Utility Inspection<br/>(inspection, complete)")) --> pto["Permission to Operate<br/><i>REQ</i>"]
+        pto --> in_service["In Service<br/><i>REQ</i>"]
+    end
+
+    pto -. "triggers M3 funding,<br/>sets pto_date" .-> funding(("M3 Eligible"))
+    in_service -. "sets disposition<br/>to In Service" .-> disp(("In Service"))
+
+    style util_insp_done fill:#374151,stroke:#6b7280,color:#9ca3af
+    style pto fill:#1e40af,stroke:#3b82f6,color:#fff
+    style in_service fill:#065f46,stroke:#10b981,color:#fff
+    style funding fill:#374151,stroke:#6b7280,color:#9ca3af
+    style disp fill:#374151,stroke:#6b7280,color:#9ca3af
 ```
 
 ---
@@ -245,63 +279,105 @@ Linear chain. Final two tasks close out the project.
 
 Tasks can depend on tasks from earlier stages. These cross-stage prerequisite links are:
 
-```
-EVALUATION                  SURVEY              DESIGN              PERMIT
-─────────────              ────────            ──────              ──────
+```mermaid
+flowchart LR
+    subgraph EVAL["Evaluation"]
+        sched_survey_e["Schedule Site Survey"]
+        ntp_e["NTP Procedure"]
+    end
 
-Schedule Site Survey ─────▶ Site Survey
-                            Site Survey ──────▶ Survey Review
-                                                Survey Review ────▶ Build Design
-                                                Engineering
-                                                  Approval ──────▶ HOA Approval
-                                                                    OM Project Review
-                                                                    City Permit Approval
-                                                                    Utility Permit Approval
-                                                                    Check Point 1
-NTP Procedure ──────────────────────────────────────────────────▶ Check Point 1
+    subgraph SURV["Survey"]
+        site_survey_s["Site Survey"]
+        survey_review_s["Survey Review"]
+    end
 
+    subgraph DES["Design"]
+        build_design_d["Build Design"]
+        scope_d["Scope of Work"]
+        build_eng_d["Build Engineering"]
+        eng_approval_d["Engineering Approval"]
+    end
 
-PERMIT                      INSTALL             INSPECTION          COMPLETE
-──────                      ───────             ──────────          ────────
+    subgraph PERM["Permit"]
+        hoa_p["HOA Approval"]
+        om_p["OM Project Review"]
+        city_p["City Permit"]
+        util_p["Utility Permit"]
+        cp1_p["Check Point 1"]
+    end
 
-Check Point 1 ────────────▶ Schedule Install
-                            Schedule Install ──▶ Inventory Alloc.
-                            Schedule Install ──▶ Install Complete
-                            Install Complete ──────────────────────▶ Inspection Review
-                            Install Complete ──────────────────────▶ WPI 2 & 8 (opt)
-                                                Inspection Review ──▶ Sched City Insp
-                                                Inspection Review ──▶ Sched Util Insp
-                                                Sched City Insp ───▶ City Inspection
-                                                Sched Util Insp ───▶ Util Inspection
-                                                Utility Inspection ────────────────────▶ PTO
-                                                                                         PTO ──▶ In Service
+    subgraph INST["Install"]
+        sched_inst_i["Schedule Install"]
+        install_done_i["Install Complete"]
+    end
+
+    subgraph INSP["Inspection"]
+        insp_review_n["Inspection Review"]
+        sched_city_n["Sched City Insp"]
+        sched_util_n["Sched Util Insp"]
+        city_insp_n["City Inspection"]
+        util_insp_n["Utility Inspection"]
+        wpi28_n["WPI 2 & 8"]
+    end
+
+    subgraph COMP["Complete"]
+        pto_c["PTO"]
+        in_service_c["In Service"]
+    end
+
+    sched_survey_e --> site_survey_s --> survey_review_s --> build_design_d
+    build_design_d --> scope_d --> build_eng_d --> eng_approval_d
+
+    eng_approval_d --> hoa_p
+    eng_approval_d --> om_p
+    eng_approval_d --> city_p
+    eng_approval_d --> util_p
+    eng_approval_d --> cp1_p
+    city_p --> cp1_p
+    util_p --> cp1_p
+    ntp_e --> cp1_p
+
+    cp1_p --> sched_inst_i
+    sched_inst_i --> install_done_i
+
+    install_done_i --> insp_review_n
+    install_done_i --> wpi28_n
+    insp_review_n --> sched_city_n --> city_insp_n
+    insp_review_n --> sched_util_n --> util_insp_n
+
+    util_insp_n --> pto_c --> in_service_c
 ```
 
 ### Full End-to-End Critical Path
 
 The longest prerequisite chain through the entire pipeline:
 
-```
-Schedule Site Survey (eval)
-  └▶ Site Survey (survey)
-       └▶ Survey Review (survey)
-            └▶ Build Design (design)
-                 └▶ Scope of Work (design)
-                      └▶ Build Engineering (design)
-                           └▶ Engineering Approval (design)
-                                ├▶ City Permit Approval (permit) ──┐
-                                └▶ Utility Permit Approval (permit)┤
-                                                                    ▼
-NTP Procedure (eval) ──────────────────────────────────▶ Check Point 1 (permit)
-                                                              └▶ Schedule Installation (install)
-                                                                   └▶ Installation Complete (install)
-                                                                        └▶ Inspection Review (inspection)
-                                                                             ├▶ Schedule Util Inspection
-                                                                             │    └▶ Utility Inspection
-                                                                             │         └▶ PTO (complete)
-                                                                             │              └▶ In Service
-                                                                             └▶ Schedule City Inspection
-                                                                                  └▶ City Inspection
+```mermaid
+flowchart TB
+    A["Schedule Site Survey<br/>(eval)"] --> B["Site Survey<br/>(survey)"]
+    B --> C["Survey Review<br/>(survey)"]
+    C --> D["Build Design<br/>(design)"]
+    D --> E["Scope of Work<br/>(design)"]
+    E --> F["Build Engineering<br/>(design)"]
+    F --> G["Engineering Approval<br/>(design)"]
+    G --> H["City Permit Approval<br/>(permit)"]
+    G --> I["Utility Permit Approval<br/>(permit)"]
+    H --> J["Check Point 1<br/>(permit)"]
+    I --> J
+    NTP["NTP Procedure<br/>(eval)"] --> J
+    J --> K["Schedule Installation<br/>(install)"]
+    K --> L["Installation Complete<br/>(install)"]
+    L --> M["Inspection Review<br/>(inspection)"]
+    M --> N["Schedule Util Inspection<br/>(inspection)"]
+    N --> O["Utility Inspection<br/>(inspection)"]
+    O --> P["PTO<br/>(complete)"]
+    P --> Q["In Service<br/>(complete)"]
+
+    M --> R["Schedule City Inspection<br/>(inspection)"]
+    R --> S["City Inspection<br/>(inspection)"]
+
+    style J fill:#7c2d12,stroke:#ea580c,color:#fff
+    style Q fill:#065f46,stroke:#10b981,color:#fff
 ```
 
 ---
@@ -309,6 +385,45 @@ NTP Procedure (eval) ───────────────────�
 ## 4. Automation Rules
 
 When a task status changes, the following automations fire in the ProjectPanel component.
+
+### Automation Chain
+
+```mermaid
+flowchart TB
+    trigger["Task Marked Complete"] --> date["Auto-Set Project Date<br/>(TASK_DATE_FIELDS)"]
+    date --> prereq["Check Prerequisites<br/>of Downstream Tasks"]
+    prereq --> ready["Auto-Ready Downstream<br/>(all prereqs met = Ready To Start)"]
+    ready --> check["Check Stage Advance<br/>(all REQ tasks Complete?)"]
+    check -->|Yes| advance["Auto-Advance Stage<br/>+ Log to stage_history"]
+    check -->|No| wait["Wait for remaining tasks"]
+    trigger --> blocker_check{"Was task<br/>Pending Resolution?"}
+    blocker_check -->|"Resolved"| clear["Clear project blocker<br/>(if no other stuck tasks)"]
+    trigger --> funding_check{"Install Complete<br/>or PTO?"}
+    funding_check -->|"Install Complete"| m2["Set M2 to Eligible"]
+    funding_check -->|"PTO"| m3["Set M3 to Eligible"]
+    trigger --> inservice{"In Service task?"}
+    inservice -->|Yes| disp["Set disposition = In Service"]
+
+    style trigger fill:#065f46,stroke:#10b981,color:#fff
+    style advance fill:#1e40af,stroke:#3b82f6,color:#fff
+    style m2 fill:#7c2d12,stroke:#ea580c,color:#fff
+    style m3 fill:#7c2d12,stroke:#ea580c,color:#fff
+    style disp fill:#065f46,stroke:#10b981,color:#fff
+```
+
+### Revision Cascade
+
+```mermaid
+flowchart TB
+    trigger["Task Set to<br/>Revision Required"] --> confirm["Confirmation Dialog<br/>(lists affected tasks)"]
+    confirm --> cascade["BFS: Find All Same-Stage<br/>Downstream Tasks"]
+    cascade --> reset["Reset Downstream to Not Ready"]
+    reset --> dates["Clear Auto-Populated Dates<br/>(TASK_DATE_FIELDS)"]
+    dates --> stop["Stop at Stage Boundary<br/>(no cross-stage cascade)"]
+
+    style trigger fill:#92400e,stroke:#f59e0b,color:#fff
+    style reset fill:#991b1b,stroke:#ef4444,color:#fff
+```
 
 ### 4.1 Auto-Populate Project Dates (TASK_DATE_FIELDS)
 
@@ -333,8 +448,9 @@ When a task is marked **Complete**, the corresponding project date field is auto
 When the **last required task** in a stage is marked Complete, the project automatically advances to the next pipeline stage. The transition is logged to the `stage_history` table.
 
 Stage advancement order:
-```
-evaluation ──▶ survey ──▶ design ──▶ permit ──▶ install ──▶ inspection ──▶ complete
+```mermaid
+flowchart LR
+    E["evaluation"] --> S["survey"] --> D["design"] --> P["permit"] --> I["install"] --> N["inspection"] --> C["complete"]
 ```
 
 Only **required** tasks count toward stage advancement. Optional tasks do not block stage progression.
@@ -367,18 +483,31 @@ When a task is set to **Revision Required**:
 4. The cascade is limited to the same stage — it does not cross stage boundaries.
 
 Example: Setting `build_design` to Revision Required in the design stage cascades to:
-```
-build_design (Revision Required)
-  └──▶ scope ──▶ Not Ready          (clears no date)
-       ├──▶ monitoring ──▶ Not Ready
-       ├──▶ build_eng ──▶ Not Ready
-       │     └──▶ eng_approval ──▶ Not Ready
-       ├──▶ wp1 ──▶ Not Ready
-       ├──▶ prod_add ──▶ Not Ready
-       ├──▶ new_ia ──▶ Not Ready
-       ├──▶ reroof ──▶ Not Ready
-       ├──▶ onsite_redesign ──▶ Not Ready
-       └──▶ quote_ext_scope ──▶ Not Ready
+
+```mermaid
+flowchart TB
+    bd["build_design<br/><b>Revision Required</b>"] --> scope["scope → Not Ready"]
+    scope --> monitoring["monitoring → Not Ready"]
+    scope --> build_eng["build_eng → Not Ready"]
+    build_eng --> eng_approval["eng_approval → Not Ready"]
+    scope --> wp1["wp1 → Not Ready"]
+    scope --> prod_add["prod_add → Not Ready"]
+    scope --> new_ia["new_ia → Not Ready"]
+    scope --> reroof["reroof → Not Ready"]
+    scope --> onsite_redesign["onsite_redesign → Not Ready"]
+    scope --> quote_ext["quote_ext_scope → Not Ready"]
+
+    style bd fill:#92400e,stroke:#f59e0b,color:#fff
+    style scope fill:#991b1b,stroke:#ef4444,color:#fff
+    style monitoring fill:#991b1b,stroke:#ef4444,color:#fff
+    style build_eng fill:#991b1b,stroke:#ef4444,color:#fff
+    style eng_approval fill:#991b1b,stroke:#ef4444,color:#fff
+    style wp1 fill:#991b1b,stroke:#ef4444,color:#fff
+    style prod_add fill:#991b1b,stroke:#ef4444,color:#fff
+    style new_ia fill:#991b1b,stroke:#ef4444,color:#fff
+    style reroof fill:#991b1b,stroke:#ef4444,color:#fff
+    style onsite_redesign fill:#991b1b,stroke:#ef4444,color:#fff
+    style quote_ext fill:#991b1b,stroke:#ef4444,color:#fff
 ```
 
 ### 4.7 Auto-Set In Service Disposition
@@ -395,20 +524,27 @@ When a task is marked Complete, all tasks that list it as a prerequisite become 
 
 Projects have a `disposition` field that controls their visibility and classification across the CRM.
 
-```
-                    ┌───────────────────────┐
-                    │     null / "Sale"      │  ◄── Default for new projects
-                    │    (Active Pipeline)   │
-                    └───────┬───────────────┘
-                            │
-              ┌─────────────┼─────────────┐
-              ▼             ▼             ▼
-     ┌────────────┐  ┌───────────┐  ┌───────────┐
-     │  "Loyalty"  │  │"Cancelled"│  │"In Service"│ ◄── Auto-set when
-     │(still active│  │  (dead)   │  │  (closed)  │     In Service task
-     │  managed by │  └───────────┘  └────────────┘     completes
-     │    PM)      │
-     └─────────────┘
+```mermaid
+stateDiagram-v2
+    state "null / Sale\n(Active Pipeline)" as Sale
+    state "Loyalty\n(still active, managed by PM)" as Loyalty
+    state "Cancelled\n(dead)" as Cancelled
+    state "In Service\n(closed)" as InService
+
+    [*] --> Sale : New project created
+
+    Sale --> Loyalty : Manual change
+    Loyalty --> Sale : Manual change
+
+    Sale --> Cancelled : Manual change
+    Cancelled --> Sale : Manual change
+    Loyalty --> Cancelled : Manual change
+    Cancelled --> Loyalty : Manual change
+
+    Sale --> InService : Auto: In Service task completes
+    InService --> Sale : Manual change
+
+    note right of InService : Auto-set when In Service\ntask is marked Complete
 ```
 
 ### Disposition Visibility by Page
@@ -432,28 +568,38 @@ Each project can have up to 3 funding milestones (M1, M2, M3) tracked in the `pr
 
 ### Milestone Flow
 
-```
-(not set) ──▶ Ready To Start ──▶ Submitted ──▶ Funded
-                                      │
-                                      ├──▶ Pending Resolution
-                                      │         │
-                                      │         └──▶ (back to Submitted)
-                                      │
-                                      └──▶ Revision Required
-                                                │
-                                                └──▶ (back to Submitted)
+```mermaid
+stateDiagram-v2
+    state "Not Set" as NotSet
+    state "Eligible" as Eligible
+    state "Ready To Start" as Ready
+    state "Submitted" as Submitted
+    state "Funded" as Funded
+    state "Pending Resolution" as Pending
+    state "Revision Required" as Revision
+
+    [*] --> NotSet
+    NotSet --> Eligible : Auto-trigger\n(Install Complete → M2)\n(PTO → M3)
+    Eligible --> Ready : Manual
+    Ready --> Submitted : Manual
+    Submitted --> Funded : Manual
+    Submitted --> Pending : Issue found
+    Pending --> Submitted : Resolved
+    Submitted --> Revision : Rework needed
+    Revision --> Submitted : Rework complete
 ```
 
 ### Automatic Milestone Triggers
 
-```
-                                        ┌──────────────┐
-Installation Complete task ───────────▶ │ M2 Eligible  │
-                                        └──────────────┘
+```mermaid
+flowchart LR
+    install["Installation Complete<br/>task marked Complete"] --> m2["M2 Milestone<br/>set to Eligible"]
+    pto["Permission to Operate<br/>task marked Complete"] --> m3["M3 Milestone<br/>set to Eligible"]
 
-                                        ┌──────────────┐
-Permission to Operate task ───────────▶ │ M3 Eligible  │
-                                        └──────────────┘
+    style install fill:#1e40af,stroke:#3b82f6,color:#fff
+    style pto fill:#1e40af,stroke:#3b82f6,color:#fff
+    style m2 fill:#065f46,stroke:#10b981,color:#fff
+    style m3 fill:#065f46,stroke:#10b981,color:#fff
 ```
 
 M1 is not auto-triggered — it is managed manually.
@@ -497,50 +643,47 @@ The Command Center (`/command`) classifies projects into sections using this pri
 
 ### Classification Priority Order
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    CLASSIFICATION LOGIC                              │
-│              (evaluated top to bottom, first match wins)            │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  1. DISPOSITION FILTERS (separated before classification)           │
-│     ├── disposition = "In Service" ──▶ In Service section           │
-│     ├── disposition = "Loyalty" ─────▶ Loyalty section              │
-│     └── disposition = "Cancelled" ───▶ Excluded entirely            │
-│                                                                     │
-│  2. OVERDUE TASKS                                                   │
-│     Projects with task_state records that have a completed_date     │
-│     in the past but status is not yet Complete.                     │
-│                                                                     │
-│  3. BLOCKED                                                         │
-│     project.blocker is non-null (auto-set when any task enters      │
-│     Pending Resolution).                                            │
-│                                                                     │
-│  4. PENDING RESOLUTION                                              │
-│     Has tasks in Pending Resolution status, not blocked,            │
-│     not overdue, and SLA is not critical or at risk.                │
-│                                                                     │
-│  5. CRITICAL — Past SLA                                             │
-│     Not blocked AND days in current stage >= SLA critical threshold.│
-│                                                                     │
-│  6. AT RISK                                                         │
-│     Not blocked AND days in current stage >= SLA risk threshold     │
-│     (but below critical).                                           │
-│                                                                     │
-│  7. STALLED — No Movement 5+ Days                                   │
-│     Not blocked, SLA is OK, but 5+ days in current stage with      │
-│     no movement.                                                    │
-│                                                                     │
-│  8. AGING — 90+ Day Cycle                                           │
-│     Total cycle days (from sale_date or stage_date) >= 90 days.     │
-│     Note: This section can overlap with others — it uses the full   │
-│     pipeline (not just active), so a project can appear here AND    │
-│     in another section.                                             │
-│                                                                     │
-│  9. ON TRACK                                                        │
-│     Everything else: not blocked, SLA OK, not stalled.              │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    start(("Project")) --> disp{"Disposition?"}
+
+    disp -->|"In Service"| is["In Service Section"]
+    disp -->|"Loyalty"| loy["Loyalty Section"]
+    disp -->|"Cancelled"| excl["Excluded Entirely"]
+    disp -->|"null / Sale"| overdue{"Has overdue<br/>tasks?"}
+
+    overdue -->|Yes| od["1. OVERDUE"]
+    overdue -->|No| blocked{"blocker<br/>non-null?"}
+
+    blocked -->|Yes| bl["2. BLOCKED"]
+    blocked -->|No| pending{"Tasks in Pending<br/>Resolution?"}
+
+    pending -->|Yes| pr["3. PENDING RESOLUTION"]
+    pending -->|No| crit{"Days in stage<br/>>= critical SLA?"}
+
+    crit -->|Yes| cr["4. CRITICAL"]
+    crit -->|No| risk{"Days in stage<br/>>= risk SLA?"}
+
+    risk -->|Yes| ar["5. AT RISK"]
+    risk -->|No| stall{"5+ days in stage,<br/>no movement?"}
+
+    stall -->|Yes| st["6. STALLED"]
+    stall -->|No| ot["7. ON TRACK"]
+
+    start --> aging{"Cycle days<br/>>= 90?"}
+    aging -->|Yes| ag["8. AGING<br/>(can overlap)"]
+
+    style od fill:#991b1b,stroke:#ef4444,color:#fff
+    style bl fill:#991b1b,stroke:#ef4444,color:#fff
+    style pr fill:#991b1b,stroke:#ef4444,color:#fff
+    style cr fill:#991b1b,stroke:#ef4444,color:#fff
+    style ar fill:#92400e,stroke:#f59e0b,color:#fff
+    style st fill:#92400e,stroke:#f59e0b,color:#fff
+    style ag fill:#4b5563,stroke:#9ca3af,color:#d1d5db
+    style ot fill:#065f46,stroke:#10b981,color:#fff
+    style is fill:#1e40af,stroke:#3b82f6,color:#fff
+    style loy fill:#1e40af,stroke:#3b82f6,color:#fff
+    style excl fill:#374151,stroke:#6b7280,color:#9ca3af
 ```
 
 ### SLA Calculation
@@ -548,9 +691,9 @@ The Command Center (`/command`) classifies projects into sections using this pri
 ```
 Days in stage = daysAgo(project.stage_date)
 
-If days >= crit threshold  ──▶  "crit"
-If days >= risk threshold  ──▶  "risk"
-Otherwise                  ──▶  "ok"
+If days >= crit threshold  -->  "crit"
+If days >= risk threshold  -->  "risk"
+Otherwise                  -->  "ok"
 ```
 
 ### Helper Functions
@@ -569,6 +712,48 @@ The Queue page (`/queue`) shows a PM-filtered project list organized into task-b
 
 - **In Service** and **Cancelled** dispositions are excluded entirely.
 - **Loyalty** projects get their own separate collapsible section.
+
+### Section Classification
+
+```mermaid
+flowchart TB
+    project(("Project")) --> followup{"follow_up_date<br/>today or past?"}
+    followup -->|Yes| fu["Follow-Ups<br/>(can overlap with any section)"]
+
+    project --> disp{"Disposition?"}
+    disp -->|"In Service / Cancelled"| excluded["Excluded"]
+    disp -->|"Loyalty"| loyalty["Loyalty Section"]
+    disp -->|"null / Sale"| stage{"stage = complete?"}
+
+    stage -->|Yes| comp["Complete Section"]
+    stage -->|No| cp{"city_permit task<br/>status?"}
+
+    cp -->|"Ready To Start"| cp_ready["City Permit — Ready"]
+    cp -->|"In Progress / Scheduled /<br/>Pending / Revision"| cp_sub["City Permit — Submitted"]
+    cp -->|Other| up{"util_permit task<br/>status?"}
+
+    up -->|"In Progress / Scheduled /<br/>Pending / Revision"| up_sub["Utility Permit — Submitted"]
+    up -->|Other| ui{"util_insp task<br/>status?"}
+
+    ui -->|"Ready To Start"| ui_ready["Utility Inspection — Ready"]
+    ui -->|"In Progress / Scheduled /<br/>Pending / Revision"| ui_sub["Utility Inspection — Submitted"]
+    ui -->|Other| blocked{"blocker<br/>non-null?"}
+
+    blocked -->|Yes| bl["Blocked Section"]
+    blocked -->|No| active["Active Section"]
+
+    style fu fill:#1e40af,stroke:#3b82f6,color:#fff
+    style excluded fill:#374151,stroke:#6b7280,color:#9ca3af
+    style loyalty fill:#4b5563,stroke:#9ca3af,color:#d1d5db
+    style comp fill:#065f46,stroke:#10b981,color:#fff
+    style cp_ready fill:#92400e,stroke:#f59e0b,color:#fff
+    style cp_sub fill:#92400e,stroke:#f59e0b,color:#fff
+    style up_sub fill:#92400e,stroke:#f59e0b,color:#fff
+    style ui_ready fill:#92400e,stroke:#f59e0b,color:#fff
+    style ui_sub fill:#92400e,stroke:#f59e0b,color:#fff
+    style bl fill:#991b1b,stroke:#ef4444,color:#fff
+    style active fill:#1e40af,stroke:#3b82f6,color:#fff
+```
 
 ### Section Definitions
 
@@ -601,17 +786,28 @@ Projects within each section are sorted by a priority function that weights stag
 
 ### Status Progression
 
-Tasks can be in one of 7 statuses:
+```mermaid
+stateDiagram-v2
+    state "Not Ready" as NR
+    state "Ready To Start" as RTS
+    state "In Progress" as IP
+    state "Scheduled" as SCH
+    state "Pending Resolution" as PR
+    state "Revision Required" as RR
+    state "Complete" as COMP
 
-```
-Not Ready ──▶ Ready To Start ──▶ In Progress ──▶ Complete
-                                      │
-                                      ├──▶ Scheduled ──▶ Complete
-                                      │
-                                      ├──▶ Pending Resolution ──▶ (resolve) ──▶ In Progress
-                                      │         (auto-sets project blocker)
-                                      │
-                                      └──▶ Revision Required ──▶ (cascades downstream to Not Ready)
+    [*] --> NR
+    NR --> RTS : Prerequisites met
+    RTS --> IP : Work begins
+    IP --> COMP : Work finished
+    IP --> SCH : Date set
+    SCH --> COMP : Executed
+    IP --> PR : Issue found\n(auto-sets blocker)
+    PR --> IP : Issue resolved
+    IP --> RR : Rework needed\n(cascades downstream)
+
+    note right of PR : Auto-sets project.blocker\nto task reason
+    note right of RR : Resets all same-stage\ndownstream tasks to Not Ready
 ```
 
 ### Status Descriptions
