@@ -300,8 +300,10 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   // taskView state removed — TasksTab manages its own view state now
   const [ahjInfo, setAhjInfo] = useState<any>(null)
   const [utilityInfo, setUtilityInfo] = useState<any>(null)
+  const [hoaInfo, setHoaInfo] = useState<any>(null)
   const [ahjEdit, setAhjEdit] = useState<any>(null)
   const [utilEdit, setUtilEdit] = useState<any>(null)
+  const [hoaEdit, setHoaEdit] = useState<any>(null)
   const [refSaving, setRefSaving] = useState(false)
   const [serviceCalls, setServiceCalls] = useState<any[]>([])
   const [stageHistory, setStageHistory] = useState<any[]>([])
@@ -424,7 +426,11 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       const { data } = await (supabase as any).from('utilities').select('phone,website,notes').ilike('name', `%${escapeIlike(project.utility)}%`).limit(1).maybeSingle()
       setUtilityInfo(data ?? null)
     }
-  }, [pid, project.ahj, project.utility])
+    if (project.hoa) {
+      const { data } = await (supabase as any).from('hoas').select('phone,website,contact_name,contact_email,notes').ilike('name', `%${escapeIlike(project.hoa)}%`).limit(1).maybeSingle()
+      setHoaInfo(data ?? null)
+    }
+  }, [pid, project.ahj, project.utility, project.hoa])
 
   const openAhjEdit = async () => {
     if (!project.ahj) return
@@ -468,6 +474,28 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     loadAhjUtil()
   }
 
+  const openHoaEdit = async () => {
+    if (!project.hoa) return
+    const { data } = await (supabase as any).from('hoas').select('*').ilike('name', `%${escapeIlike(project.hoa)}%`).limit(1).maybeSingle()
+    if (data) setHoaEdit({ ...data })
+  }
+
+  const saveHoaEdit = async () => {
+    if (!hoaEdit) return
+    setRefSaving(true)
+    const { error } = await (supabase as any).from('hoas').update({
+      phone: hoaEdit.phone,
+      website: hoaEdit.website,
+      contact_name: hoaEdit.contact_name,
+      contact_email: hoaEdit.contact_email,
+      notes: hoaEdit.notes,
+    }).eq('id', hoaEdit.id)
+    if (error) { showToast('Save failed'); setRefSaving(false); return }
+    setRefSaving(false)
+    setHoaEdit(null)
+    loadAhjUtil()
+  }
+
   const loadFolder = useCallback(async () => {
     const { data } = await (supabase as any).from('project_folders').select('folder_url').eq('project_id', pid).maybeSingle()
     setFolderUrl(data?.folder_url ?? null)
@@ -492,6 +520,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   useEffect(() => {
     setAhjInfo(null)
     setUtilityInfo(null)
+    setHoaInfo(null)
     setTaskHistory([])
     setTaskHistoryLoaded(false)
     // Parallelize all data loading
@@ -727,6 +756,21 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
           onProjectUpdated()
         }
       }
+    }
+
+    // ── Permit drop-off/pickup scheduling alert ──────────────────────────
+    if (taskId === 'city_permit' && status === 'Pending Resolution' && taskReasons[taskId] === 'Permit Drop Off/Pickup') {
+      const alertText = '[Scheduling Alert] City permit requires drop-off/pickup. Please schedule a service call.'
+      const { error: noteErr } = await (supabase as any).from('notes').insert({
+        project_id: pid,
+        text: alertText,
+        time: new Date().toISOString(),
+        pm: 'System',
+        pm_id: null,
+      })
+      if (noteErr) console.error('permit drop-off note insert failed:', noteErr)
+      else setNotes(prev => [{ id: crypto.randomUUID(), project_id: pid, task_id: null, text: alertText, time: new Date().toISOString(), pm: 'System', pm_id: null }, ...prev])
+      showToast('Scheduling team notified — permit drop-off needed')
     }
 
     // ── Auto-flip disposition when In Service task status changes ─────────
@@ -1249,8 +1293,10 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
               setEditDraft={setEditDraft}
               ahjInfo={ahjInfo}
               utilityInfo={utilityInfo}
+              hoaInfo={hoaInfo}
               openAhjEdit={openAhjEdit}
               openUtilEdit={openUtilEdit}
+              openHoaEdit={openHoaEdit}
               stageHistory={stageHistory}
               serviceCalls={serviceCalls}
               adders={adders}
@@ -1492,6 +1538,54 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
             <div className="flex justify-end gap-2 mt-4">
               <button onClick={() => setUtilEdit(null)} className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md">Cancel</button>
               <button onClick={saveUtilEdit} disabled={refSaving}
+                className="px-4 py-1.5 text-xs bg-green-700 hover:bg-green-600 text-white rounded-md font-medium disabled:opacity-50">
+                {refSaving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* HOA Edit Popup */}
+      {hoaEdit && (
+        <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center" onClick={() => setHoaEdit(null)}>
+          <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-white">Edit HOA — {hoaEdit.name}</h3>
+              <button onClick={() => setHoaEdit(null)} className="text-gray-500 hover:text-white text-lg">×</button>
+            </div>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Contact Name</label>
+                  <input value={hoaEdit.contact_name ?? ''} onChange={e => setHoaEdit((d: any) => ({ ...d, contact_name: e.target.value || null }))}
+                    className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Phone</label>
+                  <input value={hoaEdit.phone ?? ''} onChange={e => setHoaEdit((d: any) => ({ ...d, phone: e.target.value || null }))}
+                    className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Contact Email</label>
+                <input value={hoaEdit.contact_email ?? ''} onChange={e => setHoaEdit((d: any) => ({ ...d, contact_email: e.target.value || null }))}
+                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Website</label>
+                <input value={hoaEdit.website ?? ''} onChange={e => setHoaEdit((d: any) => ({ ...d, website: e.target.value || null }))}
+                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Notes</label>
+                <textarea rows={3} value={hoaEdit.notes ?? ''} onChange={e => setHoaEdit((d: any) => ({ ...d, notes: e.target.value || null }))}
+                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none resize-none" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setHoaEdit(null)} className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md">Cancel</button>
+              <button onClick={saveHoaEdit} disabled={refSaving}
                 className="px-4 py-1.5 text-xs bg-green-700 hover:bg-green-600 text-white rounded-md font-medium disabled:opacity-50">
                 {refSaving ? 'Saving…' : 'Save'}
               </button>

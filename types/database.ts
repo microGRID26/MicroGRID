@@ -207,6 +207,16 @@ export interface Utility {
   notes: string | null
 }
 
+export interface HOA {
+  id: string
+  name: string
+  phone: string | null
+  website: string | null
+  contact_name: string | null
+  contact_email: string | null
+  notes: string | null
+}
+
 export type UserRole = 'super_admin' | 'admin' | 'finance' | 'manager' | 'user'
 
 export interface User {
@@ -369,6 +379,11 @@ export type Database = {
         Row: Utility
         Insert: Omit<Utility, 'id'> & { id?: string }
         Update: Partial<Utility>
+      }
+      hoas: {
+        Row: HOA
+        Insert: Omit<HOA, 'id'> & { id?: string }
+        Update: Partial<HOA>
       }
       users: {
         Row: User

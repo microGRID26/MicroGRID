@@ -29,6 +29,16 @@ interface Utility {
   notes: string | null
 }
 
+interface HOA {
+  id: number
+  name: string
+  phone: string | null
+  website: string | null
+  contact_name: string | null
+  contact_email: string | null
+  notes: string | null
+}
+
 type UserRole = 'super_admin' | 'admin' | 'finance' | 'manager' | 'user'
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -88,12 +98,13 @@ interface CRMStats {
   projects: number
   ahjs: number
   utilities: number
+  hoas: number
   users: number
   crews: number
   serviceCalls: number
 }
 
-type Module = 'ahj' | 'utility' | 'users' | 'crews' | 'sla' | 'info' | 'releases' | 'feedback' | 'audit' | 'permissions'
+type Module = 'ahj' | 'utility' | 'hoa' | 'users' | 'crews' | 'sla' | 'info' | 'releases' | 'feedback' | 'audit' | 'permissions'
 
 const DEPARTMENTS = [
   'Inside Operations', 'Sales', 'Executive', 'Field Operations',
@@ -1474,6 +1485,7 @@ function CRMInfo() {
         { count: projects },
         { count: ahjs },
         { count: utilities },
+        { count: hoas },
         { count: users },
         { count: crews },
         { count: serviceCalls },
@@ -1482,12 +1494,13 @@ function CRMInfo() {
         (supabase as any).from('projects').select('*', { count: 'exact', head: true }),
         (supabase as any).from('ahjs').select('*', { count: 'exact', head: true }),
         (supabase as any).from('utilities').select('*', { count: 'exact', head: true }),
+        (supabase as any).from('hoas').select('*', { count: 'exact', head: true }),
         (supabase as any).from('users').select('*', { count: 'exact', head: true }),
         (supabase as any).from('crews').select('*', { count: 'exact', head: true }),
         (supabase as any).from('service_calls').select('*', { count: 'exact', head: true }),
         (supabase as any).from('projects').select('stage').limit(2000),
       ])
-      setStats({ projects: projects ?? 0, ahjs: ahjs ?? 0, utilities: utilities ?? 0, users: users ?? 0, crews: crews ?? 0, serviceCalls: serviceCalls ?? 0 })
+      setStats({ projects: projects ?? 0, ahjs: ahjs ?? 0, utilities: utilities ?? 0, hoas: hoas ?? 0, users: users ?? 0, crews: crews ?? 0, serviceCalls: serviceCalls ?? 0 })
       const breakdown: Record<string, number> = {}
       ;(stageData ?? []).forEach((r: { stage: string }) => {
         breakdown[r.stage] = (breakdown[r.stage] || 0) + 1

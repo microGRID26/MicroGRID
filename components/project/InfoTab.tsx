@@ -133,7 +133,7 @@ function AutocompleteRow({ label, field, value, draft, editing, onChange, table,
   draft: Record<string, any>
   editing: boolean
   onChange: (d: any) => void
-  table: 'ahjs' | 'utilities'
+  table: 'ahjs' | 'utilities' | 'hoas'
   searchCol?: string
   onClickValue?: () => void
 }) {
@@ -438,8 +438,10 @@ interface InfoTabProps {
   setEditDraft: (fn: any) => void
   ahjInfo: any
   utilityInfo: any
+  hoaInfo: any
   openAhjEdit: () => void
   openUtilEdit: () => void
+  openHoaEdit: () => void
   stageHistory?: any[]
   serviceCalls?: any[]
   adders?: any[]
@@ -447,7 +449,7 @@ interface InfoTabProps {
   onDeleteAdder?: (id: string) => Promise<void>
 }
 
-export function InfoTab({ project, editMode, editDraft, setEditDraft, ahjInfo, utilityInfo, openAhjEdit, openUtilEdit, stageHistory = [], serviceCalls = [], adders = [], onAddAdder, onDeleteAdder }: InfoTabProps) {
+export function InfoTab({ project, editMode, editDraft, setEditDraft, ahjInfo, utilityInfo, hoaInfo, openAhjEdit, openUtilEdit, openHoaEdit, stageHistory = [], serviceCalls = [], adders = [], onAddAdder, onDeleteAdder }: InfoTabProps) {
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="grid grid-cols-2 gap-6 max-w-3xl">
@@ -517,8 +519,19 @@ export function InfoTab({ project, editMode, editDraft, setEditDraft, ahjInfo, u
               options={['15A','20A','25A','30A','40A','50A','60A']} />
             <SelectEditRow label="Main breaker" field="main_breaker" value={project.main_breaker} draft={editDraft} editing={editMode} onChange={setEditDraft}
               options={['100A','125A','150A','200A','225A','400A']} />
-            <EditRow label="HOA" field="hoa" value={project.hoa} draft={editDraft} editing={editMode} onChange={setEditDraft} />
             <EditRow label="ESID" field="esid" value={project.esid?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+          </Section>
+          <Section title="HOA">
+            <AutocompleteRow label="HOA" field="hoa" value={project.hoa} draft={editDraft} editing={editMode} onChange={setEditDraft} table="hoas" onClickValue={openHoaEdit} />
+            {!editMode && hoaInfo && (
+              <div className="ml-0 mt-1 mb-2 pl-28 space-y-0.5">
+                {hoaInfo.contact_name && <div className="text-xs text-gray-300">{hoaInfo.contact_name}</div>}
+                {hoaInfo.phone && <div className="text-xs text-green-400">{hoaInfo.phone}</div>}
+                {hoaInfo.contact_email && <div className="text-xs text-green-400">{hoaInfo.contact_email}</div>}
+                {hoaInfo.website && <a href={hoaInfo.website.startsWith('http') ? hoaInfo.website : 'https://'+hoaInfo.website} target="_blank" rel="noopener" className="text-xs text-green-400 hover:underline block">{hoaInfo.website} ↗</a>}
+                {hoaInfo.notes && <div className="text-xs text-gray-400 mt-1 bg-gray-800 rounded p-2">{hoaInfo.notes.slice(0,200)}</div>}
+              </div>
+            )}
           </Section>
         </div>
         <div>
