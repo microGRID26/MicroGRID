@@ -627,13 +627,19 @@ function ForPMs() {
 
       <SectionHeader title="@Mentions & Notifications" />
       <Card title="Tagging team members with @mentions">
-        Type <span className="text-green-400 font-medium">@</span> in any note to tag a team member. An autocomplete dropdown appears with active users — select a name to insert the mention. Mentions render as <span className="bg-green-900/40 text-green-300 px-1 py-0.5 rounded">green highlighted names</span> in the note text.
+        Type <span className="text-green-400 font-medium">@</span> in any note to trigger an autocomplete dropdown of active team members. Use arrow keys to navigate and Enter/Tab to select, or click a name. The mention appears as a <span className="bg-green-900/40 text-green-300 px-1 py-0.5 rounded">green highlighted name</span> in the note text.
         <Ul items={[
+          'The dropdown shows all active users with @gomicrogridenergy.com emails',
           'Tagged users receive a notification via the bell icon in the nav bar',
-          'Click the bell to see all your unread mentions with the project and note context',
-          'Notifications are marked as read when you view them',
+          'The notification bell auto-polls every 30 seconds for new mentions',
+          'Click a notification to open the project panel directly on the Notes tab',
+          'Notifications are marked as read when you click them',
           'Use @mentions to loop in other PMs, leadership, or the design team on specific projects',
         ]} />
+      </Card>
+      <Card title="Deleting notes">
+        Hover over any note to reveal a small X button on the right side. Click it and confirm to permanently delete the note.
+        Deleted notes cannot be recovered.
       </Card>
 
       <SectionHeader title="SLA Status" />

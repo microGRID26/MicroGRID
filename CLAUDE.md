@@ -282,16 +282,55 @@ daysAgo(p.sale_date) || daysAgo(p.stage_date)
 
 ## @Mention System
 
-Notes support @mentions for tagging team members. Type `@` in any note input to trigger an autocomplete dropdown of active users. Mentions render as green highlighted names in note text. When a user is mentioned, a notification is created in the `mention_notifications` table and surfaces via the bell icon in the nav bar. Migration: `supabase/015-mentions.sql`.
+Notes support @mentions for tagging team members. Type `@` in any note input to trigger an autocomplete dropdown of active users (filtered to `@gomicrogridenergy.com` emails). Select a name to insert the mention. Mentions render as **green highlighted names** (`text-green-400`) in note text. When a user is mentioned, a notification is created in the `mention_notifications` table. The **notification bell** in the nav bar polls every 30 seconds for new notifications. Clicking a mention notification navigates to `/pipeline?open=PROJ-ID&tab=notes`, opening the project panel directly on the Notes tab. Migration: `supabase/015-mentions.sql`.
+
+### Note Deletion
+
+Notes can be deleted via a hover X button that appears on each note. A confirmation dialog prevents accidental deletion. The `deleteNote` function is passed from `ProjectPanel` to `NotesTab`.
 
 ### mention_notifications Table
 
-- **mention_notifications** — notification records for @mentions. Fields: `id`, `note_id`, `mentioned_user_id`, `mentioner_user_id`, `project_id`, `read`, `created_at`. Migration: `supabase/015-mentions.sql`. RLS scoped so users can only read their own notifications.
+- **mention_notifications** — notification records for @mentions. Fields: `id`, `mentioned_user_id`, `mentioned_by`, `project_id`, `message`, `read`, `created_at`. Migration: `supabase/015-mentions.sql`. RLS scoped so users can only read their own notifications. Read state is tracked client-side in localStorage (`mg_notif_read`) and server-side via the `read` column.
+
+### Notification Bell
+
+`NotificationBell` component in the nav bar shows unread count badge. Polls every 30s via `useNotifications` hook. Shows blocked projects, recent task revisions/pending resolutions, and @mention notifications. Clicking a mention notification opens `/pipeline?open=PROJ-ID&tab=notes`; clicking other notifications navigates to `/queue?search=PROJ-ID`.
 
 ## HOA Manager
 
-The Admin portal includes an HOA Manager for managing 421 HOA records. HOA data is referenced during the permitting stage to determine HOA approval requirements for projects.
+The Admin portal includes an HOA Manager for managing 421 HOA records stored in the `hoas` table. HOA data is referenced in the project Info tab with autocomplete lookup. The Info tab shows HOA contact details (name, phone, email, website, notes) when matched. Admin portal supports full CRUD on HOA records.
+
+### hoas Table
+
+- **hoas** — HOA reference data. Fields: `id`, `name`, `phone`, `website`, `contact_name`, `contact_email`, `notes`. 421 records. Used for autocomplete in project Info tab.
 
 ## Permit Drop Off Notification
 
-An automation that notifies PMs when permit-related tasks have been idle. Helps ensure permits do not stall without follow-up after submission.
+When the City Permit task is set to "Pending Resolution" with reason "Permit Drop Off/Pickup", a system note is auto-created on the project: `[Scheduling Alert] City permit requires drop-off/pickup. Please schedule a service call.` A toast notification confirms the scheduling team was notified.
+
+## ProjectPanel Deep Linking
+
+`ProjectPanel` accepts an `initialTab` prop (`'tasks' | 'notes' | 'info' | 'bom' | 'files'`) to open on a specific tab. The Pipeline page supports URL params `?open=PROJ-ID&tab=notes` for deep linking directly to a project's tab (used by notification bell for @mention navigation).
+
+## Address Search
+
+Pipeline, Queue, and Funding pages all include address in their search filter. Search matches against project name, ID, city, and address simultaneously.
+
+## PM Dropdown Filtering
+
+The PM dropdown in the project Info tab and the @mention autocomplete both filter users to `@gomicrogridenergy.com` email domain using `.like('email', '%@gomicrogridenergy.com')`.
+
+## Follow-up Date Location
+
+Follow-up dates exist only on tasks (`task_state.follow_up_date`) and at the project level (`projects.follow_up_date`). The follow-up date field was removed from the project Info tab — it is managed through task notes panels and surfaces in the Queue page's "Follow-ups Today" section.
+
+## Loyalty Queue Section
+
+On the Queue page, Loyalty projects are separated into their own collapsible section (purple-themed) and excluded from all other queue sections. This ensures Loyalty projects are visible but do not clutter the active workflow sections.
+
+## Co-Author Convention
+
+All commits use `Atlas (Claude Opus 4.6)` as co-author:
+```
+Co-Authored-By: Atlas (Claude Opus 4.6) <noreply@anthropic.com>
+```
