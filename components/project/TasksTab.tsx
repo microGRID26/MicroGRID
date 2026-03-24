@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { STAGE_LABELS, STAGE_ORDER, SLA_THRESHOLDS, daysAgo } from '@/lib/utils'
 import { TASKS, TASK_STATUSES, STATUS_STYLE, PENDING_REASONS, REVISION_REASONS, ALL_TASKS_MAP, TASK_TO_STAGE, isTaskRequired } from '@/lib/tasks'
+import { createClient } from '@/lib/supabase/client'
 import type { Project } from '@/types/database'
 import { MessageSquare } from 'lucide-react'
 import React from 'react'
@@ -137,6 +138,31 @@ export function TasksTab({
   const [expandedTask, setExpandedTask] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'stages' | 'history'>('stages')
   const [editingNoteTask, setEditingNoteTask] = useState<string | null>(null)
+
+  // ── Load reasons from database (fallback to hardcoded) ───────────────────
+  const [dbPendingReasons, setDbPendingReasons] = useState<Record<string, string[]> | null>(null)
+  const [dbRevisionReasons, setDbRevisionReasons] = useState<Record<string, string[]> | null>(null)
+
+  useEffect(() => {
+    const supabase = createClient()
+    ;(supabase as any).from('task_reasons').select('task_id,reason_type,reason,active,sort_order').eq('active', true).order('sort_order')
+      .then(({ data }: any) => {
+        if (!data || data.length === 0) return
+        const pending: Record<string, string[]> = {}
+        const revision: Record<string, string[]> = {}
+        for (const r of data) {
+          const map = r.reason_type === 'pending' ? pending : revision
+          if (!map[r.task_id]) map[r.task_id] = []
+          map[r.task_id].push(r.reason)
+        }
+        setDbPendingReasons(pending)
+        setDbRevisionReasons(revision)
+      })
+      .catch(() => { /* fallback to hardcoded */ })
+  }, [])
+
+  const activePendingReasons = dbPendingReasons ?? PENDING_REASONS
+  const activeRevisionReasons = dbRevisionReasons ?? REVISION_REASONS
 
   // ── Computed: stage completion counts ──────────────────────────────────────
   const stageCounts = useMemo(() => {
@@ -307,8 +333,8 @@ export function TasksTab({
                   const isExpanded = expandedTask === task.id
                   const history = taskHistoryByTask[task.id] ?? []
                   const showReason = status === 'Pending Resolution' || status === 'Revision Required'
-                  const pendingReasons = PENDING_REASONS[task.id] ?? []
-                  const revisionReasonsList = REVISION_REASONS[viewStage] ?? []
+                  const pendingReasons = activePendingReasons[task.id] ?? []
+                  const revisionReasonsList = activeRevisionReasons[viewStage] ?? []
                   const reasonOptions = status === 'Pending Resolution' ? pendingReasons : revisionReasonsList
                   const isEditingNote = editingNoteTask === task.id
 

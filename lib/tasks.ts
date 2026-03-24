@@ -87,6 +87,8 @@ export const STATUS_STYLE: Record<string, string> = {
 }
 
 // ── PENDING RESOLUTION REASONS — keyed by task ID ────────────────────────────
+// NOTE: These are fallback values. The app loads reasons from the `task_reasons`
+// database table when available (see TasksTab.tsx). Edit reasons via Admin > Reasons Manager.
 export const PENDING_REASONS: Record<string, string[]> = {
   welcome: [
     'Credit Declined','Customer Unresponsive','EC Has Not Completed the Lead',
@@ -244,7 +246,9 @@ export const PENDING_REASONS: Record<string, string[]> = {
   ],
 }
 
-// ── REVISION REQUIRED REASONS — keyed by stage ───────────────────────────────
+// ── REVISION REQUIRED REASONS — keyed by stage ───────────────────────────
+// NOTE: These are fallback values. The app loads reasons from the `task_reasons`
+// database table when available (see TasksTab.tsx). Edit reasons via Admin > Reasons Manager.────
 export const REVISION_REASONS: Record<string, string[]> = {
   evaluation: [
     'Incorrect Customer Info','Need ACH Information','Need Drivers License / ID',

@@ -304,9 +304,11 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   const [ahjInfo, setAhjInfo] = useState<any>(null)
   const [utilityInfo, setUtilityInfo] = useState<any>(null)
   const [hoaInfo, setHoaInfo] = useState<any>(null)
+  const [financierInfo, setFinancierInfo] = useState<any>(null)
   const [ahjEdit, setAhjEdit] = useState<any>(null)
   const [utilEdit, setUtilEdit] = useState<any>(null)
   const [hoaEdit, setHoaEdit] = useState<any>(null)
+  const [financierEdit, setFinancierEdit] = useState<any>(null)
   const [refSaving, setRefSaving] = useState(false)
   const [serviceCalls, setServiceCalls] = useState<any[]>([])
   const [stageHistory, setStageHistory] = useState<any[]>([])
@@ -326,6 +328,8 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   } | null>(null)
   const [coSaving, setCoSaving] = useState(false)
   const [scheduleModal, setScheduleModal] = useState<{ jobType: string; crews: any[] } | null>(null)
+  // ── Notification rules (loaded once per panel mount) ──────────────────────
+  const [notificationRules, setNotificationRules] = useState<{ id: string; task_id: string; trigger_status: string; trigger_reason: string | null; action_type: string; action_message: string; notify_role: string | null }[]>([])
 
   // Lock background scroll when panel is open
   useEffect(() => {
@@ -433,7 +437,11 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       const { data } = await supabase.from('hoas').select('phone,website,contact_name,contact_email,notes').ilike('name', `%${escapeIlike(project.hoa)}%`).limit(1).maybeSingle()
       setHoaInfo(data ?? null)
     }
-  }, [pid, project.ahj, project.utility, project.hoa])
+    if (project.financier) {
+      const { data } = await (supabase as any).from('financiers').select('phone,website,contact_name,contact_email,notes').ilike('name', `%${escapeIlike(project.financier)}%`).limit(1).maybeSingle()
+      setFinancierInfo(data ?? null)
+    }
+  }, [pid, project.ahj, project.utility, project.hoa, project.financier])
 
   const openAhjEdit = async () => {
     if (!project.ahj) return
@@ -499,6 +507,28 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     loadAhjUtil()
   }
 
+  const openFinancierEdit = async () => {
+    if (!project.financier) return
+    const { data } = await (supabase as any).from('financiers').select('*').ilike('name', `%${escapeIlike(project.financier)}%`).limit(1).maybeSingle()
+    if (data) setFinancierEdit({ ...data })
+  }
+
+  const saveFinancierEdit = async () => {
+    if (!financierEdit) return
+    setRefSaving(true)
+    const { error } = await (supabase as any).from('financiers').update({
+      phone: financierEdit.phone,
+      website: financierEdit.website,
+      contact_name: financierEdit.contact_name,
+      contact_email: financierEdit.contact_email,
+      notes: financierEdit.notes,
+    }).eq('id', financierEdit.id)
+    if (error) { showToast('Save failed'); setRefSaving(false); return }
+    setRefSaving(false)
+    setFinancierEdit(null)
+    loadAhjUtil()
+  }
+
   const loadFolder = useCallback(async () => {
     const { data } = await supabase.from('project_folders').select('folder_url').eq('project_id', pid).maybeSingle()
     setFolderUrl(data?.folder_url ?? null)
@@ -536,6 +566,10 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       loadStageHistory(),
       loadAdders(),
     ])
+    // Load notification rules (cached for panel lifetime)
+    ;(supabase as any).from('notification_rules').select('id, task_id, trigger_status, trigger_reason, action_type, action_message, notify_role').eq('active', true).then(({ data: rulesData }: any) => {
+      if (rulesData) setNotificationRules(rulesData)
+    })
     // Load change order count for this project
     ;supabase.from('change_orders')
       .select('id', { count: 'exact', head: true })
@@ -761,19 +795,26 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       }
     }
 
-    // ── Permit drop-off/pickup scheduling alert ──────────────────────────
-    if (taskId === 'city_permit' && status === 'Pending Resolution' && taskReasons[taskId] === 'Permit Drop Off/Pickup') {
-      const alertText = '[Scheduling Alert] City permit requires drop-off/pickup. Please schedule a service call.'
-      const { error: noteErr } = await supabase.from('notes').insert({
-        project_id: pid,
-        text: alertText,
-        time: new Date().toISOString(),
-        pm: 'System',
-        pm_id: null,
-      })
-      if (noteErr) console.error('permit drop-off note insert failed:', noteErr)
-      else setNotes(prev => [{ id: crypto.randomUUID(), project_id: pid, task_id: null, text: alertText, time: new Date().toISOString(), pm: 'System', pm_id: null }, ...prev])
-      showToast('Scheduling team notified — permit drop-off needed')
+    // ── Database-driven notification rules ──────────────────────────────
+    const currentReason = taskReasons[taskId] ?? ''
+    const matchingRules = notificationRules.filter(r =>
+      r.task_id === taskId &&
+      r.trigger_status === status &&
+      (!r.trigger_reason || r.trigger_reason === currentReason)
+    )
+    for (const rule of matchingRules) {
+      if (rule.action_type === 'note') {
+        const { error: noteErr } = await supabase.from('notes').insert({
+          project_id: pid,
+          text: rule.action_message,
+          time: new Date().toISOString(),
+          pm: 'System',
+          pm_id: null,
+        })
+        if (noteErr) console.error('notification rule note insert failed:', noteErr)
+        else setNotes(prev => [{ id: crypto.randomUUID(), project_id: pid, task_id: null, text: rule.action_message, time: new Date().toISOString(), pm: 'System', pm_id: null }, ...prev])
+      }
+      showToast(rule.action_message.slice(0, 80))
     }
 
     // ── Auto-flip disposition when In Service task status changes ─────────
@@ -1304,9 +1345,11 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
               ahjInfo={ahjInfo}
               utilityInfo={utilityInfo}
               hoaInfo={hoaInfo}
+              financierInfo={financierInfo}
               openAhjEdit={openAhjEdit}
               openUtilEdit={openUtilEdit}
               openHoaEdit={openHoaEdit}
+              openFinancierEdit={openFinancierEdit}
               stageHistory={stageHistory}
               serviceCalls={serviceCalls}
               adders={adders}
@@ -1598,6 +1641,54 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
               <button onClick={saveHoaEdit} disabled={refSaving}
                 className="px-4 py-1.5 text-xs bg-green-700 hover:bg-green-600 text-white rounded-md font-medium disabled:opacity-50">
                 {refSaving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Financier Edit Popup */}
+      {financierEdit && (
+        <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center" onClick={() => setFinancierEdit(null)}>
+          <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-white">Edit Financier — {financierEdit.name}</h3>
+              <button onClick={() => setFinancierEdit(null)} className="text-gray-500 hover:text-white text-lg">x</button>
+            </div>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Contact Name</label>
+                  <input value={financierEdit.contact_name ?? ''} onChange={e => setFinancierEdit((d: any) => ({ ...d, contact_name: e.target.value || null }))}
+                    className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Phone</label>
+                  <input value={financierEdit.phone ?? ''} onChange={e => setFinancierEdit((d: any) => ({ ...d, phone: e.target.value || null }))}
+                    className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Contact Email</label>
+                <input value={financierEdit.contact_email ?? ''} onChange={e => setFinancierEdit((d: any) => ({ ...d, contact_email: e.target.value || null }))}
+                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Website</label>
+                <input value={financierEdit.website ?? ''} onChange={e => setFinancierEdit((d: any) => ({ ...d, website: e.target.value || null }))}
+                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Notes</label>
+                <textarea rows={3} value={financierEdit.notes ?? ''} onChange={e => setFinancierEdit((d: any) => ({ ...d, notes: e.target.value || null }))}
+                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none resize-none" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setFinancierEdit(null)} className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md">Cancel</button>
+              <button onClick={saveFinancierEdit} disabled={refSaving}
+                className="px-4 py-1.5 text-xs bg-green-700 hover:bg-green-600 text-white rounded-md font-medium disabled:opacity-50">
+                {refSaving ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>

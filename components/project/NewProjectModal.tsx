@@ -26,7 +26,7 @@ function nextProjectId(existingIds: string[]): string {
 function AutocompleteInput({ value, onChange, table, placeholder, className }: {
   value: string
   onChange: (v: string) => void
-  table: 'ahjs' | 'utilities'
+  table: 'ahjs' | 'utilities' | 'financiers'
   placeholder?: string
   className?: string
 }) {
@@ -47,7 +47,7 @@ function AutocompleteInput({ value, onChange, table, placeholder, className }: {
   useEffect(() => {
     if (!focused || value.length < 2) { setSuggestions([]); setOpen(false); return }
     const timer = setTimeout(async () => {
-      const { data } = await supabase.from(table).select('name').ilike('name', `%${escapeIlike(value)}%`).order('name').limit(8)
+      const { data } = await (supabase as any).from(table).select('name').ilike('name', `%${escapeIlike(value)}%`).order('name').limit(8)
       const names = (data ?? []).map((r: any) => r.name)
       setSuggestions(names)
       setOpen(names.length > 0)
@@ -372,20 +372,7 @@ export function NewProjectModal({ onClose, onCreated, existingIds, pms }: Props)
               </div>
               <div>
                 <label className={labelCls}>Financier <span className={reqCls}>*</span></label>
-                <select className={inputCls} value={form.financier} onChange={e => set('financier', e.target.value)}>
-                  <option value="">Select Financier...</option>
-                  <option>Cash</option>
-                  <option>EDGE</option>
-                  <option>Mosaic</option>
-                  <option>Sungage</option>
-                  <option>GoodLeap</option>
-                  <option>Dividend</option>
-                  <option>Sunrun</option>
-                  <option>Tesla</option>
-                  <option>Sunnova</option>
-                  <option>Loanpal</option>
-                  <option>Other</option>
-                </select>
+                <AutocompleteInput value={form.financier} onChange={v => set('financier', v)} table="financiers" placeholder="Search financiers..." className={inputCls} />
               </div>
               <div>
                 <label className={labelCls}>Contract Value</label>

@@ -133,7 +133,7 @@ function AutocompleteRow({ label, field, value, draft, editing, onChange, table,
   draft: Record<string, any>
   editing: boolean
   onChange: (d: any) => void
-  table: 'ahjs' | 'utilities' | 'hoas'
+  table: 'ahjs' | 'utilities' | 'hoas' | 'financiers'
   searchCol?: string
   onClickValue?: () => void
 }) {
@@ -439,9 +439,11 @@ interface InfoTabProps {
   ahjInfo: any
   utilityInfo: any
   hoaInfo: any
+  financierInfo: any
   openAhjEdit: () => void
   openUtilEdit: () => void
   openHoaEdit: () => void
+  openFinancierEdit: () => void
   stageHistory?: any[]
   serviceCalls?: any[]
   adders?: any[]
@@ -449,7 +451,7 @@ interface InfoTabProps {
   onDeleteAdder?: (id: string) => Promise<void>
 }
 
-export function InfoTab({ project, editMode, editDraft, setEditDraft, ahjInfo, utilityInfo, hoaInfo, openAhjEdit, openUtilEdit, openHoaEdit, stageHistory = [], serviceCalls = [], adders = [], onAddAdder, onDeleteAdder }: InfoTabProps) {
+export function InfoTab({ project, editMode, editDraft, setEditDraft, ahjInfo, utilityInfo, hoaInfo, financierInfo, openAhjEdit, openUtilEdit, openHoaEdit, openFinancierEdit, stageHistory = [], serviceCalls = [], adders = [], onAddAdder, onDeleteAdder }: InfoTabProps) {
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="grid grid-cols-2 gap-6 max-w-3xl">
@@ -481,8 +483,15 @@ export function InfoTab({ project, editMode, editDraft, setEditDraft, ahjInfo, u
             <DispositionEditRow value={project.disposition} draft={editDraft} editing={editMode} onChange={setEditDraft} />
             <EditRow label="Contract" field="contract" value={project.contract?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} type="currency" />
             <EditRow label="System kW" field="systemkw" value={project.systemkw?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} type="number" />
-            <SelectEditRow label="Financier" field="financier" value={project.financier} draft={editDraft} editing={editMode} onChange={setEditDraft}
-              options={['Cash','EDGE','Mosaic','Sungage','GoodLeap','Dividend','Sunrun','Tesla','Sunnova','Loanpal','Other']} />
+            <AutocompleteRow label="Financier" field="financier" value={project.financier} draft={editDraft} editing={editMode} onChange={setEditDraft} table="financiers" onClickValue={openFinancierEdit} />
+            {!editMode && financierInfo && (
+              <div className="ml-0 mt-1 mb-2 pl-28 space-y-0.5">
+                {financierInfo.contact_name && <div className="text-xs text-gray-300">{financierInfo.contact_name}</div>}
+                {financierInfo.phone && <div className="text-xs text-green-400">{financierInfo.phone}</div>}
+                {financierInfo.contact_email && <div className="text-xs text-green-400">{financierInfo.contact_email}</div>}
+                {financierInfo.website && <a href={financierInfo.website.startsWith('http') ? financierInfo.website : 'https://'+financierInfo.website} target="_blank" rel="noopener" className="text-xs text-green-400 hover:underline block">{financierInfo.website} ↗</a>}
+              </div>
+            )}
             <SelectEditRow label="Financing type" field="financing_type" value={project.financing_type} draft={editDraft} editing={editMode} onChange={setEditDraft}
               options={['Loan','TPO (Lease, PPA)','Cash']} />
             <EditRow label="Down payment" field="down_payment" value={project.down_payment?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} type="currency" />

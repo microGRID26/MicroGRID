@@ -7,7 +7,21 @@ import { daysAgo, fmt$, fmtDate, STAGE_LABELS, STAGE_ORDER, SLA_THRESHOLDS, STAG
 import { ALL_TASKS_MAP } from '@/lib/tasks'
 import { ProjectPanel } from '@/components/project/ProjectPanel'
 import { NewProjectModal } from '@/components/project/NewProjectModal'
+import { usePreferences } from '@/lib/usePreferences'
 import type { Project } from '@/types/database'
+
+const CARD_FIELD_OPTIONS: { key: string; label: string }[] = [
+  { key: 'name', label: 'Name' },
+  { key: 'city', label: 'City' },
+  { key: 'address', label: 'Address' },
+  { key: 'financier', label: 'Financier' },
+  { key: 'contract', label: 'Contract' },
+  { key: 'systemkw', label: 'System kW' },
+  { key: 'ahj', label: 'AHJ' },
+  { key: 'pm', label: 'PM' },
+  { key: 'stage', label: 'Stage' },
+  { key: 'sale_date', label: 'Sale Date' },
+]
 
 function getSLA(p: Project) {
   const t = SLA_THRESHOLDS[p.stage] ?? { target: 3, risk: 5, crit: 7 }
@@ -77,9 +91,23 @@ export default function QueuePage() {
   const [availablePms, setAvailablePms] = useState<{ id: string; name: string }[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
+  const [showCardConfig, setShowCardConfig] = useState(false)
+  const { prefs, updatePref } = usePreferences()
+  const cardFields = prefs.queue_card_fields
+
+  // ── Configurable queue sections from database ────────────────────────────
+  interface QueueSectionConfig { id: string; label: string; task_id: string; match_status: string; color: string; icon: string; sort_order: number }
+  const HARDCODED_SECTIONS: QueueSectionConfig[] = [
+    { id: 'hc-1', label: 'City Permit Approval — Ready to Start', task_id: 'city_permit', match_status: 'Ready To Start', color: 'blue', icon: '📋', sort_order: 1 },
+    { id: 'hc-2', label: 'City Permit — Submitted, Pending Approval', task_id: 'city_permit', match_status: 'In Progress,Scheduled,Pending Resolution,Revision Required', color: 'indigo', icon: '📄', sort_order: 2 },
+    { id: 'hc-3', label: 'Utility Permit — Submitted, Pending Approval', task_id: 'util_permit', match_status: 'In Progress,Scheduled,Pending Resolution,Revision Required', color: 'purple', icon: '📄', sort_order: 3 },
+    { id: 'hc-4', label: 'Utility Inspection — Ready to Start', task_id: 'util_insp', match_status: 'Ready To Start', color: 'teal', icon: '⚡', sort_order: 4 },
+    { id: 'hc-5', label: 'Utility Inspection — Submitted, Pending Approval', task_id: 'util_insp', match_status: 'In Progress,Scheduled,Pending Resolution,Revision Required', color: 'cyan', icon: '⚡', sort_order: 5 },
+  ]
+  const [queueSections, setQueueSections] = useState<QueueSectionConfig[]>(HARDCODED_SECTIONS)
+
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => ({
-    followups: false, cityPermitReady: true, cityPermitSub: true, utilPermitSub: true,
-    utilInsp: true, utilInspSub: true, blocked: true, active: true, loyalty: true, complete: true,
+    followups: false, blocked: true, active: true, loyalty: true, complete: true,
   }))
   const toggleBucket = (key: string) => setCollapsed(prev => ({ ...prev, [key]: !prev[key] }))
 
@@ -93,7 +121,9 @@ export default function QueuePage() {
     if (pm) projQuery = projQuery.eq('pm_id', pm)
 
     // Only load task_state for queue-relevant tasks + follow-ups (not all 25K+ rows)
-    const QUEUE_TASKS = ['city_permit', 'util_permit', 'util_insp', 'welcome', 'ia', 'ub', 'sched_survey', 'ntp']
+    // Include task IDs from dynamic queue sections config
+    const sectionTaskIds = queueSections.map(s => s.task_id)
+    const QUEUE_TASKS = [...new Set(['city_permit', 'util_permit', 'util_insp', 'welcome', 'ia', 'ub', 'sched_survey', 'ntp', ...sectionTaskIds])]
     const [projRes, taskRes, followUpRes] = await Promise.all([
       projQuery,
       supabase.from('task_state')
@@ -130,7 +160,7 @@ export default function QueuePage() {
     }
     setTaskStates(allTasks)
     setLoading(false)
-  }, [userPm])
+  }, [userPm, queueSections])
 
   function selectPm(pm: string) {
     setUserPm(pm)
@@ -138,6 +168,18 @@ export default function QueuePage() {
   }
 
   useEffect(() => { loadData() }, [loadData])
+
+  // Load configurable queue sections from database (once on mount)
+  useEffect(() => {
+    ;(supabase as any).from('queue_sections')
+      .select('id, label, task_id, match_status, color, icon, sort_order')
+      .eq('active', true)
+      .order('sort_order')
+      .then(({ data, error }: any) => {
+        if (!error && data && data.length > 0) setQueueSections(data as QueueSectionConfig[])
+        // else: keep hardcoded fallback
+      })
+  }, [])
 
   // Build task map per project: { projectId: { taskId: { status, reason } } }
   const taskMap = useMemo(() => {
@@ -202,45 +244,42 @@ export default function QueuePage() {
       .sort((a, b) => (a._followUpDate ?? '').localeCompare(b._followUpDate ?? ''))
   }, [sorted, taskStates])
 
-  // Task-based queue sections (don't exclude blocked — a project can be in both)
-  const ACTIVE_STATUSES = new Set(['In Progress', 'Scheduled', 'Pending Resolution', 'Revision Required'])
+  // ── Dynamic queue sections from config ────────────────────────────────
+  const COLOR_MAP: Record<string, string> = {
+    blue: 'text-blue-400', indigo: 'text-indigo-400', purple: 'text-purple-400',
+    teal: 'text-teal-400', cyan: 'text-cyan-400', green: 'text-green-400',
+    red: 'text-red-400', amber: 'text-amber-400', gray: 'text-gray-400',
+    yellow: 'text-yellow-400', pink: 'text-pink-400', orange: 'text-orange-400',
+  }
+  const COLOR_HOVER: Record<string, string> = {
+    blue: 'hover:text-blue-300', indigo: 'hover:text-indigo-300', purple: 'hover:text-purple-300',
+    teal: 'hover:text-teal-300', cyan: 'hover:text-cyan-300', green: 'hover:text-green-300',
+    red: 'hover:text-red-300', amber: 'hover:text-amber-300', gray: 'hover:text-gray-300',
+    yellow: 'hover:text-yellow-300', pink: 'hover:text-pink-300', orange: 'hover:text-orange-300',
+  }
 
-  const cityPermitReady = useMemo(() => sorted.filter(p =>
-    taskMap[p.id]?.city_permit?.status === 'Ready To Start' && p.stage !== 'complete'
-  ), [sorted, taskMap])
-
-  const cityPermitSubmitted = useMemo(() => sorted.filter(p => {
-    const s = taskMap[p.id]?.city_permit?.status
-    return s && ACTIVE_STATUSES.has(s) && p.stage !== 'complete'
-  }), [sorted, taskMap])
-
-  const utilPermitSubmitted = useMemo(() => sorted.filter(p => {
-    const s = taskMap[p.id]?.util_permit?.status
-    return s && ACTIVE_STATUSES.has(s) && p.stage !== 'complete'
-  }), [sorted, taskMap])
-
-  const utilInspReady = useMemo(() => sorted.filter(p =>
-    taskMap[p.id]?.util_insp?.status === 'Ready To Start' && p.stage !== 'complete'
-  ), [sorted, taskMap])
-
-  const utilInspSubmitted = useMemo(() => sorted.filter(p => {
-    const s = taskMap[p.id]?.util_insp?.status
-    return s && ACTIVE_STATUSES.has(s) && p.stage !== 'complete'
-  }), [sorted, taskMap])
+  const dynamicSections = useMemo(() => {
+    return queueSections.map(sec => {
+      const statuses = new Set(sec.match_status.split(',').map(s => s.trim()))
+      const items = sorted.filter(p => {
+        if (p.stage === 'complete') return false
+        const s = taskMap[p.id]?.[sec.task_id]?.status
+        return s ? statuses.has(s) : false
+      })
+      return { ...sec, items }
+    })
+  }, [sorted, taskMap, queueSections])
 
   // Active = everything not in a special section
   const active = useMemo(() => {
-    const specialPids = new Set([
-      ...cityPermitReady.map(p => p.id),
-      ...cityPermitSubmitted.map(p => p.id),
-      ...utilPermitSubmitted.map(p => p.id),
-      ...utilInspReady.map(p => p.id),
-      ...utilInspSubmitted.map(p => p.id),
-      ...blocked.map(p => p.id),
-      ...complete.map(p => p.id),
-    ])
+    const specialPids = new Set<string>()
+    for (const sec of dynamicSections) {
+      for (const p of sec.items) specialPids.add(p.id)
+    }
+    for (const p of blocked) specialPids.add(p.id)
+    for (const p of complete) specialPids.add(p.id)
     return sorted.filter(p => !specialPids.has(p.id) && p.stage !== 'complete')
-  }, [sorted, cityPermitReady, cityPermitSubmitted, utilPermitSubmitted, utilInspReady, utilInspSubmitted, blocked, complete])
+  }, [sorted, dynamicSections, blocked, complete])
 
   if (loading) {
     return (
@@ -268,6 +307,9 @@ export default function QueuePage() {
             {availablePms.map(pm => <option key={pm.id} value={pm.id}>{pm.name}</option>)}
           </select>
           <span className="text-xs text-gray-500">{live.length} projects</span>
+          <button onClick={() => setShowCardConfig(true)} className="text-gray-400 hover:text-white transition-colors p-1" title="Card fields">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
         </>} />
 
       {/* Stats + Search */}
@@ -338,55 +380,15 @@ export default function QueuePage() {
             ))}
           </div>
 
-        {cityPermitReady.length > 0 && (
-          <div className="mb-6">
-            <button onClick={() => toggleBucket('cityPermitReady')} className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-2 flex items-center gap-2 w-full text-left hover:text-blue-300 transition-colors">
-              <span className="text-[10px]">{collapsed.cityPermitReady ? '▸' : '▾'}</span>
-              📋 City Permit Approval — Ready to Start ({cityPermitReady.length})
+        {dynamicSections.map(sec => sec.items.length > 0 && (
+          <div key={sec.id} className="mb-6">
+            <button onClick={() => toggleBucket(sec.id)} className={`text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-2 w-full text-left transition-colors ${COLOR_MAP[sec.color] ?? 'text-gray-400'} ${COLOR_HOVER[sec.color] ?? 'hover:text-gray-300'}`}>
+              <span className="text-[10px]">{collapsed[sec.id] ? '▸' : '▾'}</span>
+              {sec.icon} {sec.label} ({sec.items.length})
             </button>
-            {!collapsed.cityPermitReady && cityPermitReady.map(p => <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} />)}
+            {!collapsed[sec.id] && sec.items.map(p => <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} cardFields={cardFields} />)}
           </div>
-        )}
-
-        {cityPermitSubmitted.length > 0 && (
-          <div className="mb-6">
-            <button onClick={() => toggleBucket('cityPermitSub')} className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2 flex items-center gap-2 w-full text-left hover:text-indigo-300 transition-colors">
-              <span className="text-[10px]">{collapsed.cityPermitSub ? '▸' : '▾'}</span>
-              📄 City Permit — Submitted, Pending Approval ({cityPermitSubmitted.length})
-            </button>
-            {!collapsed.cityPermitSub && cityPermitSubmitted.map(p => <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} />)}
-          </div>
-        )}
-
-        {utilPermitSubmitted.length > 0 && (
-          <div className="mb-6">
-            <button onClick={() => toggleBucket('utilPermitSub')} className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-2 flex items-center gap-2 w-full text-left hover:text-purple-300 transition-colors">
-              <span className="text-[10px]">{collapsed.utilPermitSub ? '▸' : '▾'}</span>
-              📄 Utility Permit — Submitted, Pending Approval ({utilPermitSubmitted.length})
-            </button>
-            {!collapsed.utilPermitSub && utilPermitSubmitted.map(p => <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} />)}
-          </div>
-        )}
-
-        {utilInspReady.length > 0 && (
-          <div className="mb-6">
-            <button onClick={() => toggleBucket('utilInsp')} className="text-xs font-bold text-teal-400 uppercase tracking-wider mb-2 flex items-center gap-2 w-full text-left hover:text-teal-300 transition-colors">
-              <span className="text-[10px]">{collapsed.utilInsp ? '▸' : '▾'}</span>
-              ⚡ Utility Inspection — Ready to Start ({utilInspReady.length})
-            </button>
-            {!collapsed.utilInsp && utilInspReady.map(p => <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} />)}
-          </div>
-        )}
-
-        {utilInspSubmitted.length > 0 && (
-          <div className="mb-6">
-            <button onClick={() => toggleBucket('utilInspSub')} className="text-xs font-bold text-cyan-400 uppercase tracking-wider mb-2 flex items-center gap-2 w-full text-left hover:text-cyan-300 transition-colors">
-              <span className="text-[10px]">{collapsed.utilInspSub ? '▸' : '▾'}</span>
-              ⚡ Utility Inspection — Submitted, Pending Approval ({utilInspSubmitted.length})
-            </button>
-            {!collapsed.utilInspSub && utilInspSubmitted.map(p => <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} />)}
-          </div>
-        )}
+        ))}
 
         {blocked.length > 0 && (
           <div className="mb-6">
@@ -394,7 +396,7 @@ export default function QueuePage() {
               <span className="text-[10px]">{collapsed.blocked ? '▸' : '▾'}</span>
               🚫 Blocked ({blocked.length})
             </button>
-            {!collapsed.blocked && blocked.map(p => <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} />)}
+            {!collapsed.blocked && blocked.map(p => <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} cardFields={cardFields} />)}
           </div>
         )}
 
@@ -404,7 +406,7 @@ export default function QueuePage() {
               <span className="text-[10px]">{collapsed.active ? '▸' : '▾'}</span>
               Active ({active.length})
             </button>
-            {!collapsed.active && active.map(p => <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} />)}
+            {!collapsed.active && active.map(p => <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} cardFields={cardFields} />)}
           </div>
         )}
 
@@ -414,7 +416,7 @@ export default function QueuePage() {
               <span className="text-[10px]">{collapsed.loyalty ? '▸' : '▾'}</span>
               💜 Loyalty ({searchedLoyalty.length})
             </button>
-            {!collapsed.loyalty && searchedLoyalty.map(p => <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} />)}
+            {!collapsed.loyalty && searchedLoyalty.map(p => <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} cardFields={cardFields} />)}
           </div>
         )}
 
@@ -424,7 +426,7 @@ export default function QueuePage() {
               <span className="text-[10px]">{collapsed.complete ? '▸' : '▾'}</span>
               Complete ({complete.length})
             </button>
-            {!collapsed.complete && complete.map(p => <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} />)}
+            {!collapsed.complete && complete.map(p => <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} cardFields={cardFields} />)}
           </div>
         )}
 
@@ -451,19 +453,46 @@ export default function QueuePage() {
           pms={availablePms}
         />
       )}
+      {showCardConfig && (
+        <CardFieldsModal
+          selected={cardFields}
+          onSave={(fields) => { updatePref('queue_card_fields', fields); setShowCardConfig(false) }}
+          onClose={() => setShowCardConfig(false)}
+        />
+      )}
     </div>
   )
 }
 
-function QueueCard({ p, taskMap, onOpen }: {
+function renderCardField(key: string, p: Project) {
+  switch (key) {
+    case 'name': return null
+    case 'city': return p.city ? <span key={key}>{p.city}</span> : null
+    case 'address': return p.address ? <span key={key}>{p.address}</span> : null
+    case 'financier': return p.financier ? <span key={key}>{p.financier}</span> : null
+    case 'contract': return p.contract ? <span key={key}>{fmt$(p.contract)}</span> : null
+    case 'systemkw': return p.systemkw ? <span key={key}>{p.systemkw} kW</span> : null
+    case 'ahj': return p.ahj ? <span key={key}>{p.ahj}</span> : null
+    case 'pm': return p.pm ? <span key={key}>{p.pm}</span> : null
+    case 'stage': return <span key={key} className="text-green-400">{STAGE_LABELS[p.stage]}</span>
+    case 'sale_date': return p.sale_date ? <span key={key}>{fmtDate(p.sale_date)}</span> : null
+    default: return null
+  }
+}
+
+function QueueCard({ p, taskMap, onOpen, cardFields }: {
   p: Project
   taskMap: Record<string, TaskEntry>
   onOpen: (p: Project) => void
+  cardFields: string[]
 }) {
   const sla = getSLA(p)
   const nextTask = getNextTask(p, taskMap)
   const stuck = getStuckTasks(p, taskMap)
   const cycle = daysAgo(p.sale_date) || daysAgo(p.stage_date)
+
+  const metaFields = cardFields.filter(k => k !== 'name' && k !== 'stage')
+  const showStageInHeader = cardFields.includes('stage')
 
   return (
     <div
@@ -481,25 +510,31 @@ function QueueCard({ p, taskMap, onOpen }: {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-white text-sm">{p.name}</span>
             <span className="text-xs text-gray-500">{p.id}</span>
-            <span className="text-xs text-gray-500">·</span>
-            <span className="text-xs text-green-400">{STAGE_LABELS[p.stage]}</span>
+            {showStageInHeader && <>
+              <span className="text-xs text-gray-500">·</span>
+              <span className="text-xs text-green-400">{STAGE_LABELS[p.stage]}</span>
+            </>}
           </div>
 
-          {/* Meta row */}
-          <div className="flex items-center gap-3 mt-1 text-xs text-gray-400 flex-wrap">
-            <span>{p.city}</span>
-            {p.financier && <><span>·</span><span>{p.financier}</span></>}
-            {p.contract && <><span>·</span><span>{fmt$(p.contract)}</span></>}
-          </div>
+          {/* Meta row driven by cardFields */}
+          {metaFields.length > 0 && (
+            <div className="flex items-center gap-1 mt-1 text-xs text-gray-400 flex-wrap">
+              {metaFields.map((key, i) => {
+                const el = renderCardField(key, p)
+                if (!el) return null
+                return <span key={key} className="flex items-center gap-1">{i > 0 && <span className="text-gray-600 mx-1">·</span>}{el}</span>
+              })}
+            </div>
+          )}
 
           {/* Blocker */}
           {p.blocker && (
             <div className="mt-2 text-xs text-red-400 bg-red-950 rounded-lg px-3 py-1.5">
-              🚫 {p.blocker}
+              {p.blocker}
             </div>
           )}
 
-          {/* Stuck tasks — now with reasons */}
+          {/* Stuck tasks */}
           {stuck.length > 0 && (
             <div className="mt-2 flex flex-col gap-1.5">
               {stuck.map(t => (
@@ -512,7 +547,7 @@ function QueueCard({ p, taskMap, onOpen }: {
                   <span className="font-medium">{t.name}</span>
                   {t.reason && (
                     <>
-                      <span className="opacity-50">—</span>
+                      <span className="opacity-50">--</span>
                       <span className="opacity-75">{t.reason}</span>
                     </>
                   )}
@@ -539,6 +574,45 @@ function QueueCard({ p, taskMap, onOpen }: {
             'text-gray-400'
           }`}>{sla.days}d</div>
           <div className="text-xs text-gray-600 mt-0.5">{cycle}d total</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CardFieldsModal({ selected, onSave, onClose }: {
+  selected: string[]
+  onSave: (fields: string[]) => void
+  onClose: () => void
+}) {
+  const [fields, setFields] = useState<Set<string>>(new Set(selected))
+
+  function toggle(key: string) {
+    setFields(s => { const n = new Set(s); n.has(key) ? n.delete(key) : n.add(key); return n })
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-xs mx-4">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
+          <h3 className="text-sm font-semibold text-white">Card Fields</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-white">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <div className="px-4 py-3 space-y-2">
+          {CARD_FIELD_OPTIONS.map(opt => (
+            <label key={opt.key} className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={fields.has(opt.key)} onChange={() => toggle(opt.key)}
+                className="rounded border-gray-600 bg-gray-800 text-green-500 focus:ring-green-500 focus:ring-offset-gray-900" />
+              <span className={`text-xs ${fields.has(opt.key) ? 'text-gray-200' : 'text-gray-500'}`}>{opt.label}</span>
+            </label>
+          ))}
+        </div>
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-gray-800">
+          <button onClick={onClose} className="text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md px-3 py-1.5">Cancel</button>
+          <button onClick={() => onSave([...fields])} className="text-xs bg-green-600 hover:bg-green-500 text-white font-medium rounded-md px-3 py-1.5">Save</button>
         </div>
       </div>
     </div>

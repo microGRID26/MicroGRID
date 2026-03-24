@@ -231,6 +231,25 @@ export interface HOA {
   notes: string | null
 }
 
+export interface Financier {
+  id: string
+  name: string
+  phone: string | null
+  website: string | null
+  contact_name: string | null
+  contact_email: string | null
+  notes: string | null
+}
+
+export interface TaskReason {
+  id: string
+  task_id: string
+  reason_type: 'pending' | 'revision'
+  reason: string
+  active: boolean
+  sort_order: number
+}
+
 export type UserRole = 'super_admin' | 'admin' | 'finance' | 'manager' | 'user'
 
 export interface User {
@@ -440,6 +459,18 @@ export type Database = {
         Row: HOA
         Insert: Omit<HOA, 'id'> & { id?: string }
         Update: Partial<HOA>
+
+      }
+      financiers: {
+        Row: Financier
+        Insert: Omit<Financier, 'id'> & { id?: string }
+        Update: Partial<Financier>
+
+      }
+      task_reasons: {
+        Row: TaskReason
+        Insert: Omit<TaskReason, 'id'> & { id?: string }
+        Update: Partial<TaskReason>
 
       }
       users: {

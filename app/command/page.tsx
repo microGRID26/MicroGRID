@@ -7,6 +7,8 @@ import { exportProjectsCSV, ALL_EXPORT_FIELDS, DEFAULT_EXPORT_KEYS } from '@/lib
 import { ProjectPanel } from '@/components/project/ProjectPanel'
 import { NewProjectModal } from '@/components/project/NewProjectModal'
 import { Nav } from '@/components/Nav'
+import { usePreferences } from '@/lib/usePreferences'
+import type { ExportPreset } from '@/lib/usePreferences'
 import type { Project, Schedule } from '@/types/database'
 
 /** Schedule entry enriched with project/crew names for today's schedule display */
@@ -253,6 +255,10 @@ const FIELD_GROUPS = [
 
 function ExportModal({ projects, onClose }: { projects: Project[]; onClose: () => void }) {
   const [selected, setSelected] = useState<Set<string>>(new Set(DEFAULT_EXPORT_KEYS))
+  const { prefs, updatePref } = usePreferences()
+  const presets = prefs.export_presets
+  const [presetName, setPresetName] = useState('')
+  const [showSave, setShowSave] = useState(false)
 
   function toggle(key: string) {
     setSelected(s => { const n = new Set(s); n.has(key) ? n.delete(key) : n.add(key); return n })
@@ -264,6 +270,23 @@ function ExportModal({ projects, onClose }: { projects: Project[]; onClose: () =
       keys.forEach(k => allOn ? n.delete(k) : n.add(k))
       return n
     })
+  }
+
+  function loadPreset(preset: ExportPreset) {
+    setSelected(new Set(preset.keys))
+  }
+
+  function savePreset() {
+    if (!presetName.trim()) return
+    const newPreset: ExportPreset = { name: presetName.trim(), keys: [...selected] }
+    const updated = [...presets.filter(p => p.name !== newPreset.name), newPreset]
+    updatePref('export_presets', updated)
+    setPresetName('')
+    setShowSave(false)
+  }
+
+  function deletePreset(name: string) {
+    updatePref('export_presets', presets.filter(p => p.name !== name))
   }
 
   function doExport() {
@@ -290,6 +313,54 @@ function ExportModal({ projects, onClose }: { projects: Project[]; onClose: () =
         </div>
 
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+          {/* Presets row */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {presets.length > 0 && (
+              <select
+                onChange={e => {
+                  const p = presets.find(pr => pr.name === e.target.value)
+                  if (p) loadPreset(p)
+                  e.target.value = ''
+                }}
+                defaultValue=""
+                className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-2 py-1"
+              >
+                <option value="" disabled>Load preset...</option>
+                {presets.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
+              </select>
+            )}
+            {!showSave ? (
+              <button onClick={() => setShowSave(true)}
+                className="text-xs text-green-400 hover:text-green-300 transition-colors">Save preset</button>
+            ) : (
+              <div className="flex items-center gap-1">
+                <input
+                  value={presetName}
+                  onChange={e => setPresetName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && savePreset()}
+                  placeholder="Preset name"
+                  className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-2 py-1 w-28"
+                  autoFocus
+                />
+                <button onClick={savePreset} className="text-xs text-green-400 hover:text-green-300">Save</button>
+                <button onClick={() => setShowSave(false)} className="text-xs text-gray-500 hover:text-white">Cancel</button>
+              </div>
+            )}
+            {presets.length > 0 && (
+              <select
+                onChange={e => {
+                  if (e.target.value) deletePreset(e.target.value)
+                  e.target.value = ''
+                }}
+                defaultValue=""
+                className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-2 py-1"
+              >
+                <option value="" disabled>Delete preset...</option>
+                {presets.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
+              </select>
+            )}
+          </div>
+
           <div className="flex items-center gap-2 mb-1">
             <button onClick={() => setSelected(new Set(DEFAULT_EXPORT_KEYS))}
               className="text-xs text-blue-400 hover:text-blue-300 transition-colors">Select all</button>
