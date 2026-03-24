@@ -119,6 +119,12 @@ export function useNotifications() {
 
   useEffect(() => { load() }, [load])
 
+  // Poll for new notifications every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => load(), 30000)
+    return () => clearInterval(interval)
+  }, [load])
+
   const markRead = (id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
     const readIds = JSON.parse(localStorage.getItem('mg_notif_read') || '[]') as string[]

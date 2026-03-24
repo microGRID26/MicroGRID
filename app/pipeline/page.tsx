@@ -48,6 +48,19 @@ export default function PipelinePage() {
 
   useEffect(() => { loadData() }, [loadData])
 
+  // Auto-open project from URL params (e.g., /pipeline?open=PROJ-28517)
+  useEffect(() => {
+    if (typeof window === 'undefined' || projects.length === 0) return
+    const params = new URLSearchParams(window.location.search)
+    const openId = params.get('open')
+    const searchQ = params.get('search')
+    if (openId) {
+      const proj = projects.find(p => p.id === openId)
+      if (proj) setSelected(proj)
+    }
+    if (searchQ && !search) setSearch(searchQ)
+  }, [projects])
+
   // Unique filter values
   const pms = useMemo(() => {
     const pmMap = new Map<string, string>()

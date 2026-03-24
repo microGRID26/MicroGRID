@@ -74,10 +74,7 @@ function MentionTextarea({ value, onChange, onSubmit, placeholder }: {
   useEffect(() => {
     const supabase = createClient()
     ;(supabase as any).from('users').select('id, name').eq('active', true).like('email', '%@gomicrogridenergy.com').order('name')
-      .then(({ data, error }: any) => {
-        if (error) console.error('[MENTION] user load error:', error)
-        if (data) { setUsers(data); console.log('[MENTION] loaded users:', data.length) }
-      })
+      .then(({ data }: any) => { if (data) setUsers(data) })
   }, [])
 
   const filtered = mentionQuery

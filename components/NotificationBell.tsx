@@ -96,7 +96,7 @@ function NotificationRow({ notification: n, onRead, onClose }: { notification: N
         onRead(n.id)
         onClose()
         if (n.id.startsWith('mention-')) {
-          window.location.href = `/pipeline?search=${encodeURIComponent(n.projectId)}`
+          window.location.href = `/pipeline?open=${encodeURIComponent(n.projectId)}`
         } else {
           window.location.href = `/queue?search=${encodeURIComponent(n.projectId)}`
         }
