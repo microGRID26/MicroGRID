@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useCurrentUser } from './useCurrentUser'
 
@@ -117,13 +117,16 @@ export function useNotifications() {
     setLoading(false)
   }, [user])
 
+  const loadRef = useRef(load)
+  useEffect(() => { loadRef.current = load }, [load])
+
   useEffect(() => { load() }, [load])
 
   // Poll for new notifications every 30 seconds
   useEffect(() => {
-    const interval = setInterval(() => load(), 30000)
+    const interval = setInterval(() => loadRef.current(), 30000)
     return () => clearInterval(interval)
-  }, [load])
+  }, [])
 
   const markRead = (id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))

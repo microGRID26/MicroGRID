@@ -273,13 +273,14 @@ interface ProjectPanelProps {
   project: Project
   onClose: () => void
   onProjectUpdated: () => void
+  initialTab?: 'tasks' | 'notes' | 'info' | 'bom' | 'files'
 }
 
-export function ProjectPanel({ project: initialProject, onClose, onProjectUpdated }: ProjectPanelProps) {
+export function ProjectPanel({ project: initialProject, onClose, onProjectUpdated, initialTab }: ProjectPanelProps) {
   const supabase = createClient()
   const { user: currentUser } = useCurrentUser()
   const [project, setProject] = useState<Project>(initialProject)
-  const [tab, setTab] = useState<'tasks' | 'notes' | 'info' | 'bom' | 'files'>('tasks')
+  const [tab, setTab] = useState<'tasks' | 'notes' | 'info' | 'bom' | 'files'>(initialTab ?? 'tasks')
   const [taskStates, setTaskStates] = useState<Record<string, string>>({})
   const [taskReasons, setTaskReasons] = useState<Record<string, string>>({})
   const [taskNotes, setTaskNotes] = useState<Record<string, { id: string; text: string; time: string; pm: string | null }[]>>({})

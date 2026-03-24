@@ -48,15 +48,17 @@ export default function PipelinePage() {
 
   useEffect(() => { loadData() }, [loadData])
 
-  // Auto-open project from URL params (e.g., /pipeline?open=PROJ-28517)
+  // Auto-open project from URL params (e.g., /pipeline?open=PROJ-28517&tab=notes)
+  const [initialTab, setInitialTab] = useState<string | null>(null)
   useEffect(() => {
     if (typeof window === 'undefined' || projects.length === 0) return
     const params = new URLSearchParams(window.location.search)
     const openId = params.get('open')
     const searchQ = params.get('search')
+    const tab = params.get('tab')
     if (openId) {
       const proj = projects.find(p => p.id === openId)
-      if (proj) setSelected(proj)
+      if (proj) { setSelected(proj); if (tab) setInitialTab(tab) }
     }
     if (searchQ && !search) setSearch(searchQ)
   }, [projects])
@@ -230,8 +232,9 @@ export default function PipelinePage() {
       {selected && (
         <ProjectPanel
           project={selected}
-          onClose={() => setSelected(null)}
+          onClose={() => { setSelected(null); setInitialTab(null) }}
           onProjectUpdated={loadData}
+          initialTab={initialTab as any}
         />
       )}
       {showNewProject && (
