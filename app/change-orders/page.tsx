@@ -109,7 +109,7 @@ function ChangeOrdersContent() {
     const { data } = await supabase
       .from('users')
       .select('id, name')
-      .eq('active', true)
+      .eq('active', 'TRUE')
       .order('name')
     if (data) setUsers(data)
   }, [])
