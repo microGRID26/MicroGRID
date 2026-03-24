@@ -302,7 +302,7 @@ export function TasksTab({
                   const locked = isLocked(task, taskStates)
                   const rawEntry = taskStatesRaw.find(t => t.task_id === task.id)
                   const completedDate = rawEntry?.completed_date ?? null
-                  const startedDate = (rawEntry as any)?.started_date ?? null
+                  const startedDate = rawEntry?.started_date ?? null
                   const revCount = revisionCounts[task.id] ?? 0
                   const isExpanded = expandedTask === task.id
                   const history = taskHistoryByTask[task.id] ?? []

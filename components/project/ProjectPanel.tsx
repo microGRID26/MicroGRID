@@ -130,7 +130,7 @@ function AutocompleteRow({ label, field, value, draft, editing, onChange, table,
   useEffect(() => {
     if (!focused || query.length < 2) { setSuggestions([]); setOpen(false); return }
     const timer = setTimeout(async () => {
-      const { data } = await (supabase as any).from(table).select(searchCol).ilike(searchCol, `%${escapeIlike(query)}%`).order(searchCol).limit(8)
+      const { data } = await supabase.from(table).select(searchCol).ilike(searchCol, `%${escapeIlike(query)}%`).order(searchCol).limit(8)
       const names = (data ?? []).map((r: any) => r[searchCol])
       setSuggestions(names)
       setOpen(names.length > 0)
@@ -380,14 +380,14 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   }, [pid])
 
   const loadStageHistory = useCallback(async () => {
-    const { data } = await (supabase as any).from('stage_history').select('*').eq('project_id', pid).order('entered', { ascending: false })
+    const { data } = await supabase.from('stage_history').select('*').eq('project_id', pid).order('entered', { ascending: false })
     if (data) setStageHistory(data)
   }, [pid])
 
   // Lazy — only called when user navigates to History view
   // Indexes on project_id + changed_at keep this fast at 20k+ projects
   const loadTaskHistory = useCallback(async () => {
-    const { data } = await (supabase as any)
+    const { data } = await supabase
       .from('task_history')
       .select('task_id, status, reason, changed_by, changed_at')
       .eq('project_id', pid)
@@ -400,50 +400,50 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   }, [pid])
 
   const loadServiceCalls = useCallback(async () => {
-    const { data } = await (supabase as any).from('service_calls').select('*').eq('project_id', pid).order('created_at', { ascending: false }).limit(5)
+    const { data } = await supabase.from('service_calls').select('*').eq('project_id', pid).order('created_at', { ascending: false }).limit(5)
     if (data) setServiceCalls(data)
   }, [pid])
 
   const loadAdders = useCallback(async () => {
-    const { data } = await (supabase as any).from('project_adders').select('*').eq('project_id', pid).order('created_at', { ascending: true })
+    const { data } = await supabase.from('project_adders').select('*').eq('project_id', pid).order('created_at', { ascending: true })
     if (data) setAdders(data)
   }, [pid])
 
   const addAdder = async (adder: { adder_name: string; price: number; quantity: number; total_amount: number }) => {
-    await (supabase as any).from('project_adders').insert({ project_id: pid, ...adder })
+    await supabase.from('project_adders').insert({ project_id: pid, ...adder })
     await loadAdders()
   }
 
   const deleteAdder = async (adderId: string) => {
-    await (supabase as any).from('project_adders').delete().eq('id', adderId)
+    await supabase.from('project_adders').delete().eq('id', adderId)
     await loadAdders()
   }
 
   const loadAhjUtil = useCallback(async () => {
     if (project.ahj) {
-      const { data } = await (supabase as any).from('ahjs').select('permit_phone,permit_website,max_duration,electric_code,permit_notes').ilike('name', `%${escapeIlike(project.ahj)}%`).limit(1).maybeSingle()
+      const { data } = await supabase.from('ahjs').select('permit_phone,permit_website,max_duration,electric_code,permit_notes').ilike('name', `%${escapeIlike(project.ahj)}%`).limit(1).maybeSingle()
       setAhjInfo(data ?? null)
     }
     if (project.utility) {
-      const { data } = await (supabase as any).from('utilities').select('phone,website,notes').ilike('name', `%${escapeIlike(project.utility)}%`).limit(1).maybeSingle()
+      const { data } = await supabase.from('utilities').select('phone,website,notes').ilike('name', `%${escapeIlike(project.utility)}%`).limit(1).maybeSingle()
       setUtilityInfo(data ?? null)
     }
     if (project.hoa) {
-      const { data } = await (supabase as any).from('hoas').select('phone,website,contact_name,contact_email,notes').ilike('name', `%${escapeIlike(project.hoa)}%`).limit(1).maybeSingle()
+      const { data } = await supabase.from('hoas').select('phone,website,contact_name,contact_email,notes').ilike('name', `%${escapeIlike(project.hoa)}%`).limit(1).maybeSingle()
       setHoaInfo(data ?? null)
     }
   }, [pid, project.ahj, project.utility, project.hoa])
 
   const openAhjEdit = async () => {
     if (!project.ahj) return
-    const { data } = await (supabase as any).from('ahjs').select('*').ilike('name', `%${escapeIlike(project.ahj)}%`).limit(1).maybeSingle()
+    const { data } = await supabase.from('ahjs').select('*').ilike('name', `%${escapeIlike(project.ahj)}%`).limit(1).maybeSingle()
     if (data) setAhjEdit({ ...data })
   }
 
   const saveAhjEdit = async () => {
     if (!ahjEdit) return
     setRefSaving(true)
-    const { error } = await (supabase as any).from('ahjs').update({
+    const { error } = await supabase.from('ahjs').update({
       permit_phone: ahjEdit.permit_phone,
       permit_website: ahjEdit.permit_website,
       max_duration: ahjEdit.max_duration,
@@ -458,14 +458,14 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
 
   const openUtilEdit = async () => {
     if (!project.utility) return
-    const { data } = await (supabase as any).from('utilities').select('*').ilike('name', `%${escapeIlike(project.utility)}%`).limit(1).maybeSingle()
+    const { data } = await supabase.from('utilities').select('*').ilike('name', `%${escapeIlike(project.utility)}%`).limit(1).maybeSingle()
     if (data) setUtilEdit({ ...data })
   }
 
   const saveUtilEdit = async () => {
     if (!utilEdit) return
     setRefSaving(true)
-    const { error } = await (supabase as any).from('utilities').update({
+    const { error } = await supabase.from('utilities').update({
       phone: utilEdit.phone,
       website: utilEdit.website,
       notes: utilEdit.notes,
@@ -478,14 +478,14 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
 
   const openHoaEdit = async () => {
     if (!project.hoa) return
-    const { data } = await (supabase as any).from('hoas').select('*').ilike('name', `%${escapeIlike(project.hoa)}%`).limit(1).maybeSingle()
+    const { data } = await supabase.from('hoas').select('*').ilike('name', `%${escapeIlike(project.hoa)}%`).limit(1).maybeSingle()
     if (data) setHoaEdit({ ...data })
   }
 
   const saveHoaEdit = async () => {
     if (!hoaEdit) return
     setRefSaving(true)
-    const { error } = await (supabase as any).from('hoas').update({
+    const { error } = await supabase.from('hoas').update({
       phone: hoaEdit.phone,
       website: hoaEdit.website,
       contact_name: hoaEdit.contact_name,
@@ -499,7 +499,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   }
 
   const loadFolder = useCallback(async () => {
-    const { data } = await (supabase as any).from('project_folders').select('folder_url').eq('project_id', pid).maybeSingle()
+    const { data } = await supabase.from('project_folders').select('folder_url').eq('project_id', pid).maybeSingle()
     setFolderUrl(data?.folder_url ?? null)
   }, [pid])
 
@@ -536,7 +536,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       loadAdders(),
     ])
     // Load change order count for this project
-    ;(supabase as any).from('change_orders')
+    ;supabase.from('change_orders')
       .select('id', { count: 'exact', head: true })
       .eq('project_id', initialProject.id)
       .not('status', 'in', '("Complete","Cancelled")')
@@ -587,7 +587,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     const today = new Date().toISOString().slice(0, 10)
     // Set started_date when task first moves to In Progress (don't overwrite if already set)
     const existingRaw = taskStatesRaw.find(t => t.task_id === taskId)
-    const startedDate = status === 'In Progress' && !(existingRaw as any)?.started_date
+    const startedDate = status === 'In Progress' && !existingRaw?.started_date
       ? today : undefined
 
     const upsertPayload: Record<string, any> = {
@@ -599,14 +599,14 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     }
     if (startedDate) upsertPayload.started_date = startedDate
 
-    const { error: upsertErr } = await (supabase as any).from('task_state').upsert(upsertPayload, { onConflict: 'project_id,task_id' })
+    const { error: upsertErr } = await supabase.from('task_state').upsert(upsertPayload, { onConflict: 'project_id,task_id' })
     if (upsertErr) console.error('task_state upsert failed:', upsertErr)
 
     const changedBy = currentUser?.name
       ?? userEmail.split('@')[0]
       ?? 'unknown'
     // Log to task_history — await to ensure it completes
-    const { error: histError } = await (supabase as any).from('task_history').insert({
+    const { error: histError } = await supabase.from('task_history').insert({
       project_id: pid,
       task_id: taskId,
       status,
@@ -625,7 +625,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
         completed_date: null,
         started_date: null,
       }))
-      const { error: cascadeErr } = await (supabase as any).from('task_state').upsert(resetUpdates, { onConflict: 'project_id,task_id' })
+      const { error: cascadeErr } = await supabase.from('task_state').upsert(resetUpdates, { onConflict: 'project_id,task_id' })
       if (cascadeErr) console.error('cascade reset upsert failed:', cascadeErr)
 
       // Log each reset to history
@@ -636,7 +636,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
         reason: null,
         changed_by: `${changedBy} (cascade)`,
       }))
-      const { error: cascadeHistErr } = await (supabase as any).from('task_history').insert(historyInserts)
+      const { error: cascadeHistErr } = await supabase.from('task_history').insert(historyInserts)
       if (cascadeHistErr) console.error('cascade history insert failed:', cascadeHistErr)
 
       // Update local state
@@ -655,10 +655,10 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       const dateClearUpdates: Record<string, null> = {}
       for (const id of cascadeResets) {
         const df = TASK_DATE_FIELDS[id]
-        if (df && (project as any)[df]) dateClearUpdates[df] = null
+        if (df && (project as Record<string, unknown>)[df]) dateClearUpdates[df] = null
       }
       if (Object.keys(dateClearUpdates).length > 0) {
-        const { error: dateClearErr } = await (supabase as any).from('projects').update(dateClearUpdates).eq('id', pid)
+        const { error: dateClearErr } = await supabase.from('projects').update(dateClearUpdates).eq('id', pid)
         if (dateClearErr) console.error('cascade date clear failed:', dateClearErr)
         setProject(p => ({ ...p, ...dateClearUpdates }))
       }
@@ -684,7 +684,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       }
       if (autoReadyUpdates.length > 0) {
         for (const u of autoReadyUpdates) {
-          await (supabase as any).from('task_state').upsert(u, { onConflict: 'project_id,task_id' })
+          await supabase.from('task_state').upsert(u, { onConflict: 'project_id,task_id' })
         }
         setTaskStates(prev => {
           const next = { ...prev }
@@ -709,8 +709,8 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     // Only set if the field is currently empty — never overwrite manual entries
     if (status === 'Complete') {
       const dateField = TASK_DATE_FIELDS[taskId]
-      if (dateField && !(project as any)[dateField]) {
-        const { error: dateSetErr } = await (supabase as any).from('projects').update({ [dateField]: today }).eq('id', pid)
+      if (dateField && !(project as Record<string, unknown>)[dateField]) {
+        const { error: dateSetErr } = await supabase.from('projects').update({ [dateField]: today }).eq('id', pid)
         if (dateSetErr) console.error('auto-populate date failed:', dateSetErr)
         setProject(p => ({ ...p, [dateField]: today }))
       }
@@ -719,8 +719,8 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     // ── Auto-clear project date when task is un-completed ────────────────
     if (status !== 'Complete' && !cascadeResets) {
       const dateField = TASK_DATE_FIELDS[taskId]
-      if (dateField && (project as any)[dateField]) {
-        const { error: dateClearErr2 } = await (supabase as any).from('projects').update({ [dateField]: null }).eq('id', pid)
+      if (dateField && (project as Record<string, unknown>)[dateField]) {
+        const { error: dateClearErr2 } = await supabase.from('projects').update({ [dateField]: null }).eq('id', pid)
         if (dateClearErr2) console.error('auto-clear date failed:', dateClearErr2)
         setProject(p => ({ ...p, [dateField]: null }))
       }
@@ -734,7 +734,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       const blockerText = `⏸ ${taskName}${reason ? ': ' + reason : ''}`
       // Only auto-set if no blocker currently exists
       if (!project.blocker) {
-        const { error: blockerSetErr } = await (supabase as any).from('projects').update({ blocker: blockerText }).eq('id', pid)
+        const { error: blockerSetErr } = await supabase.from('projects').update({ blocker: blockerText }).eq('id', pid)
         if (blockerSetErr) console.error('auto-set blocker failed:', blockerSetErr)
         setProject(p => ({ ...p, blocker: blockerText }))
         setBlockerInput(blockerText)
@@ -751,7 +751,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
           t.id !== taskId && (taskStates[t.id] === 'Pending Resolution' || taskStates[t.id] === 'Revision Required')
         )
         if (!otherStuck) {
-          const { error: blockerClearErr } = await (supabase as any).from('projects').update({ blocker: null }).eq('id', pid)
+          const { error: blockerClearErr } = await supabase.from('projects').update({ blocker: null }).eq('id', pid)
           if (blockerClearErr) console.error('auto-clear blocker failed:', blockerClearErr)
           setProject(p => ({ ...p, blocker: null }))
           setBlockerInput('')
@@ -763,7 +763,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     // ── Permit drop-off/pickup scheduling alert ──────────────────────────
     if (taskId === 'city_permit' && status === 'Pending Resolution' && taskReasons[taskId] === 'Permit Drop Off/Pickup') {
       const alertText = '[Scheduling Alert] City permit requires drop-off/pickup. Please schedule a service call.'
-      const { error: noteErr } = await (supabase as any).from('notes').insert({
+      const { error: noteErr } = await supabase.from('notes').insert({
         project_id: pid,
         text: alertText,
         time: new Date().toISOString(),
@@ -778,14 +778,14 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     // ── Auto-flip disposition when In Service task status changes ─────────
     if (taskId === 'in_service') {
       if (status === 'Complete') {
-        const { error: dispErr } = await (supabase as any).from('projects').update({ disposition: 'In Service' }).eq('id', pid)
+        const { error: dispErr } = await supabase.from('projects').update({ disposition: 'In Service' }).eq('id', pid)
         if (dispErr) { console.error('disposition update failed:', dispErr); showToast('Update failed'); return }
         setProject(p => ({ ...p, disposition: 'In Service' }))
         onProjectUpdated()
         showToast('Project marked In Service ✓')
         return // skip auto-advance toast below
       } else if (project.disposition === 'In Service') {
-        const { error: dispErr2 } = await (supabase as any).from('projects').update({ disposition: 'Sale' }).eq('id', pid)
+        const { error: dispErr2 } = await supabase.from('projects').update({ disposition: 'Sale' }).eq('id', pid)
         if (dispErr2) { console.error('disposition revert failed:', dispErr2); showToast('Update failed'); return }
         setProject(p => ({ ...p, disposition: 'Sale' }))
         onProjectUpdated()
@@ -799,14 +799,14 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       const milestoneField = taskId === 'install_done' ? 'm2_status' : taskId === 'pto' ? 'm3_status' : null
       if (milestoneField) {
         // Only update if status is currently null/empty (not already submitted/funded)
-        const { data: fundingRow } = await (supabase as any)
+        const { data: fundingRow } = await supabase
           .from('project_funding')
           .select(milestoneField)
           .eq('project_id', pid)
           .maybeSingle()
         const currentMsStatus = fundingRow?.[milestoneField]
         if (!currentMsStatus || currentMsStatus === 'Not Submitted') {
-          const { error: fundingErr } = await (supabase as any).from('project_funding').upsert(
+          const { error: fundingErr } = await supabase.from('project_funding').upsert(
             { project_id: pid, [milestoneField]: 'Eligible' },
             { onConflict: 'project_id' }
           )
@@ -822,11 +822,11 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       const updatedStates = { ...taskStates, [taskId]: status }
       const { ok } = canAdvance(project.stage, updatedStates, project.ahj)
       if (ok && nextStage) {
-        const { error: advErr } = await (supabase as any).from('projects').update({ stage: nextStage, stage_date: today }).eq('id', pid)
+        const { error: advErr } = await supabase.from('projects').update({ stage: nextStage, stage_date: today }).eq('id', pid)
         if (advErr) { console.error('auto stage advance failed:', advErr); showToast('Failed to auto-advance stage'); return }
-        const { error: histErr } = await (supabase as any).from('stage_history').insert({ project_id: pid, stage: nextStage, entered: today })
+        const { error: histErr } = await supabase.from('stage_history').insert({ project_id: pid, stage: nextStage, entered: today })
         if (histErr) { console.error('stage_history insert failed:', histErr); showToast('Failed to log stage history') }
-        const { error: auditErr } = await (supabase as any).from('audit_log').insert({
+        const { error: auditErr } = await supabase.from('audit_log').insert({
           project_id: pid, field: 'stage',
           old_value: project.stage, new_value: nextStage,
           changed_by: currentUser?.name ?? null, changed_by_id: currentUser?.id ?? null,
@@ -841,7 +841,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
 
   async function updateTaskReason(taskId: string, reason: string) {
     setTaskReasons(prev => ({ ...prev, [taskId]: reason }))
-    await (supabase as any).from('task_state').upsert({
+    await supabase.from('task_state').upsert({
       project_id: pid,
       task_id: taskId,
       status: taskStates[taskId] ?? 'Not Ready',
@@ -851,7 +851,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     const changedBy = currentUser?.name
       ?? userEmail.split('@')[0]
       ?? 'unknown'
-    const { error: histError2 } = await (supabase as any).from('task_history').insert({
+    const { error: histError2 } = await supabase.from('task_history').insert({
       project_id: pid,
       task_id: taskId,
       status: taskStates[taskId] ?? 'Not Ready',
@@ -871,7 +871,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       pm: currentUser?.name ?? null,
       pm_id: currentUser?.id ?? null,
     }
-    const { data } = await (supabase as any).from('notes').insert(note).select('id, task_id, text, time, pm').single()
+    const { data } = await supabase.from('notes').insert(note).select('id, task_id, text, time, pm').single()
     if (data) {
       setTaskNotes(prev => {
         const next = { ...prev }
@@ -888,7 +888,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       if (date) next[taskId] = date; else delete next[taskId]
       return next
     })
-    const { error } = await (supabase as any).from('task_state').upsert({
+    const { error } = await supabase.from('task_state').upsert({
       project_id: pid,
       task_id: taskId,
       status: taskStates[taskId] ?? 'Not Ready',
@@ -905,7 +905,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     if (!newNote.trim()) return
     setSaving(true)
     const pm = currentUser?.name ?? userEmail.split('@')[0] ?? 'PM'
-    const { error: noteErr } = await (supabase as any).from('notes').insert({
+    const { error: noteErr } = await supabase.from('notes').insert({
       project_id: pid, text: newNote.trim(),
       time: new Date().toISOString(), pm,
       pm_id: currentUser?.id ?? null,
@@ -918,7 +918,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   }
 
   async function deleteNote(noteId: string) {
-    const { error } = await (supabase as any).from('notes').delete().eq('id', noteId)
+    const { error } = await supabase.from('notes').delete().eq('id', noteId)
     if (error) { showToast('Failed to delete note'); return }
     await loadNotes()
     showToast('Note deleted')
@@ -926,7 +926,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
 
   async function setBlocker() {
     const text = blockerInput.trim()
-    const { error: blockerErr } = await (supabase as any).from('projects').update({ blocker: text || null }).eq('id', pid)
+    const { error: blockerErr } = await supabase.from('projects').update({ blocker: text || null }).eq('id', pid)
     if (blockerErr) {
       console.error('blocker update failed:', blockerErr)
       showToast('Failed to update blocker')
@@ -963,7 +963,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     }
 
     setEditSaving(true)
-    const { error: updateErr } = await (supabase as any).from('projects').update(editDraft).eq('id', pid)
+    const { error: updateErr } = await supabase.from('projects').update(editDraft).eq('id', pid)
     if (updateErr) {
       console.error('project update failed:', updateErr)
       showToast('Save failed')
@@ -973,17 +973,17 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
 
     // Audit log: record each changed field
     const auditEntries = Object.entries(editDraft)
-      .filter(([key, val]) => String(val ?? '') !== String((project as any)[key] ?? ''))
+      .filter(([key, val]) => String(val ?? '') !== String((project as Record<string, unknown>)[key] ?? ''))
       .map(([key, val]) => ({
         project_id: pid,
         field: key,
-        old_value: (project as any)[key] != null ? String((project as any)[key]) : null,
+        old_value: (project as Record<string, unknown>)[key] != null ? String((project as Record<string, unknown>)[key]) : null,
         new_value: val != null ? String(val) : null,
         changed_by: currentUser?.name ?? null,
         changed_by_id: currentUser?.id ?? null,
       }))
     if (auditEntries.length > 0) {
-      const { error: auditErr2 } = await (supabase as any).from('audit_log').insert(auditEntries)
+      const { error: auditErr2 } = await supabase.from('audit_log').insert(auditEntries)
       if (auditErr2) console.error('audit_log insert failed:', auditErr2)
     }
 
@@ -1039,16 +1039,16 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     }
     setAdvancing(true)
     const today = new Date().toISOString().slice(0, 10)
-    const { error: stageErr } = await (supabase as any).from('projects').update({ stage: nextStage, stage_date: today }).eq('id', pid)
+    const { error: stageErr } = await supabase.from('projects').update({ stage: nextStage, stage_date: today }).eq('id', pid)
     if (stageErr) {
       console.error('stage advance failed:', stageErr)
       showToast('Failed to advance stage')
       setAdvancing(false)
       return
     }
-    const { error: histErr } = await (supabase as any).from('stage_history').insert({ project_id: pid, stage: nextStage, entered: today })
+    const { error: histErr } = await supabase.from('stage_history').insert({ project_id: pid, stage: nextStage, entered: today })
     if (histErr) console.error('stage_history insert failed:', histErr)
-    const { error: auditErr3 } = await (supabase as any).from('audit_log').insert({
+    const { error: auditErr3 } = await supabase.from('audit_log').insert({
       project_id: pid, field: 'stage',
       old_value: project.stage, new_value: nextStage,
       changed_by: currentUser?.name ?? null, changed_by_id: currentUser?.id ?? null,
@@ -1174,7 +1174,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                 <button
                   onClick={async () => {
                     if (!confirm('Reactivate this project? It will return to the active pipeline.')) return
-                    const { error: reactErr } = await (supabase as any).from('projects').update({ disposition: 'Sale' }).eq('id', project.id)
+                    const { error: reactErr } = await supabase.from('projects').update({ disposition: 'Sale' }).eq('id', project.id)
                     if (reactErr) { console.error('reactivate failed:', reactErr); showToast('Reactivate failed'); return }
                     setProject(p => ({ ...p, disposition: 'Sale' }))
                     if (onProjectUpdated) onProjectUpdated()
@@ -1187,7 +1187,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                 <button
                   onClick={async () => {
                     if (!confirm(`Cancel ${project.name}? It will be removed from the active pipeline.`)) return
-                    const { error: cancelErr } = await (supabase as any).from('projects').update({ disposition: 'Cancelled' }).eq('id', project.id)
+                    const { error: cancelErr } = await supabase.from('projects').update({ disposition: 'Cancelled' }).eq('id', project.id)
                     if (cancelErr) { console.error('cancel failed:', cancelErr); showToast('Cancel failed'); return }
                     setProject(p => ({ ...p, disposition: 'Cancelled' }))
                     if (onProjectUpdated) onProjectUpdated()
@@ -1204,7 +1204,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                     if (!confirm(`DELETE ${project.name} (${project.id})? This cannot be undone.`)) return
                     if (!confirm('Are you absolutely sure? All project data will be permanently deleted.')) return
                     // Log deletion to audit trail before deleting
-                    const { error: delAuditErr } = await (supabase as any).from('audit_log').insert({
+                    const { error: delAuditErr } = await supabase.from('audit_log').insert({
                       project_id: project.id, field: 'project_deleted',
                       old_value: project.name, new_value: null,
                       changed_by: currentUser?.name ?? null, changed_by_id: currentUser?.id ?? null,
@@ -1214,19 +1214,19 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                     if (delErr1) console.error('task_state delete failed:', delErr1)
                     const { error: delErr2 } = await supabase.from('notes').delete().eq('project_id', project.id)
                     if (delErr2) console.error('notes delete failed:', delErr2)
-                    const { error: delErr3 } = await (supabase as any).from('stage_history').delete().eq('project_id', project.id)
+                    const { error: delErr3 } = await supabase.from('stage_history').delete().eq('project_id', project.id)
                     if (delErr3) console.error('stage_history delete failed:', delErr3)
-                    const { error: delErr4 } = await (supabase as any).from('task_history').delete().eq('project_id', project.id)
+                    const { error: delErr4 } = await supabase.from('task_history').delete().eq('project_id', project.id)
                     if (delErr4) console.error('task_history delete failed:', delErr4)
-                    const { error: delErr5 } = await (supabase as any).from('schedule').delete().eq('project_id', project.id)
+                    const { error: delErr5 } = await supabase.from('schedule').delete().eq('project_id', project.id)
                     if (delErr5) console.error('schedule delete failed:', delErr5)
-                    const { error: delErr6 } = await (supabase as any).from('service_calls').delete().eq('project_id', project.id)
+                    const { error: delErr6 } = await supabase.from('service_calls').delete().eq('project_id', project.id)
                     if (delErr6) console.error('service_calls delete failed:', delErr6)
-                    const { error: delErr7 } = await (supabase as any).from('project_funding').delete().eq('project_id', project.id)
+                    const { error: delErr7 } = await supabase.from('project_funding').delete().eq('project_id', project.id)
                     if (delErr7) console.error('project_funding delete failed:', delErr7)
-                    const { error: delErr8 } = await (supabase as any).from('project_folders').delete().eq('project_id', project.id)
+                    const { error: delErr8 } = await supabase.from('project_folders').delete().eq('project_id', project.id)
                     if (delErr8) console.error('project_folders delete failed:', delErr8)
-                    const { error: delErr9 } = await (supabase as any).from('change_orders').delete().eq('project_id', project.id)
+                    const { error: delErr9 } = await supabase.from('change_orders').delete().eq('project_id', project.id)
                     if (delErr9) console.error('change_orders delete failed:', delErr9)
                     const { error: delErr10 } = await supabase.from('projects').delete().eq('id', project.id)
                     if (delErr10) console.error('projects delete failed:', delErr10)
@@ -1466,8 +1466,8 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                   setCoSaving(true)
                   const now = new Date().toISOString()
                   const userName = currentUser?.name ?? userEmail.split('@')[0] ?? 'unknown'
-                  const p = project as any
-                  const { data, error } = await (supabase as any)
+                  const p = project
+                  const { data, error } = await supabase
                     .from('change_orders')
                     .insert({
                       project_id: project.id,

@@ -25,7 +25,7 @@ export function useNotifications() {
     const supabase = createClient()
 
     // Get PM's projects (active only)
-    const { data: projects } = await (supabase as any)
+    const { data: projects } = await supabase
       .from('projects')
       .select('id, name, blocker, stage')
       .eq('pm_id', user.id)
@@ -39,7 +39,7 @@ export function useNotifications() {
     // Get stuck tasks from last 7 days
     const weekAgo = new Date()
     weekAgo.setDate(weekAgo.getDate() - 7)
-    const { data: recentHistory } = await (supabase as any)
+    const { data: recentHistory } = await supabase
       .from('task_history')
       .select('project_id, task_id, status, reason, changed_at, changed_by')
       .in('project_id', pids)
@@ -83,7 +83,7 @@ export function useNotifications() {
     }
 
     // @mention notifications — join with projects for name
-    const { data: mentions } = await (supabase as any)
+    const { data: mentions } = await supabase
       .from('mention_notifications')
       .select('id, project_id, mentioned_by, message, created_at, read, project:projects(name)')
       .eq('mentioned_user_id', user.id)
@@ -143,7 +143,7 @@ export function useNotifications() {
     if (id.startsWith('mention-')) {
       const dbId = id.replace('mention-', '')
       const supabase = createClient()
-      ;(supabase as any).from('mention_notifications').update({ read: true }).eq('id', dbId)
+      ;supabase.from('mention_notifications').update({ read: true }).eq('id', dbId)
     }
   }
 
@@ -156,7 +156,7 @@ export function useNotifications() {
     const mentionIds = notifications.filter(n => n.id.startsWith('mention-')).map(n => n.id.replace('mention-', ''))
     if (mentionIds.length > 0) {
       const supabase = createClient()
-      ;(supabase as any).from('mention_notifications').update({ read: true }).in('id', mentionIds)
+      ;supabase.from('mention_notifications').update({ read: true }).in('id', mentionIds)
     }
   }
 

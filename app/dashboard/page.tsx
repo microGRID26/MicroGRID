@@ -68,7 +68,7 @@ export default function DashboardPage() {
         .eq('pm_id', currentUser.id),
       supabase.from('task_state')
         .select('project_id, task_id, status, reason, started_date'),
-      (supabase as any).from('schedule')
+      supabase.from('schedule')
         .select('id, project_id, crew_id, job_type, date, time, status')
         .gte('date', todayStr)
         .lte('date', nextWeekStr)

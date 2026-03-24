@@ -9,6 +9,9 @@ import { ProjectPanel } from '@/components/project/ProjectPanel'
 import { cn } from '@/lib/utils'
 import type { Schedule, Crew, Project } from '@/types/database'
 
+/** Schedule row with joined project data from Supabase */
+type ScheduleWithProject = Schedule & { project?: { name: string; city: string } | null }
+
 const JOB_COLORS: Record<string, { bg: string; text: string }> = {
   survey:     { bg: 'bg-blue-900',   text: 'text-blue-200'   },
   install:    { bg: 'bg-green-900',  text: 'text-green-200'  },
@@ -58,7 +61,7 @@ function fmtTime(t: string | null): string {
 export default function SchedulePage() {
   const supabase = createClient()
   const [crews, setCrews] = useState<Crew[]>([])
-  const [schedule, setSchedule] = useState<Schedule[]>([])
+  const [schedule, setSchedule] = useState<ScheduleWithProject[]>([])
   const [weekOffset, setWeekOffset] = useState(0)
   const [warehouseFilter, setWarehouseFilter] = useState('all')
   const [jobFilter, setJobFilter] = useState('all')
@@ -88,12 +91,12 @@ export default function SchedulePage() {
     const [crewRes, schedRes] = await Promise.all([
       // NB: crews.active is stored as STRING 'TRUE'/'FALSE', not a boolean — see CLAUDE.md "Crews Table Quirk"
       supabase.from('crews').select('id, name, warehouse').eq('active', 'TRUE').order('name'),
-      (supabase as any).from('schedule').select('id, crew_id, date, job_type, time, project_id, notes, status, pm, pm_id, arrival_window, arrays, pitch, stories, special_equipment, electrical_notes, wind_speed, risk_category, travel_adder, wifi_info, msp_upgrade, project:projects(name, city)').gte('date', weekStartDate).lte('date', weekEndDate),
+      supabase.from('schedule').select('id, crew_id, date, job_type, time, project_id, notes, status, pm, pm_id, arrival_window, arrays, pitch, stories, special_equipment, electrical_notes, wind_speed, risk_category, travel_adder, wifi_info, msp_upgrade, project:projects(name, city)').gte('date', weekStartDate).lte('date', weekEndDate),
     ])
 
     if (crewRes.data) setCrews(crewRes.data as Crew[])
     if (schedRes.data) {
-      setSchedule(schedRes.data as Schedule[])
+      setSchedule(schedRes.data as ScheduleWithProject[])
     }
     setLoading(false)
   }, [weekOffset])
@@ -148,7 +151,7 @@ export default function SchedulePage() {
     let filtered = all
     // Hide cancelled jobs unless toggled on
     if (!showCancelled) {
-      filtered = filtered.filter(j => (j as any).status !== 'cancelled')
+      filtered = filtered.filter(j => j.status !== 'cancelled')
     }
     if (jobFilter !== 'all') {
       filtered = filtered.filter(j => j.job_type === jobFilter)
@@ -174,7 +177,7 @@ export default function SchedulePage() {
       days.forEach(d => {
         const all = schedMap[`${crew.id}|${isoDate(d)}`] ?? []
         // Count non-cancelled jobs for utilization
-        count += all.filter(j => (j as any).status !== 'cancelled').length
+        count += all.filter(j => j.status !== 'cancelled').length
       })
       counts[crew.id] = count
     })
@@ -186,7 +189,7 @@ export default function SchedulePage() {
     () => filteredCrews.reduce((sum, crew) =>
       sum + days.reduce((s, d) => {
         const all = schedMap[`${crew.id}|${isoDate(d)}`] ?? []
-        return s + all.filter(j => (j as any).status !== 'cancelled').length
+        return s + all.filter(j => j.status !== 'cancelled').length
       }, 0), 0),
     [filteredCrews, days, schedMap]
   )
@@ -201,7 +204,7 @@ export default function SchedulePage() {
   )
   async function batchComplete(date: string) {
     const dayJobs = schedule.filter(j =>
-      j.date === date && (j as any).status !== 'complete' && (j as any).status !== 'cancelled'
+      j.date === date && j.status !== 'complete' && j.status !== 'cancelled'
     )
     if (dayJobs.length === 0) return
     setCompleting(date)
@@ -216,19 +219,19 @@ export default function SchedulePage() {
 
     for (const job of dayJobs) {
       // Update schedule status
-      const { error: schedErr } = await (supabase as any).from('schedule').update({ status: 'complete' }).eq('id', job.id)
+      const { error: schedErr } = await supabase.from('schedule').update({ status: 'complete' }).eq('id', job.id)
       if (schedErr) { console.error('batch schedule update failed:', schedErr); continue }
 
       // Task sync
       const taskId = JOB_TO_TASK[job.job_type]
       if (taskId && job.project_id) {
         try {
-          await (supabase as any).from('task_state').upsert({
+          await supabase.from('task_state').upsert({
             project_id: job.project_id, task_id: taskId,
             status: 'Complete', completed_date: today, started_date: today,
           }, { onConflict: 'project_id,task_id' })
 
-          await (supabase as any).from('task_history').insert({
+          await supabase.from('task_history').insert({
             project_id: job.project_id, task_id: taskId,
             status: 'Complete', changed_by: 'Crew (batch complete)',
           })
@@ -237,7 +240,7 @@ export default function SchedulePage() {
           if (dateField) {
             const { data: proj } = await supabase.from('projects').select(dateField).eq('id', job.project_id).single()
             if (proj && !(proj as any)[dateField]) {
-              await (supabase as any).from('projects').update({ [dateField]: today }).eq('id', job.project_id)
+              await supabase.from('projects').update({ [dateField]: today }).eq('id', job.project_id)
             }
           }
         } catch (e) {
@@ -323,7 +326,7 @@ export default function SchedulePage() {
                     <div className="flex items-center justify-between">
                       <span>{DAYS[i]}</span>
                       {(() => {
-                        const pending = schedule.filter(j => j.date === iso && (j as any).status !== 'complete' && (j as any).status !== 'cancelled')
+                        const pending = schedule.filter(j => j.date === iso && j.status !== 'complete' && j.status !== 'cancelled')
                         return pending.length > 0 ? (
                           <button
                             onClick={() => batchComplete(iso)}
@@ -366,10 +369,10 @@ export default function SchedulePage() {
                       )}>
                       {jobs.map(job => {
                         const colors = JOB_COLORS[job.job_type] ?? { bg: 'bg-gray-800', text: 'text-gray-300' }
-                        const statusInfo = STATUS_COLORS[(job as any).status] ?? STATUS_COLORS.scheduled
-                        const isCancelled = (job as any).status === 'cancelled'
-                        const projectData = (job as any).project
-                        const pmName = projectData?.pm ?? (job as any).pm
+                        const statusInfo = STATUS_COLORS[job.status] ?? STATUS_COLORS.scheduled
+                        const isCancelled = job.status === 'cancelled'
+                        const projectData = job.project
+                        const pmName = projectData?.pm ?? job.pm
                         return (
                           <div
                             key={job.id}
@@ -393,7 +396,7 @@ export default function SchedulePage() {
                         )
                       })}
                       {(() => {
-                        const activeJobs = jobs.filter(j => (j as any).status !== 'cancelled')
+                        const activeJobs = jobs.filter(j => j.status !== 'cancelled')
                         const n = activeJobs.length
                         if (n === 0) return <div className="text-[10px] text-green-500 opacity-60 mt-1">Available</div>
                         if (n === 1) return <div className="text-[10px] text-amber-500 opacity-60 mt-1">1 job</div>
@@ -418,7 +421,7 @@ export default function SchedulePage() {
           onClose={() => setBriefScheduleId(null)}
           onEdit={() => {
             // Find the job to get crew/date/project info for the modal
-            const job = schedule.find(s => s.id === briefScheduleId) as any
+            const job = schedule.find(s => s.id === briefScheduleId)
             setBriefScheduleId(null)
             if (job) {
               setAssignModal({

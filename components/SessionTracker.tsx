@@ -56,7 +56,7 @@ export function SessionTracker() {
 
       // Create new session
       try {
-        const { data, error } = await (supabase as any)
+        const { data, error } = await supabase
           .from('user_sessions')
           .insert({
             user_id: userId,
@@ -87,15 +87,15 @@ export function SessionTracker() {
       }
     }
 
-    function startHeartbeat(sb: any, sid: string) {
+    function startHeartbeat(sb: ReturnType<typeof createClient>, sid: string) {
       const path = typeof window !== 'undefined' ? window.location.pathname : '/'
       localStorage.setItem(SESSION_TS_KEY, String(Date.now()))
-      ;(sb as any).from('user_sessions').update({ last_active_at: new Date().toISOString(), page: path }).eq('id', sid)
+      sb.from('user_sessions').update({ last_active_at: new Date().toISOString(), page: path }).eq('id', sid)
         .then(() => {}).catch((err: any) => console.error('heartbeat failed:', err))
 
       intervalRef.current = setInterval(() => {
         const p = typeof window !== 'undefined' ? window.location.pathname : '/'
-        ;(sb as any).from('user_sessions').update({ last_active_at: new Date().toISOString(), page: p }).eq('id', sid)
+        sb.from('user_sessions').update({ last_active_at: new Date().toISOString(), page: p }).eq('id', sid)
           .then(() => {}).catch((err: any) => console.error('heartbeat failed:', err))
       }, 60_000)
     }

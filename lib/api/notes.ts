@@ -1,0 +1,56 @@
+import { createClient } from '@/lib/supabase/client'
+
+export async function loadProjectNotes(projectId: string) {
+  const supabase = createClient()
+  const { data, error } = await supabase.from('notes')
+    .select('*')
+    .eq('project_id', projectId)
+    .is('task_id', null)
+    .order('time', { ascending: false })
+  if (error) console.error('notes load failed:', error)
+  return { data: data ?? [], error }
+}
+
+export async function loadTaskNotes(projectId: string) {
+  const supabase = createClient()
+  const { data, error } = await supabase.from('notes')
+    .select('id, task_id, text, time, pm')
+    .eq('project_id', projectId)
+    .not('task_id', 'is', null)
+    .order('time', { ascending: true })
+  if (error) console.error('task notes load failed:', error)
+  return { data: data ?? [], error }
+}
+
+export async function addNote(note: {
+  project_id: string
+  text: string
+  time: string
+  pm: string | null
+  pm_id?: string | null
+  task_id?: string | null
+}) {
+  const supabase = createClient()
+  const { data, error } = await (supabase as any).from('notes').insert(note).select('id, task_id, text, time, pm').single()
+  if (error) console.error('note insert failed:', error)
+  return { data, error }
+}
+
+export async function deleteNote(noteId: string) {
+  const supabase = createClient()
+  const { error } = await (supabase as any).from('notes').delete().eq('id', noteId)
+  if (error) console.error('note delete failed:', error)
+  return { error }
+}
+
+export async function createMentionNotification(mention: {
+  project_id: string
+  mentioned_user_id: string
+  mentioned_by: string
+  message: string
+}) {
+  const supabase = createClient()
+  const { error } = await (supabase as any).from('mention_notifications').insert(mention)
+  if (error) console.error('mention notification failed:', error)
+  return { error }
+}

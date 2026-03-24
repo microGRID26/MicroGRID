@@ -46,7 +46,7 @@ function AutocompleteInput({ value, onChange, table, placeholder, className }: {
   useEffect(() => {
     if (!focused || value.length < 2) { setSuggestions([]); setOpen(false); return }
     const timer = setTimeout(async () => {
-      const { data } = await (supabase as any).from(table).select('name').ilike('name', `%${escapeIlike(value)}%`).order('name').limit(8)
+      const { data } = await supabase.from(table).select('name').ilike('name', `%${escapeIlike(value)}%`).order('name').limit(8)
       const names = (data ?? []).map((r: any) => r.name)
       setSuggestions(names)
       setOpen(names.length > 0)
@@ -196,7 +196,7 @@ export function NewProjectModal({ onClose, onCreated, existingIds, pms }: Props)
       created_at: new Date().toISOString(),
     }
 
-    const { error: err } = await (supabase as any).from('projects').insert(project)
+    const { error: err } = await supabase.from('projects').insert(project)
 
     if (err) {
       setError(err.message)
@@ -205,7 +205,7 @@ export function NewProjectModal({ onClose, onCreated, existingIds, pms }: Props)
     }
 
     // Insert initial stage history
-    const { error: histErr } = await (supabase as any).from('stage_history').insert({
+    const { error: histErr } = await supabase.from('stage_history').insert({
       project_id: id,
       stage: form.stage,
       entered: today,
@@ -218,7 +218,7 @@ export function NewProjectModal({ onClose, onCreated, existingIds, pms }: Props)
     // Initialize evaluation tasks as "Ready To Start"
     if (form.stage === 'evaluation') {
       const evalTasks = ['welcome', 'ia', 'ub', 'sched_survey', 'ntp']
-      const { error: taskErr } = await (supabase as any).from('task_state').insert(
+      const { error: taskErr } = await supabase.from('task_state').insert(
         evalTasks.map(taskId => ({
           project_id: id,
           task_id: taskId,
@@ -240,7 +240,7 @@ export function NewProjectModal({ onClose, onCreated, existingIds, pms }: Props)
       try {
         const driveData = JSON.parse(driveText)
         if (driveData.folder_url) {
-          await (supabase as any).from('project_folders').upsert(
+          await supabase.from('project_folders').upsert(
             { project_id: id, folder_url: driveData.folder_url },
             { onConflict: 'project_id' }
           )

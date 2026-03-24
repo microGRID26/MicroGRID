@@ -73,7 +73,7 @@ function MentionTextarea({ value, onChange, onSubmit, placeholder }: {
 
   useEffect(() => {
     const supabase = createClient()
-    ;(supabase as any).from('users').select('id, name').eq('active', true).like('email', '%@gomicrogridenergy.com').order('name')
+    ;supabase.from('users').select('id, name').eq('active', true).like('email', '%@gomicrogridenergy.com').order('name')
       .then(({ data }: any) => { if (data) setUsers(data) })
   }, [])
 
@@ -165,13 +165,13 @@ export function NotesTab({ notes, newNote, setNewNote, addNote, deleteNote, savi
     const mentions = newNote.match(/@[A-Z][a-z]+ [A-Z][a-z]+/g)
     if (mentions && projectId) {
       const supabase = createClient()
-      const { data: users } = await (supabase as any).from('users').select('id, name').eq('active', true)
+      const { data: users } = await supabase.from('users').select('id, name').eq('active', true)
       if (users) {
         for (const mention of mentions) {
           const name = mention.slice(1).trim()
           const user = users.find((u: any) => u.name.toLowerCase() === name.toLowerCase())
           if (user) {
-            const { error: mentionErr } = await (supabase as any).from('mention_notifications').insert({
+            const { error: mentionErr } = await supabase.from('mention_notifications').insert({
               project_id: projectId,
               mentioned_user_id: user.id,
               mentioned_by: currentUserName || 'Unknown',

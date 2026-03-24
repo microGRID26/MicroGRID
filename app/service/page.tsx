@@ -5,21 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Nav } from '@/components/Nav'
 import { fmtDate } from '@/lib/utils'
 import { ProjectPanel } from '@/components/project/ProjectPanel'
-import type { Project } from '@/types/database'
-
-interface ServiceCall {
-  id: string
-  project_id: string
-  status: string
-  type: string | null
-  issue: string | null
-  created: string | null
-  date: string | null
-  resolution: string | null
-  pm: string | null
-  priority: string | null
-  project?: { name: string; city: string } | null
-}
+import type { Project, ServiceCall } from '@/types/database'
 
 const STATUS_STYLE: Record<string, string> = {
   'Open':        'bg-red-900 text-red-300',
@@ -41,7 +27,7 @@ export default function ServicePage() {
   const [search, setSearch] = useState('')
 
   const loadData = useCallback(async () => {
-    const { data, error } = await (supabase as any).from('service_calls').select('id, project_id, status, type, issue, created, date, resolution, pm, pm_id, priority, project:projects(name, city)').order('created', { ascending: false }).limit(2000)
+    const { data, error } = await supabase.from('service_calls').select('id, project_id, status, type, issue, created, date, resolution, pm, pm_id, priority, project:projects(name, city)').order('created', { ascending: false }).limit(2000)
     if (error) console.error('service_calls load failed:', error)
     if (data) setCalls(data as ServiceCall[])
     setLoading(false)

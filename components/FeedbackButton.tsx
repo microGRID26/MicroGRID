@@ -38,7 +38,7 @@ export function FeedbackButton() {
     if (!message.trim()) return
     setSubmitting(true)
     const supabase = createClient()
-    const { error } = await (supabase as any).from('feedback').insert({
+    const { error } = await supabase.from('feedback').insert({
       user_name: user?.name ?? 'Unknown',
       user_email: user?.email ?? '',
       type,
@@ -61,6 +61,7 @@ export function FeedbackButton() {
     <>
       {/* Floating button */}
       <button
+        data-feedback-trigger
         onClick={() => setOpen(true)}
         className="fixed bottom-3 right-3 md:bottom-5 md:right-5 z-[90] flex items-center gap-2 px-2 py-2 md:px-3 bg-gray-800 border border-gray-700 rounded-lg
                    text-gray-400 hover:text-white hover:border-gray-600 shadow-lg transition-colors text-xs"

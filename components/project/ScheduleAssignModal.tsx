@@ -75,7 +75,7 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
   // Load existing job if editing
   useEffect(() => {
     if (!scheduleId) return
-    ;(supabase as any).from('schedule').select('*').eq('id', scheduleId).single().then(({ data }: any) => {
+    ;supabase.from('schedule').select('*').eq('id', scheduleId).single().then(({ data }: any) => {
       if (data) {
         setExistingJob(data)
         setForm({
@@ -116,7 +116,7 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
   useEffect(() => {
     if (!projectId) return
     supabase.from('projects').select('id,name,city,pm').eq('id', projectId).single().then(({ data }) => {
-      if (data) setSelectedProject(data as any)
+      if (data) setSelectedProject(data as Project)
     })
   }, [projectId])
 
@@ -128,13 +128,13 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
       .or(`name.ilike.%${escapeIlike(q)}%,id.ilike.%${escapeIlike(q)}%,city.ilike.%${escapeIlike(q)}%`)
       .neq('stage', 'complete')
       .limit(8)
-      .then(({ data }) => { if (data) setProjectResults(data as any) })
+      .then(({ data }) => { if (data) setProjectResults(data as Project[]) })
   }, [projectSearch])
 
   // Check conflict
   useEffect(() => {
     if (!form.crew_id || !form.date) { setConflict(null); return }
-    ;(supabase as any).from('schedule')
+    ;supabase.from('schedule')
       .select('id,project_id')
       .eq('crew_id', form.crew_id)
       .eq('date', form.date)
@@ -183,8 +183,8 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
       try {
         const { data: projPm } = await supabase.from('projects').select('pm, pm_id').eq('id', pid).single()
         if (projPm) {
-          record.pm = (projPm as any).pm
-          record.pm_id = (projPm as any).pm_id
+          record.pm = projPm.pm
+          record.pm_id = projPm.pm_id
         }
       } catch (e) {
         // Best-effort — don't block the save
@@ -193,9 +193,9 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
 
     let result
     if (scheduleId) {
-      result = await (supabase as any).from('schedule').update(record).eq('id', scheduleId)
+      result = await supabase.from('schedule').update(record).eq('id', scheduleId)
     } else {
-      result = await (supabase as any).from('schedule').insert({ id: crypto.randomUUID(), ...record })
+      result = await supabase.from('schedule').insert({ id: crypto.randomUUID(), ...record })
     }
     setSaving(false)
     if (result.error) {
@@ -213,7 +213,7 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
       const schedTaskId = JOB_TO_SCHED_TASK[form.job_type]
       if (schedTaskId) {
         try {
-          await (supabase as any).from('task_state').upsert({
+          await supabase.from('task_state').upsert({
             project_id: pid,
             task_id: schedTaskId,
             status: 'Scheduled',
@@ -236,7 +236,7 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
       if (taskId) {
         const today = new Date().toISOString().slice(0, 10)
         try {
-          await (supabase as any).from('task_state').upsert({
+          await supabase.from('task_state').upsert({
             project_id: pid,
             task_id: taskId,
             status: 'Complete',
@@ -244,7 +244,7 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
             started_date: today,
           }, { onConflict: 'project_id,task_id' })
 
-          await (supabase as any).from('task_history').insert({
+          await supabase.from('task_history').insert({
             project_id: pid,
             task_id: taskId,
             status: 'Complete',
@@ -261,7 +261,7 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
           if (dateField) {
             const { data: proj } = await supabase.from('projects').select(dateField).eq('id', pid).single()
             if (proj && !(proj as any)[dateField]) {
-              const { error: dateErr } = await (supabase as any).from('projects').update({ [dateField]: today }).eq('id', pid)
+              const { error: dateErr } = await supabase.from('projects').update({ [dateField]: today }).eq('id', pid)
               if (dateErr) console.error('date field update failed:', dateErr)
             }
           }
@@ -278,7 +278,7 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
     if (!scheduleId) return
     setDeleting(true)
     setError(null)
-    const result = await (supabase as any).from('schedule').update({ status: 'cancelled' }).eq('id', scheduleId)
+    const result = await supabase.from('schedule').update({ status: 'cancelled' }).eq('id', scheduleId)
     setDeleting(false)
     if (result.error) {
       setError(result.error.message ?? 'Failed to cancel job. Please try again.')
@@ -309,7 +309,7 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
               <div className="flex items-center gap-2 bg-gray-800 rounded-lg px-3 py-2 border border-green-600">
                 <div className="flex-1">
                   <div className="text-xs font-medium text-white">{selectedProject.name}</div>
-                  <div className="text-xs text-gray-400">{selectedProject.id} - {(selectedProject as any).city}</div>
+                  <div className="text-xs text-gray-400">{selectedProject.id} - {selectedProject.city}</div>
                 </div>
                 <button onClick={() => { setSelectedProject(null); set('project_id', '') }}
                   className="text-gray-500 hover:text-white text-xs">x</button>
@@ -329,7 +329,7 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
                       <div key={p.id} onClick={() => { setSelectedProject(p); setProjectSearch(''); setProjectResults([]) }}
                         className="px-3 py-2 hover:bg-gray-700 cursor-pointer">
                         <div className="text-xs font-medium text-white">{p.name}</div>
-                        <div className="text-xs text-gray-400">{p.id} - {(p as any).city}</div>
+                        <div className="text-xs text-gray-400">{p.id} - {p.city}</div>
                       </div>
                     ))}
                   </div>

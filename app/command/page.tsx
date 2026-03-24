@@ -9,6 +9,9 @@ import { NewProjectModal } from '@/components/project/NewProjectModal'
 import { Nav } from '@/components/Nav'
 import type { Project, Schedule } from '@/types/database'
 
+/** Schedule entry enriched with project/crew names for today's schedule display */
+type ScheduleEntry = Schedule & { project_name?: string | null; crew_name?: string | null }
+
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 function cycleDays(p: Project): number {
   return daysAgo(p.sale_date) || daysAgo(p.stage_date)
@@ -342,7 +345,7 @@ export default function CommandPage() {
   const supabase = createClient()
   const [projects, setProjects] = useState<Project[]>([])
   const [taskStates, setTaskStates] = useState<TaskStateRow[]>([])
-  const [todaySchedule, setTodaySchedule] = useState<Schedule[]>([])
+  const [todaySchedule, setTodaySchedule] = useState<ScheduleEntry[]>([])
   const [user, setUser] = useState<{ email: string } | null>(null)
   const [pmFilter, setPmFilter] = useState<string>('all')
   const [search, setSearch] = useState<string>('')
@@ -370,7 +373,7 @@ export default function CommandPage() {
       supabase.from('projects').select('id, name, city, pm, pm_id, stage, stage_date, sale_date, contract, blocker, disposition, address, financier, follow_up_date').order('stage_date', { ascending: true }).limit(2000),
       // Include reason — used to surface context on stuck task badges
       supabase.from('task_state').select('project_id, task_id, status, reason, completed_date').limit(50000),
-      (supabase as any).from('schedule')
+      supabase.from('schedule')
         .select('id, project_id, job_type, time, status, crew_id')
         .eq('date', new Date().toISOString().slice(0, 10))
         .neq('status', 'cancelled')
@@ -386,7 +389,7 @@ export default function CommandPage() {
 
     // Enrich schedule entries with project names and crew names
     if (schedRes.data) {
-      const rawJobs = schedRes.data as any[]
+      const rawJobs = schedRes.data as ScheduleEntry[]
       // Batch-fetch project names
       const schedPids = [...new Set(rawJobs.map((j: any) => j.project_id).filter(Boolean))]
       const projNameMap: Record<string, string> = {}
@@ -408,7 +411,7 @@ export default function CommandPage() {
         j.project_name = projNameMap[j.project_id] ?? null
         j.crew_name = crewNameMap[j.crew_id] ?? null
       })
-      setTodaySchedule(rawJobs as any)
+      setTodaySchedule(rawJobs)
     }
 
     setLastRefresh(Date.now())
@@ -581,7 +584,7 @@ export default function CommandPage() {
           <div className="text-xs text-green-400 font-bold uppercase tracking-wider mb-2">Today&apos;s Schedule ({todaySchedule.length})</div>
           <div className="flex gap-3 overflow-x-auto pb-1">
             {todaySchedule.map(job => {
-              const j = job as any
+              const j = job
               const statusColor = j.status === 'complete' ? 'bg-green-400' : j.status === 'in_progress' ? 'bg-amber-400' : 'bg-blue-400'
               return (
                 <div key={job.id} className="flex-shrink-0 bg-gray-800 rounded-lg px-3 py-2 min-w-[180px]">

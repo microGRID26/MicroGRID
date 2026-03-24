@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Nav } from '@/components/Nav'
 import { createClient } from '@/lib/supabase/client'
+import { db } from '@/lib/db'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import { cn, escapeIlike } from '@/lib/utils'
 import type { Feedback, UserSession } from '@/types/database'
@@ -228,7 +229,7 @@ function SearchBar({ value, onChange, placeholder }: { value: string; onChange: 
 // ── HOA Manager ─────────────────────────────────────────────────────────────
 
 function HOAManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
-  const supabase = createClient()
+  const supabase = db()
   const [hoas, setHoas] = useState<any[]>([])
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<any | null>(null)
@@ -343,7 +344,7 @@ function HOAManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 // ── AHJ Manager ──────────────────────────────────────────────────────────────
 
 function AHJManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
-  const supabase = createClient()
+  const supabase = db()
   const [ahjs, setAhjs] = useState<AHJ[]>([])
   const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
@@ -356,7 +357,7 @@ function AHJManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const PAGE_SIZE = 25
 
   const load = useCallback(async () => {
-    let q = (supabase as any).from('ahjs').select('*', { count: 'exact' })
+    let q = supabase.from('ahjs').select('*', { count: 'exact' })
     if (search) q = q.ilike('name', `%${escapeIlike(search)}%`)
     q = q.order('name').range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
     const { data, count } = await q
@@ -372,7 +373,7 @@ function AHJManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const save = async () => {
     if (!editing) return
     setSaving(true)
-    const { error } = await (supabase as any).from('ahjs').update({
+    const { error } = await supabase.from('ahjs').update({
       name: draft.name,
       permit_phone: draft.permit_phone,
       permit_website: draft.permit_website,
@@ -522,7 +523,7 @@ function AHJManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
               <button
                 onClick={async () => {
                   if (!confirm(`DELETE AHJ "${editing.name}"? Projects referencing it will keep the name as text.`)) return
-                  const { error } = await (supabase as any).from('ahjs').delete().eq('id', editing.id)
+                  const { error } = await supabase.from('ahjs').delete().eq('id', editing.id)
                   if (error) { console.error('AHJ delete failed:', error); return }
                   setEditing(null)
                   setToast('AHJ deleted')
@@ -549,7 +550,7 @@ function AHJManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 // ── Utility Manager ───────────────────────────────────────────────────────────
 
 function UtilityManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
-  const supabase = createClient()
+  const supabase = db()
   const [utilities, setUtilities] = useState<Utility[]>([])
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<Utility | null>(null)
@@ -558,7 +559,7 @@ function UtilityManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const [toast, setToast] = useState('')
 
   const load = useCallback(async () => {
-    let q = (supabase as any).from('utilities').select('*').order('name')
+    let q = supabase.from('utilities').select('*').order('name')
     if (search) q = q.ilike('name', `%${escapeIlike(search)}%`)
     const { data } = await q
     setUtilities(data ?? [])
@@ -571,7 +572,7 @@ function UtilityManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const save = async () => {
     if (!editing) return
     setSaving(true)
-    const { error } = await (supabase as any).from('utilities').update({
+    const { error } = await supabase.from('utilities').update({
       name: draft.name,
       phone: draft.phone,
       website: draft.website,
@@ -656,7 +657,7 @@ function UtilityManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
               <button
                 onClick={async () => {
                   if (!confirm(`DELETE Utility "${editing.name}"? Projects referencing it will keep the name as text.`)) return
-                  const { error } = await (supabase as any).from('utilities').delete().eq('id', editing.id)
+                  const { error } = await supabase.from('utilities').delete().eq('id', editing.id)
                   if (error) { console.error('Utility delete failed:', error); return }
                   setEditing(null)
                   setToast('Utility deleted')
@@ -683,7 +684,7 @@ function UtilityManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 // ── Users ─────────────────────────────────────────────────────────────────────
 
 function UsersManager({ currentUserRole }: { currentUserRole: UserRole }) {
-  const supabase = createClient()
+  const supabase = db()
   const [users, setUsers] = useState<User[]>([])
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<User | null>(null)
@@ -693,7 +694,7 @@ function UsersManager({ currentUserRole }: { currentUserRole: UserRole }) {
   const [toast, setToast] = useState('')
 
   const load = useCallback(async () => {
-    const { data } = await (supabase as any).from('users').select('*').order('name')
+    const { data } = await supabase.from('users').select('*').order('name')
     let filtered = data ?? []
     if (search) filtered = filtered.filter((u: User) => u.name?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase()))
     setUsers(filtered)
@@ -711,7 +712,7 @@ function UsersManager({ currentUserRole }: { currentUserRole: UserRole }) {
   const save = async () => {
     setSaving(true)
     if (creating) {
-      const { error } = await (supabase as any).from('users').insert({
+      const { error } = await supabase.from('users').insert({
         name: draft.name,
         email: draft.email,
         department: draft.department,
@@ -723,7 +724,7 @@ function UsersManager({ currentUserRole }: { currentUserRole: UserRole }) {
       })
       if (error) { console.error('User insert failed:', error); setSaving(false); return }
     } else if (editing) {
-      const { error } = await (supabase as any).from('users').update({
+      const { error } = await supabase.from('users').update({
         name: draft.name,
         email: draft.email,
         department: draft.department,
@@ -895,7 +896,7 @@ function UsersManager({ currentUserRole }: { currentUserRole: UserRole }) {
 // ── Crews ─────────────────────────────────────────────────────────────────────
 
 function CrewsManager() {
-  const supabase = createClient()
+  const supabase = db()
   const [crews, setCrews] = useState<Crew[]>([])
   const [editing, setEditing] = useState<Crew | null>(null)
   const [draft, setDraft] = useState<Partial<Crew>>({})
@@ -903,7 +904,7 @@ function CrewsManager() {
   const [toast, setToast] = useState('')
 
   const load = useCallback(async () => {
-    const { data: crewData } = await (supabase as any).from('crews').select('*').order('name')
+    const { data: crewData } = await supabase.from('crews').select('*').order('name')
     setCrews(crewData ?? [])
   }, [])
 
@@ -912,7 +913,7 @@ function CrewsManager() {
   const save = async () => {
     if (!editing) return
     setSaving(true)
-    const { error } = await (supabase as any).from('crews').update({
+    const { error } = await supabase.from('crews').update({
       name: draft.name,
       warehouse: draft.warehouse,
       active: draft.active,
@@ -1038,7 +1039,7 @@ function CrewsManager() {
 // ── SLA Thresholds ────────────────────────────────────────────────────────────
 
 function SLAManager() {
-  const supabase = createClient()
+  const supabase = db()
   const [thresholds, setThresholds] = useState<SLAThreshold[]>(DEFAULT_SLA)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState('')
@@ -1046,7 +1047,7 @@ function SLAManager() {
 
   useEffect(() => {
     const init = async () => {
-      const { data, error } = await (supabase as any).from('sla_thresholds').select('*')
+      const { data, error } = await supabase.from('sla_thresholds').select('*')
       if (error) {
         setTableExists(false)
       } else {
@@ -1094,7 +1095,7 @@ INSERT INTO sla_thresholds (stage, target, risk, crit) VALUES
       return
     }
     for (const t of thresholds) {
-      const { error } = await (supabase as any).from('sla_thresholds').upsert({
+      const { error } = await supabase.from('sla_thresholds').upsert({
         stage: t.stage,
         target: t.target,
         risk: t.risk,
@@ -1589,7 +1590,7 @@ function ReleaseNotes() {
 }
 
 function CRMInfo() {
-  const supabase = createClient()
+  const supabase = db()
   const [stats, setStats] = useState<CRMStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [stageBreakdown, setStageBreakdown] = useState<Record<string, number>>({})
@@ -1606,14 +1607,14 @@ function CRMInfo() {
         { count: serviceCalls },
         { data: stageData },
       ] = await Promise.all([
-        (supabase as any).from('projects').select('*', { count: 'exact', head: true }),
-        (supabase as any).from('ahjs').select('*', { count: 'exact', head: true }),
-        (supabase as any).from('utilities').select('*', { count: 'exact', head: true }),
+        supabase.from('projects').select('*', { count: 'exact', head: true }),
+        supabase.from('ahjs').select('*', { count: 'exact', head: true }),
+        supabase.from('utilities').select('*', { count: 'exact', head: true }),
         (supabase as any).from('hoas').select('*', { count: 'exact', head: true }),
-        (supabase as any).from('users').select('*', { count: 'exact', head: true }),
-        (supabase as any).from('crews').select('*', { count: 'exact', head: true }),
-        (supabase as any).from('service_calls').select('*', { count: 'exact', head: true }),
-        (supabase as any).from('projects').select('stage').limit(2000),
+        supabase.from('users').select('*', { count: 'exact', head: true }),
+        supabase.from('crews').select('*', { count: 'exact', head: true }),
+        supabase.from('service_calls').select('*', { count: 'exact', head: true }),
+        supabase.from('projects').select('stage').limit(2000),
       ])
       setStats({ projects: projects ?? 0, ahjs: ahjs ?? 0, utilities: utilities ?? 0, hoas: hoas ?? 0, users: users ?? 0, crews: crews ?? 0, serviceCalls: serviceCalls ?? 0 })
       const breakdown: Record<string, number> = {}
@@ -1734,7 +1735,7 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 function FeedbackManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
-  const supabase = createClient()
+  const supabase = db()
   const [filterType, setFilterType] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [toast, setToast] = useState('')
@@ -1742,7 +1743,7 @@ function FeedbackManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const [allEntries, setAllEntries] = useState<FeedbackEntry[]>([])
 
   const load = useCallback(async () => {
-    const { data } = await (supabase as any).from('feedback').select('*').order('created_at', { ascending: false }).limit(500)
+    const { data } = await supabase.from('feedback').select('*').order('created_at', { ascending: false }).limit(500)
     setAllEntries(data ?? [])
   }, [])
 
@@ -1756,7 +1757,7 @@ function FeedbackManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   })
 
   const updateField = async (id: number, field: string, value: string) => {
-    const { error } = await (supabase as any).from('feedback').update({ [field]: value }).eq('id', id)
+    const { error } = await supabase.from('feedback').update({ [field]: value }).eq('id', id)
     if (error) {
       console.error('feedback update failed:', error)
       setToast('Update failed')
@@ -1770,7 +1771,7 @@ function FeedbackManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 
   const deleteFeedback = async (id: number) => {
     if (!confirm('Delete this feedback entry? This cannot be undone.')) return
-    const { error } = await (supabase as any).from('feedback').delete().eq('id', id)
+    const { error } = await supabase.from('feedback').delete().eq('id', id)
     if (error) {
       console.error('feedback delete failed:', error)
       setToast('Delete failed')
@@ -1955,7 +1956,7 @@ function getDateRangeStart(range: DateRange): string | null {
 }
 
 function AuditTrailManager() {
-  const supabase = createClient()
+  const supabase = db()
   const [tab, setTab] = useState<AuditTab>('sessions')
 
   return (
@@ -1987,14 +1988,14 @@ function AuditTrailManager() {
 }
 
 function SessionsTab() {
-  const supabase = createClient()
+  const supabase = db()
   const [sessions, setSessions] = useState<AuditSession[]>([])
   const [userFilter, setUserFilter] = useState('')
   const [dateRange, setDateRange] = useState<DateRange>('today')
   const [userNames, setUserNames] = useState<string[]>([])
 
   const load = useCallback(async () => {
-    let q = (supabase as any)
+    let q = supabase
       .from('user_sessions')
       .select('*')
       .order('logged_in_at', { ascending: false })
@@ -2017,7 +2018,7 @@ function SessionsTab() {
 
   // Load distinct user names
   useEffect(() => {
-    ;(supabase as any)
+    ;supabase
       .from('user_sessions')
       .select('user_name')
       .then(({ data }: { data: { user_name: string }[] | null }) => {
@@ -2108,7 +2109,7 @@ function SessionsTab() {
 }
 
 function ChangesTab() {
-  const supabase = createClient()
+  const supabase = db()
   const [changes, setChanges] = useState<AuditChange[]>([])
   const [userFilter, setUserFilter] = useState('')
   const [fieldFilter, setFieldFilter] = useState('')
@@ -2120,7 +2121,7 @@ function ChangesTab() {
   const [fieldNames, setFieldNames] = useState<string[]>([])
 
   const load = useCallback(async () => {
-    let q = (supabase as any)
+    let q = supabase
       .from('audit_log')
       .select('*')
       .order('changed_at', { ascending: false })
@@ -2143,7 +2144,7 @@ function ChangesTab() {
 
   // Load distinct values for filters
   useEffect(() => {
-    ;(supabase as any)
+    ;supabase
       .from('audit_log')
       .select('changed_by, field')
       .limit(2000)
@@ -2378,7 +2379,7 @@ const SIDEBAR_ITEMS: { id: Module; label: string; icon: React.ReactNode; desc: s
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function AdminPage() {
-  const supabase = createClient()
+  const supabase = db()
   const { user: authUser, loading } = useCurrentUser()
   const isSuperAdmin = authUser?.isSuperAdmin ?? false
   const isAdmin = authUser?.isAdmin ?? false

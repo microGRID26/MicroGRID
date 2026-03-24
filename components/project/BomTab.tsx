@@ -107,7 +107,7 @@ export function BomTab({ project }: Props) {
 
   // Load saved BOM
   useEffect(() => {
-    ;(supabase as any).from('project_boms').select('*').eq('project_id', project.id).order('created_at', { ascending: false }).limit(1).single()
+    ;supabase.from('project_boms').select('*').eq('project_id', project.id).order('created_at', { ascending: false }).limit(1).single()
       .then(({ data }: any) => {
         if (data) {
           setInputs({
@@ -138,7 +138,7 @@ export function BomTab({ project }: Props) {
   async function saveBom() {
     setSaving(true)
     const newVersion = (version ?? 0) + 1
-    await (supabase as any).from('project_boms').upsert({
+    await supabase.from('project_boms').upsert({
       project_id: project.id,
       array_count: inputs.arrayCount,
       row_count: inputs.rowCount,

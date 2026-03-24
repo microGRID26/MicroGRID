@@ -98,7 +98,7 @@ export default function QueuePage() {
     if (projRes.data) {
       setProjects(projRes.data as Project[])
       const pmMap = new Map<string, string>()
-      ;(projRes.data as any[]).forEach((p: any) => { if (p.pm_id && p.pm) pmMap.set(p.pm_id, p.pm) })
+      ;(projRes.data as Project[]).forEach(p => { if (p.pm_id && p.pm) pmMap.set(p.pm_id, p.pm) })
       setAvailablePms([...pmMap.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)))
     }
     if (taskRes.data) setTaskStates(taskRes.data as TaskStateRow[])

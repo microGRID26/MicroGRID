@@ -94,7 +94,7 @@ function ChangeOrdersContent() {
 
   // ── DATA LOADING ─────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from('change_orders')
       .select('*, project:projects(name, city, pm, pm_id)')
       .order('created_at', { ascending: false })
@@ -105,7 +105,7 @@ function ChangeOrdersContent() {
   }, [])
 
   const loadUsers = useCallback(async () => {
-    const { data } = await (supabase as any)
+    const { data } = await supabase
       .from('users')
       .select('id, name')
       .eq('active', true)
@@ -363,11 +363,11 @@ function ComparisonRow({ field: f, co, updateField }: {
   co: ChangeOrder
   updateField: (field: string, value: any) => void
 }) {
-  const origVal = (co as any)[f.origKey]
-  const newVal = (co as any)[f.newKey]
-  const [localVal, setLocalVal] = useState(newVal ?? '')
+  const origVal = co[f.origKey as keyof ChangeOrder]
+  const newVal = co[f.newKey as keyof ChangeOrder]
+  const [localVal, setLocalVal] = useState(String(newVal ?? ''))
 
-  useEffect(() => { setLocalVal(newVal ?? '') }, [newVal])
+  useEffect(() => { setLocalVal(String(newVal ?? '')) }, [newVal])
 
   const changed = localVal != null && localVal !== '' && String(origVal) !== String(localVal)
 
@@ -711,7 +711,7 @@ function NewChangeOrderModal({ users, currentUser, onClose, onCreated }: {
       const { data } = await supabase.from('projects')
         .select('id, name, city, pm, pm_id, systemkw, module, module_qty, financier, financing_type, contract, tpo_escalator, financier_adv_pmt, down_payment')
         .or(`name.ilike.%${escapeIlike(q)}%,id.ilike.%${escapeIlike(q)}%`)
-        .limit(10) as any
+        .limit(10)
       if (data) setProjectResults(data as Project[])
       setSearching(false)
     }, 250)
