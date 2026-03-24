@@ -106,6 +106,9 @@ export function useNotifications() {
       })
     }
 
+    // Sort newest first
+    notifs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+
     // Read state from localStorage
     const readIds = JSON.parse(localStorage.getItem('mg_notif_read') || '[]') as string[]
     notifs.forEach(n => { if (readIds.includes(n.id)) n.read = true })
