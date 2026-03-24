@@ -305,6 +305,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   const [refSaving, setRefSaving] = useState(false)
   const [serviceCalls, setServiceCalls] = useState<any[]>([])
   const [stageHistory, setStageHistory] = useState<any[]>([])
+  const [adders, setAdders] = useState<any[]>([])
   // ── task_history ─────────────────────────────────────────────────────────────
   const [taskHistory, setTaskHistory] = useState<any[]>([])
   const [taskHistoryLoaded, setTaskHistoryLoaded] = useState(false)
@@ -399,6 +400,21 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     if (data) setServiceCalls(data)
   }, [pid])
 
+  const loadAdders = useCallback(async () => {
+    const { data } = await (supabase as any).from('project_adders').select('*').eq('project_id', pid).order('created_at', { ascending: true })
+    if (data) setAdders(data)
+  }, [pid])
+
+  const addAdder = async (adder: { adder_name: string; price: number; quantity: number; total_amount: number }) => {
+    await (supabase as any).from('project_adders').insert({ project_id: pid, ...adder })
+    await loadAdders()
+  }
+
+  const deleteAdder = async (adderId: string) => {
+    await (supabase as any).from('project_adders').delete().eq('id', adderId)
+    await loadAdders()
+  }
+
   const loadAhjUtil = useCallback(async () => {
     if (project.ahj) {
       const { data } = await (supabase as any).from('ahjs').select('permit_phone,permit_website,max_duration,electric_code,permit_notes').ilike('name', `%${escapeIlike(project.ahj)}%`).limit(1).maybeSingle()
@@ -486,6 +502,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       loadAhjUtil(),
       loadServiceCalls(),
       loadStageHistory(),
+      loadAdders(),
     ])
     // Load change order count for this project
     ;(supabase as any).from('change_orders')
@@ -1236,6 +1253,9 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
               openUtilEdit={openUtilEdit}
               stageHistory={stageHistory}
               serviceCalls={serviceCalls}
+              adders={adders}
+              onAddAdder={addAdder}
+              onDeleteAdder={deleteAdder}
             />
           )}
 

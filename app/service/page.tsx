@@ -11,25 +11,23 @@ interface ServiceCall {
   id: string
   project_id: string
   status: string
-  issue_type: string | null
-  description: string | null
-  created_at: string
-  scheduled_date: string | null
-  resolved_date: string | null
+  type: string | null
+  issue: string | null
+  created: string | null
+  date: string | null
+  resolution: string | null
   pm: string | null
   priority: string | null
   project?: { name: string; city: string } | null
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  open:       'bg-red-900 text-red-300',
-  scheduled:  'bg-blue-900 text-blue-300',
-  in_progress:'bg-amber-900 text-amber-300',
-  closed:     'bg-green-900 text-green-300',
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  open: 'Open', scheduled: 'Scheduled', in_progress: 'In Progress', closed: 'Closed'
+  'Open':        'bg-red-900 text-red-300',
+  'Scheduled':   'bg-blue-900 text-blue-300',
+  'In Progress': 'bg-amber-900 text-amber-300',
+  'Escalated':   'bg-amber-900 text-amber-300',
+  'Re-Opened':   'bg-red-900 text-red-300',
+  'Closed':      'bg-green-900 text-green-300',
 }
 
 export default function ServicePage() {
@@ -43,7 +41,7 @@ export default function ServicePage() {
   const [search, setSearch] = useState('')
 
   const loadData = useCallback(async () => {
-    const { data, error } = await (supabase as any).from('service_calls').select('id, project_id, status, issue_type, description, created_at, pm, pm_id, project:projects(name, city)').order('created_at', { ascending: false })
+    const { data, error } = await (supabase as any).from('service_calls').select('id, project_id, status, type, issue, created, date, resolution, pm, pm_id, priority, project:projects(name, city)').order('created', { ascending: false }).limit(2000)
     if (error) console.error('service_calls load failed:', error)
     if (data) setCalls(data as ServiceCall[])
     setLoading(false)
@@ -68,13 +66,13 @@ export default function ServicePage() {
     if (statusFilter !== 'all' && c.status !== statusFilter) return false
     if (search.trim()) {
       const q = search.toLowerCase()
-      if (!c.project?.name?.toLowerCase().includes(q) && !c.project_id?.toLowerCase().includes(q) && !c.description?.toLowerCase().includes(q)) return false
+      if (!c.project?.name?.toLowerCase().includes(q) && !c.project_id?.toLowerCase().includes(q) && !c.issue?.toLowerCase().includes(q)) return false
     }
     return true
   })
 
-  const counts = { all: calls.length, open: 0, scheduled: 0, in_progress: 0, closed: 0 }
-  calls.forEach(c => { if (counts[c.status as keyof typeof counts] !== undefined) (counts as any)[c.status]++ })
+  const counts: Record<string, number> = { all: calls.length }
+  calls.forEach(c => { counts[c.status] = (counts[c.status] || 0) + 1 })
 
   if (loading) return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -90,10 +88,10 @@ export default function ServicePage() {
       <div className="bg-gray-950 border-b border-gray-800 flex items-center gap-1 px-4 py-2 flex-shrink-0">
         {[
           { key: 'all', label: `All (${counts.all})` },
-          { key: 'open', label: `Open (${counts.open})` },
-          { key: 'scheduled', label: `Scheduled (${counts.scheduled})` },
-          { key: 'in_progress', label: `In Progress (${counts.in_progress})` },
-          { key: 'closed', label: `Closed (${counts.closed})` },
+          { key: 'Open', label: `Open (${counts['Open'] ?? 0})` },
+          { key: 'In Progress', label: `In Progress (${counts['In Progress'] ?? 0})` },
+          { key: 'Escalated', label: `Escalated (${counts['Escalated'] ?? 0})` },
+          { key: 'Closed', label: `Closed (${counts['Closed'] ?? 0})` },
         ].map(t => (
           <button key={t.key} onClick={() => setStatusFilter(t.key)}
             className={`text-xs px-3 py-1.5 rounded-md transition-colors ${statusFilter === t.key ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-white'}`}>
@@ -128,7 +126,7 @@ export default function ServicePage() {
                     className="border-b border-gray-800 cursor-pointer hover:bg-gray-800">
                     <td className="px-3 py-2">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLE[call.status] ?? 'bg-gray-800 text-gray-400'}`}>
-                        {STATUS_LABELS[call.status] ?? call.status}
+                        {call.status}
                       </span>
                     </td>
                     <td className="px-3 py-2">
@@ -136,12 +134,12 @@ export default function ServicePage() {
                       <div className="text-gray-500">{call.project_id} {call.project?.city ? `· ${call.project.city}` : ''}</div>
                     </td>
                     <td className="px-3 py-2">
-                      {call.issue_type && <div className="text-gray-300">{call.issue_type}</div>}
-                      {call.description && <div className="text-gray-500 truncate max-w-xs">{call.description}</div>}
+                      {call.type && call.type !== 'NetSuite Import' && <div className="text-gray-300">{call.type}</div>}
+                      {call.issue && <div className="text-gray-500 truncate max-w-xs">{call.issue}</div>}
                     </td>
                     <td className="px-3 py-2 text-gray-400">{call.pm ?? '—'}</td>
-                    <td className="px-3 py-2 text-gray-400">{fmtDate(call.created_at?.slice(0,10))}</td>
-                    <td className="px-3 py-2 text-gray-400">{fmtDate(call.scheduled_date)}</td>
+                    <td className="px-3 py-2 text-gray-400">{fmtDate(call.created?.slice(0,10))}</td>
+                    <td className="px-3 py-2 text-gray-400">{fmtDate(call.date)}</td>
                     <td className="px-3 py-2">
                       {call.priority && (
                         <span className={`px-2 py-0.5 rounded-full text-xs ${

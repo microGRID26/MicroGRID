@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { STAGE_LABELS, fmt$, escapeIlike } from '@/lib/utils'
+import { X, Plus } from 'lucide-react'
 import type { Project } from '@/types/database'
 
 // ── HELPER COMPONENTS ────────────────────────────────────────────────────────
@@ -313,6 +314,121 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
+// ── ADDERS SECTION ───────────────────────────────────────────────────────────
+
+function AddersSection({ adders, editing, onAdd, onDelete }: {
+  adders: any[]
+  editing: boolean
+  onAdd?: (adder: { adder_name: string; price: number; quantity: number; total_amount: number }) => Promise<void>
+  onDelete?: (id: string) => Promise<void>
+}) {
+  const [showForm, setShowForm] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newPrice, setNewPrice] = useState('')
+  const [newQty, setNewQty] = useState('1')
+  const [saving, setSaving] = useState(false)
+
+  const total = adders.reduce((sum: number, a: any) => sum + (Number(a.total_amount) || 0), 0)
+
+  const handleAdd = async () => {
+    if (!newName.trim() || !newPrice || !onAdd) return
+    setSaving(true)
+    const price = Number(newPrice)
+    const qty = Number(newQty) || 1
+    await onAdd({ adder_name: newName.trim(), price, quantity: qty, total_amount: price * qty })
+    setNewName('')
+    setNewPrice('')
+    setNewQty('1')
+    setShowForm(false)
+    setSaving(false)
+  }
+
+  if (!editing && adders.length === 0) return null
+
+  return (
+    <Section title="Adders">
+      {adders.length > 0 && (
+        <div className="space-y-1">
+          {adders.map((a: any) => (
+            <div key={a.id} className="flex items-center gap-2 py-0.5 group">
+              {editing && onDelete && (
+                <button
+                  onClick={() => onDelete(a.id)}
+                  className="text-gray-600 hover:text-red-400 flex-shrink-0 transition-colors"
+                  title="Remove adder"
+                >
+                  <X size={12} />
+                </button>
+              )}
+              <span className="text-gray-300 text-xs flex-1 min-w-0 truncate">{a.adder_name}</span>
+              <span className="text-gray-500 text-xs flex-shrink-0">x{a.quantity ?? 1}</span>
+              <span className="text-gray-200 text-xs flex-shrink-0 w-20 text-right">{fmt$(Number(a.total_amount) || 0)}</span>
+            </div>
+          ))}
+          <div className="flex items-center gap-2 pt-1 border-t border-gray-700">
+            <span className="text-gray-400 text-xs font-semibold flex-1">Total</span>
+            <span className="text-white text-xs font-semibold w-20 text-right">{fmt$(total)}</span>
+          </div>
+        </div>
+      )}
+      {editing && !showForm && (
+        <button
+          onClick={() => setShowForm(true)}
+          className="mt-2 flex items-center gap-1 text-xs text-green-400 hover:text-green-300 transition-colors"
+        >
+          <Plus size={12} /> Add Adder
+        </button>
+      )}
+      {editing && showForm && (
+        <div className="mt-2 space-y-1.5 bg-gray-800 rounded p-2 border border-gray-700">
+          <input
+            type="text"
+            placeholder="Adder name"
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            className="w-full bg-gray-700 text-white text-xs rounded px-2 py-1 border border-gray-600 focus:border-green-500 focus:outline-none"
+          />
+          <div className="flex gap-2">
+            <div className="flex-1 relative">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
+              <input
+                type="number"
+                placeholder="Price"
+                value={newPrice}
+                onChange={e => setNewPrice(e.target.value)}
+                className="w-full bg-gray-700 text-white text-xs rounded pl-5 pr-2 py-1 border border-gray-600 focus:border-green-500 focus:outline-none"
+              />
+            </div>
+            <input
+              type="number"
+              placeholder="Qty"
+              value={newQty}
+              onChange={e => setNewQty(e.target.value)}
+              min="1"
+              className="w-16 bg-gray-700 text-white text-xs rounded px-2 py-1 border border-gray-600 focus:border-green-500 focus:outline-none"
+            />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={() => { setShowForm(false); setNewName(''); setNewPrice(''); setNewQty('1') }}
+              className="px-2 py-1 text-xs text-gray-400 hover:text-gray-200"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleAdd}
+              disabled={saving || !newName.trim() || !newPrice}
+              className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-500 disabled:opacity-50"
+            >
+              {saving ? 'Adding...' : 'Add'}
+            </button>
+          </div>
+        </div>
+      )}
+    </Section>
+  )
+}
+
 // ── INFO TAB ─────────────────────────────────────────────────────────────────
 
 interface InfoTabProps {
@@ -326,9 +442,12 @@ interface InfoTabProps {
   openUtilEdit: () => void
   stageHistory?: any[]
   serviceCalls?: any[]
+  adders?: any[]
+  onAddAdder?: (adder: { adder_name: string; price: number; quantity: number; total_amount: number }) => Promise<void>
+  onDeleteAdder?: (id: string) => Promise<void>
 }
 
-export function InfoTab({ project, editMode, editDraft, setEditDraft, ahjInfo, utilityInfo, openAhjEdit, openUtilEdit, stageHistory = [], serviceCalls = [] }: InfoTabProps) {
+export function InfoTab({ project, editMode, editDraft, setEditDraft, ahjInfo, utilityInfo, openAhjEdit, openUtilEdit, stageHistory = [], serviceCalls = [], adders = [], onAddAdder, onDeleteAdder }: InfoTabProps) {
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="grid grid-cols-2 gap-6 max-w-3xl">
@@ -451,6 +570,7 @@ export function InfoTab({ project, editMode, editDraft, setEditDraft, ahjInfo, u
             <EditRow label="PTO" field="pto_date" value={project.pto_date} draft={editDraft} editing={editMode} onChange={setEditDraft} type="date" />
             <EditRow label="In service" field="in_service_date" value={project.in_service_date} draft={editDraft} editing={editMode} onChange={setEditDraft} type="date" />
           </Section>
+          <AddersSection adders={adders} editing={editMode} onAdd={onAddAdder} onDelete={onDeleteAdder} />
           {stageHistory.length > 0 && (
             <Section title="Stage History">
               {stageHistory.map((h: any, i: number) => (
