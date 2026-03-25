@@ -1057,3 +1057,545 @@ describe('loadPOLineItems', () => {
     consoleSpy.mockRestore()
   })
 })
+
+// ── addWarehouseStock ─────────────────────────────────────────────────────
+
+describe('addWarehouseStock', () => {
+  it('inserts a stock item and returns the created item', async () => {
+    const newItem = {
+      equipment_id: 'eq-1',
+      name: 'MC4 Connectors',
+      category: 'electrical',
+      quantity_on_hand: 500,
+      reorder_point: 100,
+      unit: 'each',
+      location: 'Shelf A3',
+      last_counted_at: null,
+    }
+    const created = { ...newItem, id: 'ws-abc', updated_at: '2026-03-25T00:00:00Z' }
+    const chain = mockChain({ data: created, error: null })
+    chain.single = vi.fn(() => Promise.resolve({ data: created, error: null }))
+    mockSupabase.from.mockReturnValue(chain)
+
+    const { addWarehouseStock } = await import('@/lib/api/inventory')
+    const result = await addWarehouseStock(newItem)
+
+    expect(mockSupabase.from).toHaveBeenCalledWith('warehouse_stock')
+    expect(chain.insert).toHaveBeenCalledWith(newItem)
+    expect(chain.select).toHaveBeenCalled()
+    expect(chain.single).toHaveBeenCalled()
+    expect(result).toEqual(created)
+  })
+
+  it('returns null and logs error on failure', async () => {
+    const error = { message: 'insert failed' }
+    const chain = mockChain({ data: null, error })
+    chain.single = vi.fn(() => Promise.resolve({ data: null, error }))
+    mockSupabase.from.mockReturnValue(chain)
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { addWarehouseStock } = await import('@/lib/api/inventory')
+    const result = await addWarehouseStock({
+      equipment_id: null, name: 'Test', category: 'other',
+      quantity_on_hand: 0, reorder_point: 0, unit: 'each',
+      location: null, last_counted_at: null,
+    })
+
+    expect(result).toBeNull()
+    expect(consoleSpy).toHaveBeenCalledWith('[addWarehouseStock]', 'insert failed')
+    consoleSpy.mockRestore()
+  })
+
+  it('returns the created item with all fields populated', async () => {
+    const newItem = {
+      equipment_id: null,
+      name: 'Rail Mount Kit',
+      category: 'racking',
+      quantity_on_hand: 200,
+      reorder_point: 50,
+      unit: 'each',
+      location: 'Warehouse B',
+      last_counted_at: '2026-03-20T10:00:00Z',
+    }
+    const created = { ...newItem, id: 'ws-xyz', updated_at: '2026-03-25T12:00:00Z' }
+    const chain = mockChain({ data: created, error: null })
+    chain.single = vi.fn(() => Promise.resolve({ data: created, error: null }))
+    mockSupabase.from.mockReturnValue(chain)
+
+    const { addWarehouseStock } = await import('@/lib/api/inventory')
+    const result = await addWarehouseStock(newItem)
+
+    expect(result).not.toBeNull()
+    expect(result!.id).toBe('ws-xyz')
+    expect(result!.name).toBe('Rail Mount Kit')
+    expect(result!.quantity_on_hand).toBe(200)
+    expect(result!.reorder_point).toBe(50)
+  })
+})
+
+// ── updateWarehouseStock ──────────────────────────────────────────────────
+
+describe('updateWarehouseStock', () => {
+  it('updates fields with updated_at and returns true', async () => {
+    const chain = mockChain({ data: null, error: null })
+    mockSupabase.from.mockReturnValue(chain)
+
+    const { updateWarehouseStock } = await import('@/lib/api/inventory')
+    const result = await updateWarehouseStock('ws-1', { quantity_on_hand: 450, location: 'Shelf B1' })
+
+    expect(mockSupabase.from).toHaveBeenCalledWith('warehouse_stock')
+    expect(chain.update).toHaveBeenCalled()
+    const updateArg = chain.update.mock.calls[0][0]
+    expect(updateArg.quantity_on_hand).toBe(450)
+    expect(updateArg.location).toBe('Shelf B1')
+    expect(updateArg.updated_at).toBeDefined()
+    expect(chain.eq).toHaveBeenCalledWith('id', 'ws-1')
+    expect(result).toBe(true)
+  })
+
+  it('returns false and logs error on failure', async () => {
+    const error = { message: 'update failed' }
+    const chain = mockChain({ data: null, error })
+    mockSupabase.from.mockReturnValue(chain)
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { updateWarehouseStock } = await import('@/lib/api/inventory')
+    const result = await updateWarehouseStock('ws-1', { quantity_on_hand: 100 })
+
+    expect(result).toBe(false)
+    expect(consoleSpy).toHaveBeenCalledWith('[updateWarehouseStock]', 'update failed')
+    consoleSpy.mockRestore()
+  })
+})
+
+// ── deleteWarehouseStock ──────────────────────────────────────────────────
+
+describe('deleteWarehouseStock', () => {
+  it('deletes by ID and returns true on success', async () => {
+    const chain = mockChain({ data: null, error: null })
+    mockSupabase.from.mockReturnValue(chain)
+
+    const { deleteWarehouseStock } = await import('@/lib/api/inventory')
+    const result = await deleteWarehouseStock('ws-1')
+
+    expect(mockSupabase.from).toHaveBeenCalledWith('warehouse_stock')
+    expect(chain.delete).toHaveBeenCalled()
+    expect(chain.eq).toHaveBeenCalledWith('id', 'ws-1')
+    expect(result).toBe(true)
+  })
+
+  it('returns false and logs error on failure', async () => {
+    const error = { message: 'delete failed' }
+    const chain = mockChain({ data: null, error })
+    mockSupabase.from.mockReturnValue(chain)
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { deleteWarehouseStock } = await import('@/lib/api/inventory')
+    const result = await deleteWarehouseStock('ws-1')
+
+    expect(result).toBe(false)
+    expect(consoleSpy).toHaveBeenCalledWith('[deleteWarehouseStock]', 'delete failed')
+    consoleSpy.mockRestore()
+  })
+})
+
+// ── checkoutFromWarehouse ─────────────────────────────────────────────────
+
+describe('checkoutFromWarehouse', () => {
+  it('decrements stock, creates transaction, and adds project material', async () => {
+    const stockItem = {
+      id: 'ws-1', equipment_id: 'eq-1', name: 'MC4 Connectors',
+      category: 'electrical', quantity_on_hand: 500, reorder_point: 100,
+      unit: 'each', location: 'Shelf A3', last_counted_at: null, updated_at: '2026-03-25',
+    }
+
+    // Call 1: stock lookup (select + eq + single)
+    const stockChain = mockChain({ data: stockItem, error: null })
+    stockChain.single = vi.fn(() => Promise.resolve({ data: stockItem, error: null }))
+    // Call 2: transaction insert
+    const txChain = mockChain({ data: null, error: null })
+    // Call 3: stock update (decrement)
+    const updateChain = mockChain({ data: null, error: null })
+    // Call 4: project_materials insert
+    const matChain = mockChain({ data: null, error: null })
+
+    let callCount = 0
+    mockSupabase.from.mockImplementation(() => {
+      callCount++
+      if (callCount === 1) return stockChain
+      if (callCount === 2) return txChain
+      if (callCount === 3) return updateChain
+      return matChain
+    })
+
+    const { checkoutFromWarehouse } = await import('@/lib/api/inventory')
+    const result = await checkoutFromWarehouse('ws-1', 10, 'PROJ-001', 'user-1', 'For install')
+
+    expect(result).toBe(true)
+    // Stock was looked up
+    expect(stockChain.eq).toHaveBeenCalledWith('id', 'ws-1')
+    // Transaction was created
+    expect(txChain.insert).toHaveBeenCalled()
+    const txArg = txChain.insert.mock.calls[0][0]
+    expect(txArg.stock_id).toBe('ws-1')
+    expect(txArg.project_id).toBe('PROJ-001')
+    expect(txArg.transaction_type).toBe('checkout')
+    expect(txArg.quantity).toBe(10)
+    expect(txArg.performed_by).toBe('user-1')
+    expect(txArg.notes).toBe('For install')
+    // Stock was decremented
+    expect(updateChain.update).toHaveBeenCalled()
+    const updateArg = updateChain.update.mock.calls[0][0]
+    expect(updateArg.quantity_on_hand).toBe(490)
+    // Material was added to project
+    expect(matChain.insert).toHaveBeenCalled()
+    const matArg = matChain.insert.mock.calls[0][0]
+    expect(matArg.project_id).toBe('PROJ-001')
+    expect(matArg.name).toBe('MC4 Connectors')
+    expect(matArg.source).toBe('warehouse')
+    expect(matArg.status).toBe('delivered')
+  })
+
+  it('returns false when quantity exceeds stock on hand', async () => {
+    const stockItem = {
+      id: 'ws-1', equipment_id: null, name: 'Panels',
+      category: 'module', quantity_on_hand: 5, reorder_point: 10,
+      unit: 'each', location: null, last_counted_at: null, updated_at: '2026-03-25',
+    }
+    const stockChain = mockChain({ data: stockItem, error: null })
+    stockChain.single = vi.fn(() => Promise.resolve({ data: stockItem, error: null }))
+    mockSupabase.from.mockReturnValue(stockChain)
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { checkoutFromWarehouse } = await import('@/lib/api/inventory')
+    const result = await checkoutFromWarehouse('ws-1', 10, 'PROJ-001', 'user-1')
+
+    expect(result).toBe(false)
+    expect(consoleSpy).toHaveBeenCalledWith('[checkoutFromWarehouse] insufficient stock:', 10, '>', 5)
+    consoleSpy.mockRestore()
+  })
+
+  it('returns false when stock item not found', async () => {
+    const stockChain = mockChain({ data: null, error: { message: 'not found' } })
+    stockChain.single = vi.fn(() => Promise.resolve({ data: null, error: { message: 'not found' } }))
+    mockSupabase.from.mockReturnValue(stockChain)
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { checkoutFromWarehouse } = await import('@/lib/api/inventory')
+    const result = await checkoutFromWarehouse('ws-bad', 1, 'PROJ-001', 'user-1')
+
+    expect(result).toBe(false)
+    expect(consoleSpy).toHaveBeenCalledWith('[checkoutFromWarehouse] stock lookup failed:', 'not found')
+    consoleSpy.mockRestore()
+  })
+
+  it('returns false when transaction insert fails', async () => {
+    const stockItem = {
+      id: 'ws-1', equipment_id: null, name: 'Panels',
+      category: 'module', quantity_on_hand: 50, reorder_point: 10,
+      unit: 'each', location: null, last_counted_at: null, updated_at: '2026-03-25',
+    }
+    const stockChain = mockChain({ data: stockItem, error: null })
+    stockChain.single = vi.fn(() => Promise.resolve({ data: stockItem, error: null }))
+    const txChain = mockChain({ data: null, error: { message: 'tx insert failed' } })
+
+    let callCount = 0
+    mockSupabase.from.mockImplementation(() => {
+      callCount++
+      if (callCount === 1) return stockChain
+      return txChain
+    })
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { checkoutFromWarehouse } = await import('@/lib/api/inventory')
+    const result = await checkoutFromWarehouse('ws-1', 5, 'PROJ-001', 'user-1')
+
+    expect(result).toBe(false)
+    expect(consoleSpy).toHaveBeenCalledWith('[checkoutFromWarehouse] transaction insert:', 'tx insert failed')
+    consoleSpy.mockRestore()
+  })
+
+  it('handles exact stock quantity (checking out all remaining)', async () => {
+    const stockItem = {
+      id: 'ws-1', equipment_id: null, name: 'Panels',
+      category: 'module', quantity_on_hand: 10, reorder_point: 5,
+      unit: 'each', location: null, last_counted_at: null, updated_at: '2026-03-25',
+    }
+    const stockChain = mockChain({ data: stockItem, error: null })
+    stockChain.single = vi.fn(() => Promise.resolve({ data: stockItem, error: null }))
+    const txChain = mockChain({ data: null, error: null })
+    const updateChain = mockChain({ data: null, error: null })
+    const matChain = mockChain({ data: null, error: null })
+
+    let callCount = 0
+    mockSupabase.from.mockImplementation(() => {
+      callCount++
+      if (callCount === 1) return stockChain
+      if (callCount === 2) return txChain
+      if (callCount === 3) return updateChain
+      return matChain
+    })
+
+    const { checkoutFromWarehouse } = await import('@/lib/api/inventory')
+    const result = await checkoutFromWarehouse('ws-1', 10, 'PROJ-001', 'user-1')
+
+    expect(result).toBe(true)
+    const updateArg = updateChain.update.mock.calls[0][0]
+    expect(updateArg.quantity_on_hand).toBe(0)
+  })
+})
+
+// ── checkinToWarehouse ────────────────────────────────────────────────────
+
+describe('checkinToWarehouse', () => {
+  it('increments stock and creates transaction', async () => {
+    const stockData = { quantity_on_hand: 100 }
+    const stockChain = mockChain({ data: stockData, error: null })
+    stockChain.single = vi.fn(() => Promise.resolve({ data: stockData, error: null }))
+    const txChain = mockChain({ data: null, error: null })
+    const updateChain = mockChain({ data: null, error: null })
+
+    let callCount = 0
+    mockSupabase.from.mockImplementation(() => {
+      callCount++
+      if (callCount === 1) return stockChain
+      if (callCount === 2) return txChain
+      return updateChain
+    })
+
+    const { checkinToWarehouse } = await import('@/lib/api/inventory')
+    const result = await checkinToWarehouse('ws-1', 25, 'user-1', 'Return from PROJ-001')
+
+    expect(result).toBe(true)
+    // Transaction was created
+    expect(txChain.insert).toHaveBeenCalled()
+    const txArg = txChain.insert.mock.calls[0][0]
+    expect(txArg.stock_id).toBe('ws-1')
+    expect(txArg.transaction_type).toBe('checkin')
+    expect(txArg.quantity).toBe(25)
+    expect(txArg.project_id).toBeNull()
+    expect(txArg.performed_by).toBe('user-1')
+    expect(txArg.notes).toBe('Return from PROJ-001')
+    // Stock was incremented
+    expect(updateChain.update).toHaveBeenCalled()
+    const updateArg = updateChain.update.mock.calls[0][0]
+    expect(updateArg.quantity_on_hand).toBe(125)
+  })
+
+  it('returns false when stock item not found', async () => {
+    const stockChain = mockChain({ data: null, error: { message: 'not found' } })
+    stockChain.single = vi.fn(() => Promise.resolve({ data: null, error: { message: 'not found' } }))
+    mockSupabase.from.mockReturnValue(stockChain)
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { checkinToWarehouse } = await import('@/lib/api/inventory')
+    const result = await checkinToWarehouse('ws-bad', 10, 'user-1')
+
+    expect(result).toBe(false)
+    expect(consoleSpy).toHaveBeenCalledWith('[checkinToWarehouse] stock lookup failed:', 'not found')
+    consoleSpy.mockRestore()
+  })
+
+  it('returns false when transaction insert fails', async () => {
+    const stockData = { quantity_on_hand: 100 }
+    const stockChain = mockChain({ data: stockData, error: null })
+    stockChain.single = vi.fn(() => Promise.resolve({ data: stockData, error: null }))
+    const txChain = mockChain({ data: null, error: { message: 'tx error' } })
+
+    let callCount = 0
+    mockSupabase.from.mockImplementation(() => {
+      callCount++
+      if (callCount === 1) return stockChain
+      return txChain
+    })
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { checkinToWarehouse } = await import('@/lib/api/inventory')
+    const result = await checkinToWarehouse('ws-1', 10, 'user-1')
+
+    expect(result).toBe(false)
+    expect(consoleSpy).toHaveBeenCalledWith('[checkinToWarehouse] transaction insert:', 'tx error')
+    consoleSpy.mockRestore()
+  })
+})
+
+// ── adjustWarehouseStock ──────────────────────────────────────────────────
+
+describe('adjustWarehouseStock', () => {
+  it('sets new quantity, records diff transaction, and updates last_counted_at', async () => {
+    const stockData = { quantity_on_hand: 100 }
+    const stockChain = mockChain({ data: stockData, error: null })
+    stockChain.single = vi.fn(() => Promise.resolve({ data: stockData, error: null }))
+    const txChain = mockChain({ data: null, error: null })
+    const updateChain = mockChain({ data: null, error: null })
+
+    let callCount = 0
+    mockSupabase.from.mockImplementation(() => {
+      callCount++
+      if (callCount === 1) return stockChain
+      if (callCount === 2) return txChain
+      return updateChain
+    })
+
+    const { adjustWarehouseStock } = await import('@/lib/api/inventory')
+    const result = await adjustWarehouseStock('ws-1', 85, 'user-1', 'Physical count correction')
+
+    expect(result).toBe(true)
+    // Transaction records the difference
+    expect(txChain.insert).toHaveBeenCalled()
+    const txArg = txChain.insert.mock.calls[0][0]
+    expect(txArg.stock_id).toBe('ws-1')
+    expect(txArg.transaction_type).toBe('adjustment')
+    expect(txArg.quantity).toBe(-15) // 85 - 100 = -15
+    expect(txArg.performed_by).toBe('user-1')
+    expect(txArg.notes).toBe('Physical count correction')
+    // Stock updated to new quantity with last_counted_at
+    expect(updateChain.update).toHaveBeenCalled()
+    const updateArg = updateChain.update.mock.calls[0][0]
+    expect(updateArg.quantity_on_hand).toBe(85)
+    expect(updateArg.last_counted_at).toBeDefined()
+    expect(updateArg.updated_at).toBeDefined()
+  })
+
+  it('handles negative adjustment with default notes', async () => {
+    const stockData = { quantity_on_hand: 50 }
+    const stockChain = mockChain({ data: stockData, error: null })
+    stockChain.single = vi.fn(() => Promise.resolve({ data: stockData, error: null }))
+    const txChain = mockChain({ data: null, error: null })
+    const updateChain = mockChain({ data: null, error: null })
+
+    let callCount = 0
+    mockSupabase.from.mockImplementation(() => {
+      callCount++
+      if (callCount === 1) return stockChain
+      if (callCount === 2) return txChain
+      return updateChain
+    })
+
+    const { adjustWarehouseStock } = await import('@/lib/api/inventory')
+    const result = await adjustWarehouseStock('ws-1', 20, 'user-1')
+
+    expect(result).toBe(true)
+    const txArg = txChain.insert.mock.calls[0][0]
+    expect(txArg.quantity).toBe(-30) // 20 - 50 = -30
+    // Default notes generated when no notes provided
+    expect(txArg.notes).toBe('Adjusted from 50 to 20')
+  })
+
+  it('returns false when stock lookup fails', async () => {
+    const stockChain = mockChain({ data: null, error: { message: 'lookup error' } })
+    stockChain.single = vi.fn(() => Promise.resolve({ data: null, error: { message: 'lookup error' } }))
+    mockSupabase.from.mockReturnValue(stockChain)
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { adjustWarehouseStock } = await import('@/lib/api/inventory')
+    const result = await adjustWarehouseStock('ws-bad', 100, 'user-1')
+
+    expect(result).toBe(false)
+    expect(consoleSpy).toHaveBeenCalledWith('[adjustWarehouseStock] stock lookup failed:', 'lookup error')
+    consoleSpy.mockRestore()
+  })
+})
+
+// ── loadWarehouseTransactions ─────────────────────────────────────────────
+
+describe('loadWarehouseTransactions', () => {
+  it('returns all transactions when no filters', async () => {
+    const transactions = [
+      { id: 'tx-1', stock_id: 'ws-1', project_id: 'PROJ-001', transaction_type: 'checkout', quantity: 10, created_at: '2026-03-25' },
+      { id: 'tx-2', stock_id: 'ws-2', project_id: null, transaction_type: 'checkin', quantity: 5, created_at: '2026-03-24' },
+    ]
+    const chain = mockChain({ data: transactions, error: null })
+    mockSupabase.from.mockReturnValue(chain)
+
+    const { loadWarehouseTransactions } = await import('@/lib/api/inventory')
+    const result = await loadWarehouseTransactions()
+
+    expect(mockSupabase.from).toHaveBeenCalledWith('warehouse_transactions')
+    expect(chain.select).toHaveBeenCalledWith('*')
+    expect(chain.order).toHaveBeenCalledWith('created_at', { ascending: false })
+    expect(chain.limit).toHaveBeenCalledWith(500)
+    expect(result).toEqual(transactions)
+    expect(result).toHaveLength(2)
+  })
+
+  it('filters by stockId when provided', async () => {
+    const transactions = [
+      { id: 'tx-1', stock_id: 'ws-1', transaction_type: 'checkout', quantity: 10 },
+    ]
+    const chain = mockChain({ data: transactions, error: null })
+    mockSupabase.from.mockReturnValue(chain)
+
+    const { loadWarehouseTransactions } = await import('@/lib/api/inventory')
+    const result = await loadWarehouseTransactions('ws-1')
+
+    expect(chain.eq).toHaveBeenCalledWith('stock_id', 'ws-1')
+    expect(result).toEqual(transactions)
+  })
+
+  it('filters by projectId when provided', async () => {
+    const transactions = [
+      { id: 'tx-1', stock_id: 'ws-1', project_id: 'PROJ-001', transaction_type: 'checkout', quantity: 5 },
+    ]
+    const chain = mockChain({ data: transactions, error: null })
+    mockSupabase.from.mockReturnValue(chain)
+
+    const { loadWarehouseTransactions } = await import('@/lib/api/inventory')
+    const result = await loadWarehouseTransactions(undefined, 'PROJ-001')
+
+    expect(chain.eq).toHaveBeenCalledWith('project_id', 'PROJ-001')
+    expect(result).toEqual(transactions)
+  })
+})
+
+// ── getLowStockItems ──────────────────────────────────────────────────────
+
+describe('getLowStockItems', () => {
+  it('returns items where quantity_on_hand is at or below reorder_point', async () => {
+    const allStock = [
+      { id: 'ws-1', name: 'MC4 Connectors', quantity_on_hand: 50, reorder_point: 100 },  // low
+      { id: 'ws-2', name: 'Rail Mounts', quantity_on_hand: 200, reorder_point: 50 },       // ok
+      { id: 'ws-3', name: 'Panels', quantity_on_hand: 10, reorder_point: 10 },              // at reorder (low)
+      { id: 'ws-4', name: 'Inverters', quantity_on_hand: 0, reorder_point: 5 },             // below reorder (low)
+    ]
+    const chain = mockChain({ data: allStock, error: null })
+    mockSupabase.from.mockReturnValue(chain)
+
+    const { getLowStockItems } = await import('@/lib/api/inventory')
+    const result = await getLowStockItems()
+
+    expect(mockSupabase.from).toHaveBeenCalledWith('warehouse_stock')
+    expect(result).toHaveLength(3)
+    expect(result.map((s: any) => s.id)).toEqual(['ws-1', 'ws-3', 'ws-4'])
+  })
+
+  it('returns empty array when all items are above reorder point', async () => {
+    const allStock = [
+      { id: 'ws-1', name: 'MC4 Connectors', quantity_on_hand: 500, reorder_point: 100 },
+      { id: 'ws-2', name: 'Rail Mounts', quantity_on_hand: 200, reorder_point: 50 },
+    ]
+    const chain = mockChain({ data: allStock, error: null })
+    mockSupabase.from.mockReturnValue(chain)
+
+    const { getLowStockItems } = await import('@/lib/api/inventory')
+    const result = await getLowStockItems()
+
+    expect(result).toEqual([])
+  })
+
+  it('handles items with zero reorder point', async () => {
+    const allStock = [
+      { id: 'ws-1', name: 'Misc Parts', quantity_on_hand: 0, reorder_point: 0 },   // at reorder (0 <= 0)
+      { id: 'ws-2', name: 'Screws', quantity_on_hand: 10, reorder_point: 0 },       // above reorder
+    ]
+    const chain = mockChain({ data: allStock, error: null })
+    mockSupabase.from.mockReturnValue(chain)
+
+    const { getLowStockItems } = await import('@/lib/api/inventory')
+    const result = await getLowStockItems()
+
+    // 0 <= 0 is true, so ws-1 is low stock; 10 <= 0 is false, so ws-2 is not
+    expect(result).toHaveLength(1)
+    expect(result[0].id).toBe('ws-1')
+  })
+})

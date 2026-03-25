@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Nav } from '@/components/Nav'
 import { Pagination } from '@/components/Pagination'
+import { WarehouseTab } from '@/components/inventory/WarehouseTab'
 import {
-  loadAllProjectMaterials, loadWarehouseStock,
+  loadAllProjectMaterials, loadWarehouseStock, getLowStockItems,
   loadPurchaseOrders, loadPOLineItems, updatePurchaseOrderStatus, updatePurchaseOrder,
   MATERIAL_STATUSES, MATERIAL_SOURCES, MATERIAL_CATEGORIES,
   PO_STATUSES, PO_STATUS_COLORS,
@@ -12,7 +13,7 @@ import {
 import type { ProjectMaterial, WarehouseStock, PurchaseOrder, POLineItem } from '@/lib/api/inventory'
 import { loadProjects } from '@/lib/api'
 import { escapeIlike, fmtDate, fmt$ } from '@/lib/utils'
-import { Package, Search, Warehouse, ShoppingCart, ChevronDown, ChevronUp, Truck, CheckCircle2, X } from 'lucide-react'
+import { Package, Search, Warehouse, ShoppingCart, ChevronDown, ChevronUp, Truck, CheckCircle2, X, AlertTriangle } from 'lucide-react'
 
 // ── Category badge colors ──────────────────────────────────────────────────
 const CATEGORY_COLORS: Record<string, string> = {
@@ -65,17 +66,22 @@ export default function InventoryPage() {
   // ── ProjectPanel state (for clicking into a project) ─────────────────────
   const [selectedProject, setSelectedProject] = useState<any>(null)
 
+  // ── Low stock alert count (shown in header) ─────────────────────────────
+  const [lowStockCount, setLowStockCount] = useState(0)
+
   useEffect(() => {
     async function load() {
       setLoading(true)
-      const [mats, projResult] = await Promise.all([
+      const [mats, projResult, lowItems] = await Promise.all([
         loadAllProjectMaterials(),
         loadProjects({ limit: 2000 }),
+        getLowStockItems(),
       ])
       setMaterials(mats)
       const pMap: Record<string, string> = {}
       for (const p of (projResult.data ?? [])) pMap[p.id] = p.name
       setProjects(pMap)
+      setLowStockCount(lowItems.length)
       setLoading(false)
     }
     load()
@@ -251,6 +257,19 @@ export default function InventoryPage() {
           </h1>
           <p className="text-xs text-gray-500 mt-0.5">Project materials and warehouse stock</p>
         </div>
+
+        {/* Low stock alert (header-level) */}
+        {lowStockCount > 0 && activeTab !== 'warehouse' && (
+          <button
+            onClick={() => setActiveTab('warehouse')}
+            className="w-full bg-amber-900/30 border border-amber-700/50 rounded-lg px-4 py-3 flex items-center gap-3 hover:bg-amber-900/40 transition-colors text-left"
+          >
+            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+            <span className="text-sm text-amber-300">
+              {lowStockCount} warehouse item{lowStockCount !== 1 ? 's' : ''} below reorder point
+            </span>
+          </button>
+        )}
 
         {/* Tabs */}
         <div className="flex border-b border-gray-800">
@@ -689,13 +708,7 @@ export default function InventoryPage() {
 
         {/* WAREHOUSE TAB */}
         {activeTab === 'warehouse' && (
-          <div className="text-center py-16">
-            <Warehouse className="w-10 h-10 text-gray-600 mx-auto mb-4" />
-            <h2 className="text-lg font-semibold text-gray-400 mb-2">Warehouse Stock Tracking</h2>
-            <p className="text-sm text-gray-500 max-w-md mx-auto">
-              Warehouse inventory management coming in Phase 3. This will track BOS materials, reorder points, and bin locations for the warehouse team.
-            </p>
-          </div>
+          <WarehouseTab projects={projects} />
         )}
       </div>
     </div>

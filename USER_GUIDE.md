@@ -1406,7 +1406,70 @@ When a PO is advanced to "delivered," all linked project materials are automatic
 
 #### 3. Warehouse Tab
 
-Placeholder for Phase 3 warehouse stock management. Will track BOS materials, reorder points, and bin locations for the warehouse team.
+The Warehouse tab manages BOS (Balance of System) stock levels for items stored in the physical warehouse. It provides real-time quantity tracking, check-out/check-in workflows, physical count adjustments, and low stock alerts.
+
+##### Adding Stock Items
+
+Click the **+** button to add a new warehouse stock item. Fields include:
+
+- **Name** (required) -- e.g., "MC4 Connectors", "Junction Box 6x6"
+- **Category** -- module, inverter, battery, optimizer, racking, electrical, or other
+- **Quantity on Hand** -- current count in the warehouse
+- **Reorder Point** -- threshold below which a low stock alert triggers
+- **Unit** -- each, ft, box, roll, etc.
+- **Location** -- shelf, bin, or bay identifier (optional)
+
+##### Checking Out Stock for a Project
+
+1. Click the **down-arrow** (check out) button on any stock item
+2. Search for and select the target project
+3. Enter the quantity to pull
+4. Add optional notes (e.g., "for roof replacement")
+5. Click **Check Out**
+
+This action:
+- Decrements the warehouse quantity on hand
+- Creates a transaction record (type: checkout)
+- Automatically adds a material entry to the project (source: warehouse, status: delivered, with today's date)
+
+The system prevents checking out more than the available quantity.
+
+##### Checking In Returns
+
+1. Click the **up-arrow** (check in) button on any stock item
+2. Enter the quantity being returned
+3. Add optional notes
+4. Click **Check In**
+
+This increments the warehouse quantity and creates a check-in transaction record.
+
+##### Physical Count Adjustments
+
+1. Click the **sliders** (adjust) button on any stock item
+2. Enter the actual counted quantity
+3. Add optional notes (e.g., "quarterly physical count")
+4. Click **Adjust**
+
+This sets the quantity to the new value, records the difference as an adjustment transaction, and updates the "last counted" timestamp.
+
+##### Transaction History
+
+Click the **clock** (history) button on any stock item to see its complete transaction log. Each entry shows:
+
+- **Type** -- color-coded badge: checkout (red), checkin (green), adjustment (blue)
+- **Quantity** -- positive for additions, negative for removals
+- **Project** -- linked project ID (for checkouts)
+- **Performed By** -- who made the change
+- **Date** -- when the transaction occurred
+
+##### Low Stock Alerts
+
+Items where the quantity on hand is at or below the reorder point are highlighted with an amber warning icon. A low stock alert banner also appears at the top of the Inventory page (on the Materials and PO tabs) with a count of items below reorder point. Clicking the banner switches to the Warehouse tab.
+
+##### Search and Filter
+
+- **Search** -- filter by item name
+- **Category dropdown** -- filter by equipment category
 
 ### Navigation
 

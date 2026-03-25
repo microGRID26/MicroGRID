@@ -500,6 +500,17 @@ export interface WarehouseStock {
   updated_at: string
 }
 
+export interface WarehouseTransaction {
+  id: string
+  stock_id: string
+  project_id: string | null
+  transaction_type: 'checkout' | 'checkin' | 'adjustment' | 'recount'
+  quantity: number
+  notes: string | null
+  performed_by: string | null
+  created_at: string
+}
+
 export interface PurchaseOrder {
   id: string
   po_number: string
@@ -792,6 +803,12 @@ export type Database = {
         Row: WarehouseStock
         Insert: Omit<WarehouseStock, 'id' | 'updated_at'> & { id?: string; updated_at?: string }
         Update: Partial<WarehouseStock>
+
+      }
+      warehouse_transactions: {
+        Row: WarehouseTransaction
+        Insert: Omit<WarehouseTransaction, 'id' | 'created_at'> & { id?: string; created_at?: string }
+        Update: Partial<WarehouseTransaction>
 
       }
       purchase_orders: {

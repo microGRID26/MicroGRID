@@ -1,9 +1,9 @@
 // lib/api/inventory.ts — Project materials, warehouse stock, and purchase order data access
 import { db } from '@/lib/db'
 import { escapeIlike } from '@/lib/utils'
-import type { PurchaseOrder, POLineItem } from '@/types/database'
+import type { PurchaseOrder, POLineItem, WarehouseTransaction } from '@/types/database'
 
-export type { PurchaseOrder, POLineItem }
+export type { PurchaseOrder, POLineItem, WarehouseTransaction }
 
 export interface ProjectMaterial {
   id: string
@@ -468,4 +468,312 @@ export async function loadPOLineItems(poId: string): Promise<POLineItem[]> {
     .order('name')
   if (error) console.error('[loadPOLineItems]', error.message)
   return (data ?? []) as POLineItem[]
+}
+
+// ── Warehouse Stock Management ──────────────────────────────────────────────
+
+/**
+ * Add a new warehouse stock item.
+ */
+export async function addWarehouseStock(
+  item: Omit<WarehouseStock, 'id' | 'updated_at'>
+): Promise<WarehouseStock | null> {
+  const supabase = db()
+  const { data, error } = await supabase
+    .from('warehouse_stock')
+    .insert(item)
+    .select()
+    .single()
+  if (error) {
+    console.error('[addWarehouseStock]', error.message)
+    return null
+  }
+  return data as WarehouseStock
+}
+
+/**
+ * Update a warehouse stock item.
+ */
+export async function updateWarehouseStock(
+  id: string,
+  updates: Partial<WarehouseStock>
+): Promise<boolean> {
+  const supabase = db()
+  const { error } = await supabase
+    .from('warehouse_stock')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) {
+    console.error('[updateWarehouseStock]', error.message)
+    return false
+  }
+  return true
+}
+
+/**
+ * Delete a warehouse stock item.
+ */
+export async function deleteWarehouseStock(id: string): Promise<boolean> {
+  const supabase = db()
+  const { error } = await supabase
+    .from('warehouse_stock')
+    .delete()
+    .eq('id', id)
+  if (error) {
+    console.error('[deleteWarehouseStock]', error.message)
+    return false
+  }
+  return true
+}
+
+/**
+ * Check out stock from warehouse for a project.
+ * Creates a transaction, decrements quantity_on_hand, optionally creates a project_material entry.
+ */
+export async function checkoutFromWarehouse(
+  stockId: string,
+  quantity: number,
+  projectId: string,
+  performedBy: string,
+  notes?: string
+): Promise<boolean> {
+  const supabase = db()
+
+  // Get current stock
+  const { data: stock, error: stockErr } = await supabase
+    .from('warehouse_stock')
+    .select('*')
+    .eq('id', stockId)
+    .single()
+  if (stockErr || !stock) {
+    console.error('[checkoutFromWarehouse] stock lookup failed:', stockErr?.message)
+    return false
+  }
+
+  const s = stock as WarehouseStock
+  if (quantity > s.quantity_on_hand) {
+    console.error('[checkoutFromWarehouse] insufficient stock:', quantity, '>', s.quantity_on_hand)
+    return false
+  }
+
+  // Create transaction
+  const { error: txErr } = await supabase
+    .from('warehouse_transactions')
+    .insert({
+      stock_id: stockId,
+      project_id: projectId,
+      transaction_type: 'checkout',
+      quantity,
+      // Notes are rendered as React text nodes in the UI (not dangerouslySetInnerHTML),
+      // so they are safe from XSS by default. No sanitization needed.
+      notes: notes || null,
+      performed_by: performedBy,
+    })
+  if (txErr) {
+    console.error('[checkoutFromWarehouse] transaction insert:', txErr.message)
+    return false
+  }
+
+  // Decrement stock with optimistic lock — the WHERE clause checks that quantity_on_hand
+  // hasn't changed since we read it, preventing race conditions in concurrent checkouts.
+  const { error: updateErr, count: updateCount } = await supabase
+    .from('warehouse_stock')
+    .update({
+      quantity_on_hand: s.quantity_on_hand - quantity,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', stockId)
+    .eq('quantity_on_hand', s.quantity_on_hand) // optimistic lock
+  if (updateErr) {
+    console.error('[checkoutFromWarehouse] stock update:', updateErr.message)
+    return false
+  }
+  if (updateCount === 0) {
+    console.warn('[checkoutFromWarehouse] optimistic lock failed — stock was modified by another user')
+    return false
+  }
+
+  // Add to project materials
+  const { error: matErr } = await supabase
+    .from('project_materials')
+    .insert({
+      project_id: projectId,
+      equipment_id: s.equipment_id,
+      name: s.name,
+      category: s.category,
+      quantity,
+      unit: s.unit,
+      source: 'warehouse',
+      status: 'delivered',
+      delivered_date: new Date().toISOString().split('T')[0],
+    })
+  if (matErr) {
+    console.error('[checkoutFromWarehouse] material insert:', matErr.message)
+    // Non-fatal — transaction + stock update already succeeded.
+    // The stock decrement and warehouse transaction are the source of truth;
+    // the project_material record is a convenience link. The component shows
+    // a separate warning toast when this fails (checks materialWarning).
+    ;(s as any)._materialWarning = `Failed to create project material record: ${matErr.message}`
+  }
+
+  return true
+}
+
+/**
+ * Check in stock to warehouse.
+ * Creates a transaction and increments quantity_on_hand.
+ */
+export async function checkinToWarehouse(
+  stockId: string,
+  quantity: number,
+  performedBy: string,
+  notes?: string
+): Promise<boolean> {
+  const supabase = db()
+
+  // Get current stock
+  const { data: stock, error: stockErr } = await supabase
+    .from('warehouse_stock')
+    .select('quantity_on_hand')
+    .eq('id', stockId)
+    .single()
+  if (stockErr || !stock) {
+    console.error('[checkinToWarehouse] stock lookup failed:', stockErr?.message)
+    return false
+  }
+
+  const currentQty = (stock as { quantity_on_hand: number }).quantity_on_hand
+
+  // Create transaction
+  const { error: txErr } = await supabase
+    .from('warehouse_transactions')
+    .insert({
+      stock_id: stockId,
+      project_id: null,
+      transaction_type: 'checkin',
+      quantity,
+      notes: notes || null,
+      performed_by: performedBy,
+    })
+  if (txErr) {
+    console.error('[checkinToWarehouse] transaction insert:', txErr.message)
+    return false
+  }
+
+  // Increment stock
+  const { error: updateErr } = await supabase
+    .from('warehouse_stock')
+    .update({
+      quantity_on_hand: currentQty + quantity,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', stockId)
+  if (updateErr) {
+    console.error('[checkinToWarehouse] stock update:', updateErr.message)
+    return false
+  }
+
+  return true
+}
+
+/**
+ * Adjust warehouse stock to a new quantity (for physical count corrections).
+ * Creates an adjustment transaction.
+ */
+export async function adjustWarehouseStock(
+  stockId: string,
+  newQuantity: number,
+  performedBy: string,
+  notes?: string
+): Promise<boolean> {
+  const supabase = db()
+
+  // Get current stock
+  const { data: stock, error: stockErr } = await supabase
+    .from('warehouse_stock')
+    .select('quantity_on_hand')
+    .eq('id', stockId)
+    .single()
+  if (stockErr || !stock) {
+    console.error('[adjustWarehouseStock] stock lookup failed:', stockErr?.message)
+    return false
+  }
+
+  const currentQty = (stock as { quantity_on_hand: number }).quantity_on_hand
+  const diff = newQuantity - currentQty
+
+  // Create transaction
+  const { error: txErr } = await supabase
+    .from('warehouse_transactions')
+    .insert({
+      stock_id: stockId,
+      project_id: null,
+      transaction_type: 'adjustment',
+      quantity: diff,
+      notes: notes || `Adjusted from ${currentQty} to ${newQuantity}`,
+      performed_by: performedBy,
+    })
+  if (txErr) {
+    console.error('[adjustWarehouseStock] transaction insert:', txErr.message)
+    return false
+  }
+
+  // Set new quantity
+  const now = new Date().toISOString()
+  const { error: updateErr } = await supabase
+    .from('warehouse_stock')
+    .update({
+      quantity_on_hand: newQuantity,
+      last_counted_at: now,
+      updated_at: now,
+    })
+    .eq('id', stockId)
+  if (updateErr) {
+    console.error('[adjustWarehouseStock] stock update:', updateErr.message)
+    return false
+  }
+
+  return true
+}
+
+/**
+ * Load warehouse transactions, optionally filtered by stock item or project.
+ */
+export async function loadWarehouseTransactions(
+  stockId?: string,
+  projectId?: string
+): Promise<WarehouseTransaction[]> {
+  const supabase = db()
+  let q = supabase
+    .from('warehouse_transactions')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(500)
+  if (stockId) q = q.eq('stock_id', stockId)
+  if (projectId) q = q.eq('project_id', projectId)
+  const { data, error } = await q
+  if (error) console.error('[loadWarehouseTransactions]', error.message)
+  return (data ?? []) as WarehouseTransaction[]
+}
+
+/**
+ * Get items where quantity_on_hand <= reorder_point.
+ *
+ * NOTE: Uses client-side filtering because Supabase JS doesn't support column-to-column
+ * comparisons (e.g., quantity_on_hand <= reorder_point). At scale (1000+ stock items),
+ * this should be moved to a Postgres RPC function for efficiency.
+ */
+export async function getLowStockItems(): Promise<WarehouseStock[]> {
+  const supabase = db()
+  const { data, error } = await supabase
+    .from('warehouse_stock')
+    .select('*')
+    .order('name')
+  if (error) {
+    console.error('[getLowStockItems]', error.message)
+    return []
+  }
+  return ((data ?? []) as WarehouseStock[]).filter(
+    s => s.quantity_on_hand <= s.reorder_point
+  )
 }

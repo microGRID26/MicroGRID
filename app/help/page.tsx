@@ -1047,7 +1047,10 @@ function ForEveryone() {
           'Select materials and create purchase orders with auto-generated PO numbers',
           'PO lifecycle: draft → submitted → confirmed → shipped → delivered (or cancelled)',
           'Delivering a PO auto-updates all linked materials to "delivered" status',
-          '/inventory page — 3 tabs: Project Materials (cross-project view), Purchase Orders, Warehouse (coming Phase 3)',
+          '/inventory page — 3 tabs: Project Materials (cross-project view), Purchase Orders, Warehouse stock management',
+          'Warehouse: add stock items, check out for projects, check in returns, physical count adjustments',
+          'Low stock alerts when quantity falls to or below reorder point',
+          'Transaction history per item: checkout, checkin, adjustment records with timestamps',
           'Filters, search, sortable columns, and pagination on all inventory views',
         ]} />
       </Card>

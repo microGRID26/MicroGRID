@@ -61,7 +61,7 @@ Centralized data access functions live in `lib/api/`:
 - `lib/api/crews.ts` — `loadCrewsByIds`, `loadActiveCrews`
 - `lib/api/documents.ts` — `loadProjectFiles`, `searchProjectFiles`, `searchAllProjectFiles`, `loadAllProjectFiles`, `loadDocumentRequirements`, `loadProjectDocuments`, `updateDocumentStatus`
 - `lib/api/equipment.ts` — `loadEquipment`, `searchEquipment`, `loadAllEquipment`, `EQUIPMENT_CATEGORIES`
-- `lib/api/inventory.ts` — `loadProjectMaterials`, `addProjectMaterial`, `updateProjectMaterial`, `deleteProjectMaterial`, `autoGenerateMaterials`, `loadWarehouseStock`, `loadAllProjectMaterials`, `generatePONumber`, `loadPurchaseOrders`, `loadPurchaseOrder`, `createPurchaseOrder`, `updatePurchaseOrderStatus`, `updatePurchaseOrder`, `loadPOLineItems`. Constants: `MATERIAL_STATUSES`, `MATERIAL_SOURCES`, `MATERIAL_CATEGORIES`, `PO_STATUSES`, `PO_STATUS_COLORS`
+- `lib/api/inventory.ts` — `loadProjectMaterials`, `addProjectMaterial`, `updateProjectMaterial`, `deleteProjectMaterial`, `autoGenerateMaterials`, `loadWarehouseStock`, `loadAllProjectMaterials`, `generatePONumber`, `loadPurchaseOrders`, `loadPurchaseOrder`, `createPurchaseOrder`, `updatePurchaseOrderStatus`, `updatePurchaseOrder`, `loadPOLineItems`, `addWarehouseStock`, `updateWarehouseStock`, `deleteWarehouseStock`, `checkoutFromWarehouse`, `checkinToWarehouse`, `adjustWarehouseStock`, `loadWarehouseTransactions`, `getLowStockItems`. Constants: `MATERIAL_STATUSES`, `MATERIAL_SOURCES`, `MATERIAL_CATEGORIES`, `PO_STATUSES`, `PO_STATUS_COLORS`. Types: `ProjectMaterial`, `WarehouseStock`, `WarehouseTransaction`
 - `lib/api/index.ts` — barrel export for all of the above
 
 Pages should import from `@/lib/api` instead of querying Supabase directly. The API layer handles error logging, type casting, and consistent return shapes.
@@ -188,6 +188,7 @@ Standalone page at `/audit-trail` (admin-only, guarded by `useCurrentUser().isAd
 - **equipment** — equipment catalog with 2,517 items. Fields: `id` (UUID PK), `category` (panel/inverter/battery/optimizer), `manufacturer`, `model`, `wattage` (NUMERIC), `description`, `active` (BOOLEAN). Used for autocomplete in project Info tab equipment fields. Admin CRUD via EquipmentManager.
 - **project_materials** — per-project material list. Fields: `id` (UUID PK), `project_id` (TEXT), `equipment_id` (UUID FK → equipment), `name`, `category` (module/inverter/battery/optimizer/racking/electrical/other), `quantity`, `unit` (each/ft/box/roll), `source` (dropship/warehouse/tbd), `vendor`, `status` (needed/ordered/shipped/delivered/installed), `po_number`, `expected_date`, `delivered_date`, `notes`, `created_at`, `updated_at`. RLS open to all authenticated users. Migration: `supabase/025-inventory.sql`.
 - **warehouse_stock** — BOS warehouse stock levels. Fields: `id` (UUID PK), `equipment_id` (UUID FK → equipment), `name`, `category`, `quantity_on_hand`, `reorder_point`, `unit`, `location` (shelf/bin), `last_counted_at`, `updated_at`. RLS: SELECT/INSERT/UPDATE for authenticated users. Migration: `supabase/025-inventory.sql`.
+- **warehouse_transactions** — warehouse check-out/check-in/adjustment audit trail. Fields: `id` (UUID PK), `stock_id` (UUID FK → warehouse_stock), `project_id` (TEXT, nullable), `transaction_type` (checkout/checkin/adjustment/recount), `quantity` (INTEGER), `notes`, `performed_by`, `created_at`. RLS: SELECT/INSERT for authenticated users. Migration: `supabase/027-warehouse-transactions.sql`. Indexes on stock_id, project_id, transaction_type.
 - **purchase_orders** — purchase order tracking. Fields: `id` (UUID PK), `po_number` (TEXT UNIQUE, format `PO-YYYYMMDD-NNN`), `vendor`, `project_id` (optional TEXT), `status` (draft/submitted/confirmed/shipped/delivered/cancelled), `total_amount`, `notes`, `created_by`, `created_at`, `updated_at`, `submitted_at`, `confirmed_at`, `shipped_at`, `delivered_at`, `tracking_number`, `expected_delivery`. RLS: SELECT/INSERT/UPDATE for authenticated users. Migration: `supabase/026-purchase-orders.sql`.
 - **po_line_items** — line items for purchase orders. Fields: `id` (UUID PK), `po_id` (UUID FK → purchase_orders ON DELETE CASCADE), `material_id` (UUID FK → project_materials), `equipment_id` (UUID FK → equipment), `name`, `quantity`, `unit_price`, `total_price`, `notes`. RLS: SELECT/INSERT/UPDATE/DELETE for authenticated users. Migration: `supabase/026-purchase-orders.sql`.
 - **ahjs**, **utilities** — reference data for permit authorities and utility companies
@@ -261,10 +262,18 @@ Two-phase inventory system for tracking project materials and purchase orders.
 - Creating a PO auto-sets linked materials to `ordered` status with the PO number
 - Delivering a PO auto-sets all linked materials to `delivered` with today's date
 
+**Phase 3 — Warehouse Transactions** (migration 027):
+- `warehouse_transactions` table tracks every stock movement with type, quantity, project reference, performer, and timestamp
+- **Check out** — pull stock for a project: decrements `quantity_on_hand`, creates a transaction record, and auto-creates a `project_material` entry (source=warehouse, status=delivered)
+- **Check in** — return stock to warehouse: increments `quantity_on_hand` and creates a transaction record
+- **Adjustment** — physical count correction: sets `quantity_on_hand` to new value, records the delta as an adjustment transaction, and updates `last_counted_at`
+- **Low stock alerts** — items where `quantity_on_hand <= reorder_point` are highlighted with amber warnings; alert banner on the Inventory page links to the Warehouse tab
+- **Transaction history** — per-item history log with type badges (checkout=red, checkin=green, adjustment=blue), project links, performer, and timestamps
+
 **Inventory Page** (`/inventory`) — 3-tab hub on primary nav:
 1. **Project Materials** — cross-project view of all materials with filters (status, category, source), search (project, item, vendor), sortable columns, pagination (50/page), and summary cards (needed/ordered/shipped/delivered counts)
 2. **Purchase Orders** — PO list with filters (status, search), expandable detail with status timeline, line items table, status advancement buttons (draft → submitted → confirmed → shipped → delivered), cancel button, and confirmation dialogs. When a PO is delivered, all linked materials auto-update.
-3. **Warehouse** — placeholder for Phase 3 warehouse stock management
+3. **Warehouse** — full warehouse stock management with search, category filter, low stock alerts, and per-item actions (check out, check in, adjust, view history, delete). Modals for each action with project search autocomplete for checkouts. `WarehouseTab` component at `components/inventory/WarehouseTab.tsx`.
 
 ### File References in Notes
 
@@ -505,6 +514,7 @@ All in `supabase/`:
 - `024-equipment.sql` — Equipment catalog table (2,517 items: panels, inverters, batteries, optimizers)
 - `025-inventory.sql` — Inventory Phase 1: `project_materials` table (per-project material lists with status tracking) and `warehouse_stock` table (BOS warehouse stock levels with reorder points). Indexes on project_id, status, equipment_id, category.
 - `026-purchase-orders.sql` — Inventory Phase 2: `purchase_orders` table (PO tracking with lifecycle timestamps) and `po_line_items` table (line items linked to materials and equipment). Indexes on status, vendor, project_id, po_id.
+- `027-warehouse-transactions.sql` — Inventory Phase 3: `warehouse_transactions` table for check-out/check-in/adjustment audit trail with FK to warehouse_stock. Indexes on stock_id, project_id, transaction_type. RLS: SELECT/INSERT for authenticated users.
 - `seed-document-requirements.sql` — Seeds 23 document requirements across all 7 pipeline stages
 
 ### Legacy Projects
