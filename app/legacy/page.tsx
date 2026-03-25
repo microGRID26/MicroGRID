@@ -346,7 +346,7 @@ function DetailPanel({ project: p, onClose }: { project: LegacyProject; onClose:
     if (diffHrs < 24) return `${diffHrs}h ago`
     const diffDays = Math.floor(diffHrs / 24)
     if (diffDays < 30) return `${diffDays}d ago`
-    return fmtDate(dateStr)
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   }
 
   return (
