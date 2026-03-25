@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { STAGE_LABELS, fmt$, escapeIlike } from '@/lib/utils'
+import { useCurrentUser } from '@/lib/useCurrentUser'
 import { X, Plus } from 'lucide-react'
 import type { Project } from '@/types/database'
 
@@ -218,30 +219,42 @@ function AutocompleteRow({ label, field, value, draft, editing, onChange, table,
   )
 }
 
-function DispositionEditRow({ value, draft, editing, onChange }: {
+function DispositionEditRow({ value, draft, editing, onChange, isAdmin }: {
   value?: string | null
   draft: Record<string, any>
   editing: boolean
   onChange: (d: any) => void
+  isAdmin?: boolean
 }) {
   const current = ('disposition' in draft ? draft.disposition : value) as string | null
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
 
   // Determine allowed options based on current disposition
+  // Cancel/Reactivate is restricted to admin+ users
   const getOptions = () => {
     const disp = current ?? 'Sale'
+    let options: string[]
     switch (disp) {
       case 'Sale':
-        return ['Sale', 'Loyalty']
+        options = ['Sale', 'Loyalty']
+        break
       case 'Loyalty':
-        return ['Sale', 'Loyalty', 'Cancelled']
+        options = ['Sale', 'Loyalty', 'Cancelled']
+        break
       case 'In Service':
-        return ['Sale', 'In Service']
+        options = ['Sale', 'In Service']
+        break
       case 'Cancelled':
-        return ['Loyalty', 'Cancelled']
+        options = ['Loyalty', 'Cancelled']
+        break
       default:
-        return ['Sale', 'Loyalty']
+        options = ['Sale', 'Loyalty']
     }
+    // Only admin+ can select Cancelled
+    if (!isAdmin) {
+      options = options.filter(o => o !== 'Cancelled')
+    }
+    return options
   }
 
   if (!editing) {
@@ -452,6 +465,7 @@ interface InfoTabProps {
 }
 
 export function InfoTab({ project, editMode, editDraft, setEditDraft, ahjInfo, utilityInfo, hoaInfo, financierInfo, openAhjEdit, openUtilEdit, openHoaEdit, openFinancierEdit, stageHistory = [], serviceCalls = [], adders = [], onAddAdder, onDeleteAdder }: InfoTabProps) {
+  const { user: currentUserInfo } = useCurrentUser()
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="grid grid-cols-2 gap-6 max-w-3xl">
@@ -480,7 +494,7 @@ export function InfoTab({ project, editMode, editDraft, setEditDraft, ahjInfo, u
             <EditRow label="Email" field="email" value={project.email} draft={editDraft} editing={editMode} onChange={setEditDraft} small />
           </Section>
           <Section title="Project">
-            <DispositionEditRow value={project.disposition} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+            <DispositionEditRow value={project.disposition} draft={editDraft} editing={editMode} onChange={setEditDraft} isAdmin={currentUserInfo?.isAdmin} />
             <EditRow label="Contract" field="contract" value={project.contract?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} type="currency" />
             <EditRow label="System kW" field="systemkw" value={project.systemkw?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} type="number" />
             <AutocompleteRow label="Financier" field="financier" value={project.financier} draft={editDraft} editing={editMode} onChange={setEditDraft} table="financiers" onClickValue={openFinancierEdit} />

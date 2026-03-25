@@ -190,7 +190,7 @@ As of March 2026: 938 projects, 53K+ notes (49,517 project-level + 3,660 task-le
 
 SLA thresholds are centralized in `lib/utils.ts` (`SLA_THRESHOLDS`). Command Center classifies projects in priority order: Overdue → Blocked → Critical → At Risk → Stalled (5+ days, SLA ok) → Aging (90+ cycle days) → On Track. Loyalty and In Service dispositions are separated out.
 
-**SLA thresholds are currently paused** — all values are set to 999 in `SLA_THRESHOLDS` (original values preserved in comments). This means all projects will appear as "On Track" for SLA purposes until thresholds are re-enabled. The 12 SLA-related tests are skipped (`it.skip`) in the test suite.
+**SLA thresholds are active** with original values: evaluation (3/4/6), survey (3/5/10), design (3/5/10), permit (21/30/45), install (5/7/10), inspection (14/21/30), complete (3/5/7). All 12 SLA-related tests are enabled and passing.
 
 ### Task System
 

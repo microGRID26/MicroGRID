@@ -22,6 +22,7 @@ interface CurrentUser {
   name: string
   email?: string
   role?: string
+  isAdmin?: boolean
 }
 
 // ── Disposition rules ─────────────────────────────────────────────────────────
@@ -464,7 +465,7 @@ export function BulkActionBar({
                     <option value="">Choose...</option>
                     <option value="Sale">Sale</option>
                     <option value="Loyalty">Loyalty</option>
-                    <option value="Cancelled">Cancelled</option>
+                    {currentUser?.isAdmin && <option value="Cancelled">Cancelled</option>}
                   </select>
                   {bulkDisposition && !dispositionValid && (
                     <div className="text-xs text-red-400 mb-2">

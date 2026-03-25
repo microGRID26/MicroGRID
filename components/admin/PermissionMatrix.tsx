@@ -7,7 +7,8 @@ const PERM_ROWS = [
   { feature: 'Cancel / Reactivate', user: '—', manager: '—', finance: '—', admin: 'W', super_admin: 'W' },
   { feature: 'Delete projects', user: '—', manager: '—', finance: '—', admin: '—', super_admin: 'D' },
   { feature: 'Set blockers', user: 'W', manager: 'W', finance: 'W', admin: 'W', super_admin: 'W' },
-  { feature: 'Task management', user: 'RW', manager: 'RW', finance: 'RW', admin: 'RW', super_admin: 'RW' },
+  { feature: 'Task management', user: 'R', manager: 'RW', finance: 'RW', admin: 'RW', super_admin: 'RW' },
+  { feature: 'Bulk operations', user: 'W', manager: 'W', finance: 'W', admin: 'W', super_admin: 'W' },
   { feature: 'Change orders', user: 'RW', manager: 'RW', finance: 'RW', admin: 'RW', super_admin: 'RW' },
   { feature: 'Schedule jobs', user: 'RW', manager: 'RW', finance: 'RW', admin: 'RW', super_admin: 'RW' },
   { feature: 'Funding page', user: 'R', manager: 'R', finance: 'RW', admin: 'RW', super_admin: 'RW' },
@@ -61,7 +62,7 @@ export function PermissionMatrix() {
           </tbody>
         </table>
       </div>
-      <p className="text-[10px] text-gray-600 mt-3">Permission changes require a code update. Contact CIO.</p>
+      <p className="text-[10px] text-gray-600 mt-3">Reflects actual RLS policies. Last updated March 2026.</p>
     </div>
   )
 }

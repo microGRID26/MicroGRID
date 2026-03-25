@@ -34,7 +34,6 @@ function makeProject(overrides: Partial<Project> = {}): Project {
     advisor: null,
     consultant: null,
     blocker: null,
-    loyalty: null,
     financing_type: null,
     down_payment: null,
     tpo_escalator: null,

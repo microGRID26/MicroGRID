@@ -22,7 +22,6 @@ export interface Project {
   advisor: string | null
   consultant: string | null
   blocker: string | null
-  loyalty: string | null
   financing_type: string | null
   down_payment: number | null
   tpo_escalator: number | null

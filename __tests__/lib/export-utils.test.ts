@@ -20,7 +20,7 @@ function makeProject(overrides: Partial<Project> = {}): Project {
     city_inspection_date: null, utility_inspection_date: null,
     pto_date: null, in_service_date: null, financing_type: null,
     down_payment: null, tpo_escalator: null, financier_adv_pmt: null,
-    site_surveyor: null, consultant_email: null, loyalty: null,
+    site_surveyor: null, consultant_email: null,
     created_at: null, city_permit_date2: null, utility_permit_date2: null,
     ...overrides,
   } as Project
