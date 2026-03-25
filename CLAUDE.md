@@ -47,7 +47,7 @@ The Supabase client is globally mocked in `vitest.setup.ts`. Tests focus on busi
 
 All pages are in `app/*/page.tsx` as client components (`"use client"`). Each page fetches its own data via the Supabase browser client on mount and subscribes to realtime changes. Root `/` redirects to `/command`.
 
-Key pages: `/command` (SLA dashboard), `/queue` (PM-filtered task-based worklist with collapsible sections), `/pipeline` (visual stage grid), `/analytics` (6 tabs: Leadership, Pipeline Health, By PM, Funding, Cycle Times, Dealers), `/audit` (task compliance), `/schedule` (crew calendar), `/service`, `/funding` (M1/M2/M3 milestones with sortable columns, powered by `funding_dashboard` Postgres view), `/change-orders` (HCO/change order queue with 6-step workflow), `/admin`, `/help`.
+Key pages: `/command` (SLA dashboard), `/queue` (PM-filtered task-based worklist with collapsible sections), `/pipeline` (visual stage grid), `/analytics` (6 tabs: Leadership, Pipeline Health, By PM, Funding, Cycle Times, Dealers), `/audit` (task compliance), `/audit-trail` (admin-only change log with sortable columns, filters, pagination at 50/page, and ProjectPanel integration), `/schedule` (crew calendar), `/service`, `/funding` (M1/M2/M3 milestones with sortable columns, powered by `funding_dashboard` Postgres view), `/change-orders` (HCO/change order queue with 6-step workflow), `/admin`, `/help`.
 
 ### API Layer
 
@@ -74,10 +74,16 @@ Pages should import from `@/lib/api` instead of querying Supabase directly. The 
 
 - `lib/utils.ts` — `cn()` (clsx+twMerge), `fmt$()`, `fmtDate()`, `daysAgo()`, `escapeIlike()` (sanitizes user input for Supabase `.ilike()` queries), `STAGE_LABELS`, `STAGE_ORDER`, `SLA_THRESHOLDS`, `STAGE_TASKS` (task definitions per stage)
 - `lib/tasks.ts` — single source of truth for task definitions, statuses, reasons, and cascade helper. Exports: `TASKS`, `TASK_STATUSES`, `STATUS_STYLE`, `PENDING_REASONS`, `REVISION_REASONS`, `ALL_TASKS_MAP`, `ALL_TASKS_FLAT`, `TASK_TO_STAGE`, `TASK_DATE_FIELDS` (11 task→project date mappings), `getSameStageDownstream()` (BFS for revision cascade), `AHJ_REQUIRED_TASKS` (AHJ-conditional task requirements), `isTaskRequired()` (checks if a task is required given an AHJ). Includes cycle detection at module load.
+- `lib/classify.ts` — extracted Command Center classification logic. Exports: `classify()` (projects → 10 sections), `cycleDays()`, `getSLA()`, `getStuckTasks()`. Types: `Section`, `Classified`, `TaskEntry`, `StuckTask`. Previously inline in `app/command/page.tsx`.
+- `lib/hooks/` — reusable hook infrastructure (see [Hook Infrastructure](#hook-infrastructure) section below)
 - `lib/export-utils.ts` — CSV export with field picker (50+ fields, grouped)
 - `types/database.ts` — full TypeScript types for all Supabase tables
 - `components/Nav.tsx` — shared navigation bar with right-side slot for page controls
 - `components/project/ProjectPanel.tsx` — large modal (overview/tasks/notes/files/BOM tabs) used across multiple pages
+- `components/project/FilesTab.tsx` — extracted Files tab component for ProjectPanel (Google Drive link or "no folder" state)
+- `components/BulkActionBar.tsx` — bulk operations toolbar (see [Bulk Operations](#bulk-operations) section below)
+- `components/Pagination.tsx` — reusable pagination control (see [Pagination](#pagination) section below)
+- `components/admin/` — 16 extracted admin section components (see [File Consolidation](#file-consolidation-complete) section)
 - `components/FeedbackButton.tsx` — floating feedback button rendered on every page (bottom-right corner). Submits to `feedback` table with type, message, user info, and current page. Insert allowed for all authenticated users via permissive RLS policy.
 - `components/SessionTracker.tsx` — automatic session tracking component. Logs user sessions to `user_sessions` table with login time, current page, and 60-second heartbeat for duration. Auth fallback handles edge cases where session is not yet available.
 
@@ -88,6 +94,78 @@ Pages should import from `@/lib/api` instead of querying Supabase directly. The 
 - `components/ErrorBoundary.tsx` — reusable error boundary component. Can be wrapped around any component tree. Includes a "Report Issue" button that triggers the FeedbackButton for bug reporting.
 
 All error screens are styled consistently with the dark theme (`bg-gray-950`, green accents).
+
+### Hook Infrastructure
+
+Reusable hooks in `lib/hooks/` (barrel-exported from `lib/hooks/index.ts`):
+
+**`useSupabaseQuery<T>(table, options)`** — Generic data-fetching hook for any typed Supabase table. Features:
+- **Module-level cache** with 30-second TTL, shared across hook instances
+- **Request deduplication** — identical in-flight queries reuse the same promise
+- **Stale-while-revalidate** — returns cached data immediately while refetching in background
+- **Pagination** — pass `page: 1` to enable; returns `totalCount`, `hasMore`, `nextPage`, `prevPage`, `setPage`, `currentPage`
+- **Realtime** — pass `subscribe: true` to auto-invalidate cache and refetch on postgres_changes
+- **Typed filters** — supports `eq`, `neq`, `in`, `not_in`, `ilike`, `is` (null), `isNot` (null), `gt`, `lt`, `gte`, `lte`. Shorthand: `{ pm_id: 'abc' }` is equivalent to `{ pm_id: { eq: 'abc' } }`
+- **`.or()` expressions** — pass `or: 'name.ilike.%test%,id.ilike.%test%'` for compound search
+- `clearQueryCache()` — exported function to invalidate all cached data (used after bulk mutations)
+- **Known limitations**: no join support (use `lib/api/` for joins), no views (only typed tables), single filter per field
+
+```typescript
+// Example: paginated audit logs with filters and sorting
+const { data, loading, totalCount, hasMore, nextPage, prevPage, currentPage } =
+  useSupabaseQuery('audit_log', {
+    page: 1,
+    pageSize: 50,
+    filters: { field: 'stage', changed_at: { gte: '2026-03-01' } },
+    order: { column: 'changed_at', ascending: false },
+  })
+```
+
+**`useRealtimeSubscription(table, options)`** — Standalone realtime hook. Manages channel lifecycle, debounces callbacks (default 300ms), cleans up on unmount. Used internally by `useSupabaseQuery` when `subscribe: true`, but can also be used independently.
+
+**`useServerFilter<T>(data, options)`** — Filter/search state management that produces query parameters for `useSupabaseQuery`. Features:
+- Auto-extracts dropdown options from loaded data (single field or id|label pairs)
+- Builds Supabase-compatible filter objects and `.or()` search expressions
+- Provides `searchProps` to spread on input elements
+- `resetFilters()` to clear all state
+
+### Bulk Operations
+
+`components/BulkActionBar.tsx` provides multi-project update capability. Used on Pipeline and Queue pages.
+
+**Components exported:**
+- `BulkActionBar` — floating bottom toolbar that appears when projects are selected. Shows count, action buttons, confirmation dialog, and progress overlay.
+- `useBulkSelect(allProjects)` — selection state hook. Returns `selectMode`, `selectedIds`, `selectedProjects`, `toggleSelect`, `selectAll`, `deselectAll`, `exitSelectMode`.
+- `SelectCheckbox` — checkbox component rendered on each project card in select mode.
+- `getAllowedDispositions(current)` — disposition transition rules (mirrors InfoTab logic).
+
+**Available bulk actions:** Reassign PM, Set/Clear Blocker, Change Disposition, Set Follow-up Date. Each action:
+- Logs every field change to `audit_log`
+- Shows confirmation dialog before executing
+- Displays progress bar during execution
+- Collects and reports failures
+- Calls `clearQueryCache()` after completion to refresh all queries
+
+Disposition changes enforce the same transition rules as single-project edits (Sale -> Loyalty -> Cancelled, no skipping). Actions are configurable via the `actions` prop.
+
+### Pagination
+
+`components/Pagination.tsx` — minimal prev/next pagination control showing "page / totalPages". Used on pages where full data view is not needed:
+- **Service** — 100 per page
+- **Audit** (`/audit`) — 200 per page
+- **Audit Trail** (`/audit-trail`) — 50 per page
+
+**NOT used on** Pipeline, Command, Queue, or Funding pages — these require full data in memory for client-side classification, grouping, or filtering.
+
+### Audit Trail Page
+
+Standalone page at `/audit-trail` (admin-only, guarded by `useCurrentUser().isAdmin`). Displays `audit_log` records in a sortable table with:
+- **Filters**: project ID search (ilike), field name dropdown, changed-by user dropdown, date range (Today/7 Days/30 Days/All)
+- **Sortable columns**: Timestamp, Project, Field, Changed By (click to toggle asc/desc)
+- **Pagination**: 50 records per page via `useSupabaseQuery` with `page: 1`
+- **ProjectPanel integration**: clicking a project ID opens the full project modal
+- **Deletion highlighting**: rows with `field = 'project_deleted'` render with red background
+- Uses `useSupabaseQuery('audit_log', ...)` for server-side filtering/sorting/pagination
 
 ### Key Database Tables
 
@@ -340,7 +418,7 @@ Five database tables allow admins to configure system behavior without code chan
 4. **Queue Sections** (`queue_sections`, migration 020) — Queue page sections are DB-driven instead of hardcoded. Admin can add/reorder/disable sections. Each section maps a task_id + match_status to a labeled collapsible section.
 5. **User Preferences** (`user_preferences`, migration 021) — Per-user settings: homepage, default PM filter, collapsed sections state, queue card display fields, CSV export presets. RLS scoped to own row only.
 
-**Note:** Migrations 017-021 have SQL files in `supabase/` but may need to be applied to production Supabase manually.
+**Note:** Migrations 017-021 have been applied to production Supabase. All admin-configurable tables are live.
 
 ### SQL Migrations
 
@@ -360,22 +438,31 @@ All in `supabase/`:
 - `020-queue-config.sql` — DB-driven queue sections
 - `021-user-preferences.sql` — Per-user UI preferences
 
-### File Consolidation Plan (In Progress)
+### File Consolidation (Complete)
 
-Large files that should be broken into smaller components:
-- `app/admin/page.tsx` — manages all admin sections; should split each section (users, crews, AHJs, utilities, HOAs, financiers, reasons, notifications, queue config) into separate components
-- `components/project/ProjectPanel.tsx` — multi-tab modal; should split each tab into its own component file
-- `app/command/page.tsx` — complex classification logic; should extract to `lib/`
+All three planned consolidation targets from Session 15 have been completed in Session 16:
+
+**Admin page** — `app/admin/page.tsx` split into 16 components in `components/admin/`:
+- `shared.tsx` — shared styles, types, and utility components (SectionShell, ModalShell, etc.)
+- `UsersManager.tsx`, `CrewsManager.tsx`, `AHJManager.tsx`, `UtilityManager.tsx`, `HOAManager.tsx`
+- `FinancierManager.tsx`, `ReasonsManager.tsx`, `NotificationRulesManager.tsx`, `QueueConfigManager.tsx`
+- `SLAManager.tsx`, `FeedbackManager.tsx`, `AuditTrailManager.tsx`, `PermissionMatrix.tsx`
+- `CRMInfo.tsx`, `ReleaseNotes.tsx`
+
+**ProjectPanel** — `components/project/FilesTab.tsx` extracted as standalone component.
+
+**Command Center** — `lib/classify.ts` extracted from `app/command/page.tsx`. Contains `classify()`, `cycleDays()`, `getSLA()`, `getStuckTasks()` with full TypeScript types.
 
 ### Code Quality
 
-**Current rating: 8/10** (up from 7/10 after Session 15 refactoring). Key improvements: API layer, db() helper, error boundaries, `as any` reduced from ~198 to ~43, added 5 new TypeScript interfaces. Remaining debt: large page files (see File Consolidation Plan), some untyped tables still accessed via casts.
+**Current rating: 9/10** (up from 8/10 after Session 16). Session 16 improvements: file consolidation complete (admin split into 16 components, classify.ts extracted, FilesTab extracted), reusable hook infrastructure (`useSupabaseQuery`, `useRealtimeSubscription`, `useServerFilter`), bulk operations system, pagination component, standalone audit trail page. All 28 audit issues from code review fixed, plus 23 additional page-level fixes. **144 tests passing with 0 failures** (12 SLA tests remain skipped). Previous 3 `useCurrentUser` test failures fixed. Remaining debt: some untyped tables still accessed via `as any` casts (~43 remaining).
 
 ## Known Bugs
 
 - The `loyalty` field on `projects` is unused — all loyalty logic checks `disposition === 'Loyalty'` instead. The column should eventually be dropped or reconciled.
 - RLS policies are enforced but still evolving. `auth_is_admin()` and `auth_is_super_admin()` Postgres functions gate write access based on the `role` column. Some tables may still have permissive policies that need tightening.
 - The `active` field on `crews` is a string instead of a boolean, leading to defensive dual-case checking throughout the codebase.
+- `useSupabaseQuery` only supports typed tables from `types/database.ts` — cannot query views (e.g., `funding_dashboard`) or untyped tables directly. Use `lib/api/` or `db()` for those.
 
 ## @Mention System
 

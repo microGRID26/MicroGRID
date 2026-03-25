@@ -612,6 +612,21 @@ function ForPMs() {
         </div>
       </Card>
 
+      <SectionHeader title="Bulk Operations" />
+      <Card title="Multi-select on Pipeline and Queue">
+        Select multiple projects at once to perform bulk actions. Click the <span className="text-white font-medium">Select</span> toggle
+        in the top bar to enter selection mode. Checkboxes appear on each project card. Use <span className="text-white font-medium">Select All</span> to
+        check everything visible, or pick individual projects. A floating action bar appears at the bottom with available actions:
+        <Ul items={[
+          'Reassign PM — change the PM on all selected projects (Pipeline + Queue)',
+          'Advance Stage — move selected projects to the next stage (Pipeline only)',
+          'Set Blocker — apply a blocker to all selected projects (Pipeline + Queue)',
+          'Change Disposition — set Sale, Loyalty, or Cancelled (Pipeline + Queue)',
+          'Set Follow-up Date — set a follow-up date on selected projects (Queue only)',
+        ]} />
+        <div className="mt-2">Use search and filters first, then select and act on the filtered set.</div>
+      </Card>
+
       <SectionHeader title="Adders" />
       <Card title="Project adders">
         The Info tab includes an Adders section showing extras added to the project (e.g., EV charger, critter guard, ground mount).
@@ -1071,6 +1086,11 @@ function ForAdmins() {
       </Card>
 
       <SectionHeader title="Audit Trail" />
+      <Card title="Audit Trail page (/audit-trail)">
+        View all project changes with who made them and when. Admin-only. Access via the nav bar link. Filter
+        by date range, project, field, or user. Click any column header to sort. Click a project to open its
+        full project panel.
+      </Card>
       <Card title="Session tracking">
         Every user login is tracked with login time, duration, and current page. The admin portal Audit Trail
         module shows a Sessions tab with all active and past sessions, filterable by user.

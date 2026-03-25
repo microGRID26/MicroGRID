@@ -13,17 +13,20 @@ A comprehensive guide for Project Managers and team members at MicroGRID Energy 
 5. [Pipeline](#pipeline)
 6. [Project Panel](#project-panel)
 7. [Task System](#task-system)
-8. [Schedule](#schedule)
-9. [Funding](#funding)
-10. [Change Orders](#change-orders)
-11. [Service Calls](#service-calls)
-12. [Analytics](#analytics)
-13. [Audit](#audit)
-14. [Admin Portal](#admin-portal)
-15. [Redesign Tool](#redesign-tool)
-16. [Help Center](#help-center)
-17. [@Mentions and Notifications](#mentions-and-notifications)
-18. [Tips and Best Practices](#tips-and-best-practices)
+8. [Bulk Operations](#bulk-operations)
+9. [Schedule](#schedule)
+10. [Funding](#funding)
+11. [Change Orders](#change-orders)
+12. [Service Calls](#service-calls)
+13. [Analytics](#analytics)
+14. [Audit](#audit)
+15. [Audit Trail](#audit-trail)
+16. [Admin Portal](#admin-portal)
+17. [Redesign Tool](#redesign-tool)
+18. [Help Center](#help-center)
+19. [@Mentions and Notifications](#mentions-and-notifications)
+20. [Pagination](#pagination)
+21. [Tips and Best Practices](#tips-and-best-practices)
 
 ---
 
@@ -591,6 +594,44 @@ When setting a task to Pending Resolution or Revision Required, you must select 
 
 ---
 
+## Bulk Operations
+
+The Pipeline and Queue pages support multi-select for performing bulk actions on multiple projects at once.
+
+### Enabling Selection Mode
+
+1. Click the **Select** toggle in the top bar to enter selection mode
+2. Checkboxes appear on each project card or row
+3. Check individual projects, or use **Select All** to select everything visible
+4. A floating action bar appears at the bottom of the screen showing the count of selected projects
+
+### Available Bulk Actions
+
+| Action | Pipeline | Queue | Description |
+|--------|----------|-------|-------------|
+| Reassign PM | Yes | Yes | Change the assigned PM for all selected projects at once |
+| Advance Stage | Yes | No | Move all selected projects to the next pipeline stage |
+| Set Blocker | Yes | Yes | Apply the same blocker text to all selected projects |
+| Change Disposition | Yes | Yes | Set disposition (Sale, Loyalty, Cancelled) on all selected projects |
+| Set Follow-up Date | No | Yes | Set a follow-up date on all selected projects |
+
+### How It Works
+
+1. Toggle **Select** mode on
+2. Check the projects you want to act on
+3. Click the desired action button in the floating bar
+4. A confirmation dialog appears showing the action and how many projects will be affected
+5. Confirm to apply the change to all selected projects
+6. The floating bar clears and selection mode remains active for further operations
+
+### Tips
+
+- Use search and filters first to narrow results, then select and act on the filtered set
+- Select All only selects projects visible after filtering
+- Click the **Select** toggle again to exit selection mode and hide checkboxes
+
+---
+
 ## Schedule
 
 **URL:** `/schedule`
@@ -968,11 +1009,47 @@ The Audit page excludes Cancelled and In Service projects. Loyalty projects are 
 
 ---
 
+## Audit Trail
+
+**URL:** `/audit-trail`
+
+The Audit Trail page provides a detailed log of every project field change made in the system. This page is restricted to Admin and Super Admin roles and is accessible via the navigation bar.
+
+### What It Shows
+
+Every time a project field is edited, the system records:
+
+- **Project** -- Which project was changed (ID and name)
+- **Field** -- Which field was modified
+- **Old Value** -- The previous value
+- **New Value** -- The updated value
+- **Changed By** -- Who made the change
+- **Date/Time** -- When the change was made
+
+### Filtering
+
+Use the filter bar to narrow results:
+
+- **Date Range** -- Filter changes to a specific time window
+- **Project** -- Search for changes on a specific project by name or ID
+- **Field** -- Filter to a specific field (e.g., "stage", "pm", "blocker")
+- **User** -- Filter by who made the change
+
+### Sorting
+
+Click any column header to sort the table by that column. Click again to reverse the sort direction.
+
+### Opening a Project
+
+Click any project in the audit trail to open the full Project Panel for that project.
+
+---
+
 ## Admin Portal
 
 **URL:** `/admin`
 
-The Admin portal is restricted to users with Admin or Super Admin roles. It provides management tools for system configuration.
+The Admin portal is restricted to users with Admin or Super Admin roles. It provides management tools for system configuration. The portal is organized into modular sections, each accessible from the sidebar navigation.
 
 ### User Management
 
@@ -1046,6 +1123,47 @@ View and manage user-submitted feedback:
 - Update feedback status (New, Reviewing, In Progress, Addressed, Won't Fix)
 - Add admin notes
 - View which page the feedback was submitted from
+
+### Financier Management
+
+Manage the list of financing companies available in the system:
+
+- Add, edit, and deactivate financiers
+- Financier names appear in the project Info tab as an autocomplete dropdown
+- Seeded with 10 default financiers (Cash, EDGE, Mosaic, Sungage, GoodLeap, Dividend, Sunrun, Tesla, Sunnova, Loanpal)
+
+### Task Reasons Configuration
+
+Configure the reasons available when setting a task to Pending Resolution or Revision Required:
+
+- Reasons are stored in the database per task (replacing previously hardcoded values)
+- Toggle reasons active or inactive without deleting them
+- Set sort order to control the order reasons appear in dropdowns
+
+### Notification Rules
+
+Create rules that fire automatically when a task reaches a specific status and reason:
+
+- Define the trigger: task + status + reason combination
+- Define the action: auto-create a note on the project or notify a specific role
+- Replaces the previously hardcoded Permit Drop Off notification
+
+### Queue Section Configuration
+
+Configure the sections that appear on the Queue page:
+
+- Add, reorder, and disable sections
+- Each section maps a task ID and status to a labeled collapsible section
+- Changes take effect immediately for all users
+
+### User Preferences
+
+Per-user settings stored in the database:
+
+- Default homepage and PM filter
+- Collapsed section state on the Queue page
+- Queue card display field preferences
+- CSV export presets
 
 ### Session Tracking
 
@@ -1158,7 +1276,7 @@ When you are mentioned in a note:
 - A notification appears on the **bell icon** in the top navigation bar
 - The bell shows an unread count badge when you have new mentions
 - Click the bell to see all your notifications with the project name and note context
-- Notifications are marked as read when you view them
+- Notifications are marked as read when you view them -- read state syncs to the database, so notifications stay dismissed across devices and sessions
 
 ### When to Use @Mentions
 
@@ -1170,6 +1288,18 @@ When you are mentioned in a note:
 ### Database
 
 Mention notifications are stored in the `mention_notifications` table. Migration: `supabase/015-mentions.sql`. Each notification records the note, the mentioned user, who made the mention, and the project.
+
+---
+
+## Pagination
+
+Some pages with large datasets include page controls at the bottom:
+
+- **Service** -- Paginates service call records
+- **Audit** -- Paginates task compliance results
+- **Audit Trail** -- Paginates change log entries
+
+Pages without pagination (Pipeline, Command, Queue, Funding) load and display all matching projects at once. Use search and filters on these pages to narrow results.
 
 ---
 
