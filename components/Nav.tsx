@@ -16,10 +16,10 @@ const PRIMARY_LINKS = [
   { label: 'Pipeline', href: '/pipeline' },
   { label: 'Schedule', href: '/schedule' },
   { label: 'Funding',  href: '/funding'  },
+  { label: 'Analytics', href: '/analytics' },
 ]
 
 const MORE_LINKS = [
-  { label: 'Analytics',     href: '/analytics' },
   { label: 'Service',       href: '/service'  },
   { label: 'Change Orders', href: '/change-orders' },
   { label: 'Documents',     href: '/documents' },
