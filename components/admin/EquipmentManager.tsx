@@ -132,7 +132,20 @@ export function EquipmentManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                 </td>
                 <td className="px-3 py-2 text-gray-400">{item.manufacturer || '--'}</td>
                 <td className="px-3 py-2 text-gray-400">{item.watts ? `${item.watts}W` : '--'}</td>
-                <td className="px-3 py-2"><Badge active={item.active} /></td>
+                <td className="px-3 py-2">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleActive(item) }}
+                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${
+                      item.active
+                        ? 'bg-green-900/40 text-green-400 border-green-800 hover:bg-green-900/60'
+                        : 'bg-gray-800 text-gray-500 border-gray-700 hover:bg-gray-700'
+                    }`}
+                    title={item.active ? 'Click to deactivate' : 'Click to activate'}
+                  >
+                    <span className={`inline-block w-1.5 h-1.5 rounded-full ${item.active ? 'bg-green-400' : 'bg-gray-600'}`} />
+                    {item.active ? 'Active' : 'Inactive'}
+                  </button>
+                </td>
                 <td className="px-3 py-2">
                   <button className="text-gray-500 hover:text-blue-400">
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

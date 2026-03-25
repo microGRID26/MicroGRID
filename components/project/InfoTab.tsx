@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { STAGE_LABELS, fmt$, escapeIlike } from '@/lib/utils'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import { X, Plus } from 'lucide-react'
 import type { Project } from '@/types/database'
 import { EquipmentAutocomplete } from '@/components/EquipmentAutocomplete'
+import type { Equipment } from '@/lib/api/equipment'
 
 // ── HELPER COMPONENTS ────────────────────────────────────────────────────────
 
@@ -86,7 +87,7 @@ function SelectEditRow({ label, field, value, draft, editing, onChange, options 
   )
 }
 
-function EquipmentEditRow({ label, field, category, value, draft, editing, onChange }: {
+function EquipmentEditRow({ label, field, category, value, draft, editing, onChange, qtyField, qtyValue, onEquipmentSelect }: {
   label: string
   field: string
   category: 'module' | 'inverter' | 'battery' | 'optimizer'
@@ -94,16 +95,14 @@ function EquipmentEditRow({ label, field, category, value, draft, editing, onCha
   draft: Record<string, any>
   editing: boolean
   onChange: (d: any) => void
+  qtyField?: string
+  qtyValue?: string | null
+  onEquipmentSelect?: (equipment: Equipment | undefined) => void
 }) {
   const current = field in draft ? draft[field] : value
+  const currentQty = qtyField && qtyField in draft ? draft[qtyField] : qtyValue
   if (!editing) {
-    if (!value) return null
-    return (
-      <div className="flex gap-2 py-0.5">
-        <span className="text-gray-500 text-xs w-28 flex-shrink-0">{label}</span>
-        <span className="text-gray-200 text-xs break-words">{value}</span>
-      </div>
-    )
+    return null // View mode handled by EquipmentSummary
   }
   return (
     <div className="flex gap-2 py-0.5 items-center">
@@ -111,9 +110,22 @@ function EquipmentEditRow({ label, field, category, value, draft, editing, onCha
       <EquipmentAutocomplete
         category={category}
         value={current ?? ''}
-        onChange={v => onChange((d: any) => ({ ...d, [field]: v || null }))}
+        onChange={(v, equipment) => {
+          onChange((d: any) => ({ ...d, [field]: v || null }))
+          if (onEquipmentSelect) onEquipmentSelect(equipment)
+        }}
         placeholder={`Search ${label.toLowerCase()}...`}
       />
+      {qtyField && (
+        <input
+          type="number"
+          value={currentQty ?? ''}
+          onChange={e => onChange((d: any) => ({ ...d, [qtyField]: e.target.value || null }))}
+          placeholder="Qty"
+          min="0"
+          className="w-20 bg-gray-700 text-white text-xs rounded px-2 py-2 border border-gray-600 focus:border-green-500 focus:outline-none"
+        />
+      )}
     </div>
   )
 }
@@ -351,6 +363,29 @@ function DispositionEditRow({ value, draft, editing, onChange, isAdmin }: {
   )
 }
 
+function EquipmentSummaryRow({ label, name, qty, watts }: { label: string; name?: string | null; qty?: number | null; watts?: number | null }) {
+  const hasData = name || qty
+  if (!hasData) {
+    return (
+      <div className="flex gap-2 py-0.5">
+        <span className="text-gray-500 text-xs w-28 flex-shrink-0">{label}</span>
+        <span className="text-gray-600 text-xs">&mdash;</span>
+      </div>
+    )
+  }
+  const kw = watts && qty ? ((watts * qty) / 1000).toFixed(1) : null
+  return (
+    <div className="flex gap-2 py-0.5">
+      <span className="text-gray-500 text-xs w-28 flex-shrink-0">{label}</span>
+      <span className="text-gray-200 text-xs break-words">
+        {name || '—'}
+        {qty ? ` \u00d7 ${qty}` : ''}
+        {kw ? ` = ${kw} kW` : ''}
+      </span>
+    </div>
+  )
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-4">
@@ -499,6 +534,44 @@ interface InfoTabProps {
 
 export function InfoTab({ project, editMode, editDraft, setEditDraft, ahjInfo, utilityInfo, hoaInfo, financierInfo, openAhjEdit, openUtilEdit, openHoaEdit, openFinancierEdit, stageHistory = [], serviceCalls = [], adders = [], onAddAdder, onDeleteAdder }: InfoTabProps) {
   const { user: currentUserInfo } = useCurrentUser()
+  const [moduleWatts, setModuleWatts] = useState<number | null>(null)
+
+  // Parse watts from module name (e.g. "Q.PEAK DUO BLK ML-G10+ 405W" -> 405)
+  const parseWattsFromName = useCallback((name: string): number | null => {
+    const match = name.match(/(\d{2,4})\s*[Ww]/)
+    return match ? parseInt(match[1]) : null
+  }, [])
+
+  // When a module is selected from the autocomplete, capture its watts
+  const handleModuleSelect = useCallback((equipment: Equipment | undefined) => {
+    if (equipment?.watts) {
+      setModuleWatts(equipment.watts)
+    } else if (equipment?.name) {
+      setModuleWatts(parseWattsFromName(equipment.name))
+    } else {
+      setModuleWatts(null)
+    }
+  }, [parseWattsFromName])
+
+  // Auto-calculate systemkw when module watts or module_qty changes
+  useEffect(() => {
+    if (!editMode) return
+    const moduleName = ('module' in editDraft ? editDraft.module : project.module) as string | null
+    const moduleQty = ('module_qty' in editDraft ? editDraft.module_qty : project.module_qty) as number | string | null
+    const qty = moduleQty ? Number(moduleQty) : 0
+
+    // Determine watts: use tracked watts from selection, or parse from name
+    let watts = moduleWatts
+    if (!watts && moduleName) {
+      watts = parseWattsFromName(moduleName)
+    }
+
+    if (watts && qty > 0) {
+      const kw = ((watts * qty) / 1000).toFixed(1)
+      setEditDraft((d: any) => ({ ...d, systemkw: kw }))
+    }
+  }, [editDraft.module, editDraft.module_qty, moduleWatts, editMode])
+
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="grid grid-cols-2 gap-6 max-w-3xl">
@@ -529,7 +602,6 @@ export function InfoTab({ project, editMode, editDraft, setEditDraft, ahjInfo, u
           <Section title="Project">
             <DispositionEditRow value={project.disposition} draft={editDraft} editing={editMode} onChange={setEditDraft} isAdmin={currentUserInfo?.isAdmin} />
             <EditRow label="Contract" field="contract" value={project.contract?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} type="currency" />
-            <EditRow label="System kW" field="systemkw" value={project.systemkw?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} type="number" />
             <AutocompleteRow label="Financier" field="financier" value={project.financier} draft={editDraft} editing={editMode} onChange={setEditDraft} table="financiers" onClickValue={openFinancierEdit} />
             {!editMode && financierInfo && (
               <div className="ml-0 mt-1 mb-2 pl-28 space-y-0.5">
@@ -547,14 +619,22 @@ export function InfoTab({ project, editMode, editDraft, setEditDraft, ahjInfo, u
             <EditRow label="Dealer" field="dealer" value={project.dealer} draft={editDraft} editing={editMode} onChange={setEditDraft} />
           </Section>
           <Section title="Equipment">
-            <EquipmentEditRow label="Module" field="module" category="module" value={project.module} draft={editDraft} editing={editMode} onChange={setEditDraft} />
-            <EditRow label="Module qty" field="module_qty" value={project.module_qty?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} type="number" />
-            <EquipmentEditRow label="Inverter" field="inverter" category="inverter" value={project.inverter} draft={editDraft} editing={editMode} onChange={setEditDraft} />
-            <EditRow label="Inverter qty" field="inverter_qty" value={project.inverter_qty?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} type="number" />
-            <EquipmentEditRow label="Battery" field="battery" category="battery" value={project.battery} draft={editDraft} editing={editMode} onChange={setEditDraft} />
-            <EditRow label="Battery qty" field="battery_qty" value={project.battery_qty?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} type="number" />
-            <EquipmentEditRow label="Optimizer" field="optimizer" category="optimizer" value={project.optimizer} draft={editDraft} editing={editMode} onChange={setEditDraft} />
-            <EditRow label="Optimizer qty" field="optimizer_qty" value={project.optimizer_qty?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} type="number" />
+            {!editMode ? (
+              <>
+                <EquipmentSummaryRow label="Module" name={project.module} qty={project.module_qty ? Number(project.module_qty) : null} watts={parseWattsFromName(project.module ?? '')} />
+                <EquipmentSummaryRow label="Inverter" name={project.inverter} qty={project.inverter_qty ? Number(project.inverter_qty) : null} />
+                <EquipmentSummaryRow label="Battery" name={project.battery} qty={project.battery_qty ? Number(project.battery_qty) : null} />
+                <EquipmentSummaryRow label="Optimizer" name={project.optimizer} qty={project.optimizer_qty ? Number(project.optimizer_qty) : null} />
+              </>
+            ) : (
+              <>
+                <EquipmentEditRow label="Module" field="module" category="module" value={project.module} draft={editDraft} editing={editMode} onChange={setEditDraft} qtyField="module_qty" qtyValue={project.module_qty?.toString()} onEquipmentSelect={handleModuleSelect} />
+                <EquipmentEditRow label="Inverter" field="inverter" category="inverter" value={project.inverter} draft={editDraft} editing={editMode} onChange={setEditDraft} qtyField="inverter_qty" qtyValue={project.inverter_qty?.toString()} />
+                <EquipmentEditRow label="Battery" field="battery" category="battery" value={project.battery} draft={editDraft} editing={editMode} onChange={setEditDraft} qtyField="battery_qty" qtyValue={project.battery_qty?.toString()} />
+                <EquipmentEditRow label="Optimizer" field="optimizer" category="optimizer" value={project.optimizer} draft={editDraft} editing={editMode} onChange={setEditDraft} qtyField="optimizer_qty" qtyValue={project.optimizer_qty?.toString()} />
+              </>
+            )}
+            <EditRow label="System kW" field="systemkw" value={project.systemkw?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} type="number" />
           </Section>
           <Section title="Site">
             <SelectEditRow label="Meter location" field="meter_location" value={project.meter_location} draft={editDraft} editing={editMode} onChange={setEditDraft}

@@ -46,11 +46,12 @@ export async function loadEquipment(category?: string): Promise<Equipment[]> {
  */
 export async function searchEquipment(query: string, category?: string): Promise<Equipment[]> {
   const supabase = db()
+  const escaped = escapeIlike(query)
   let q = supabase
     .from('equipment')
     .select('*')
     .eq('active', true)
-    .ilike('name', `%${escapeIlike(query)}%`)
+    .or(`name.ilike.%${escaped}%,manufacturer.ilike.%${escaped}%,description.ilike.%${escaped}%`)
     .order('sort_order')
     .order('name')
     .limit(20)
