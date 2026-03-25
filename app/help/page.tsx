@@ -1101,6 +1101,25 @@ function ForAdmins() {
         of every edit.
       </Card>
 
+      <SectionHeader title="Legacy Projects" />
+      <Card title="Legacy Projects page (/legacy)">
+        Read-only archive of 14,705 historical TriSMART &quot;In Service&quot; projects. Search by name, phone, email,
+        address, city, or project ID. Click any row to open a detail panel with customer info, system specs,
+        financials, dates, permit data, and funding milestones.
+      </Card>
+      <Card title="Legacy Notes">
+        Each legacy project includes its full BluChat communication history (150,000+ messages) with original
+        authors and timestamps. New notes can be added by any team member — type in the note field and press
+        Enter or click Add. Notes are timestamped with your name automatically.
+      </Card>
+      <Card title="When to use Legacy vs Active">
+        <Ul items={[
+          'Legacy (/legacy) — lookup historical TriSMART projects, customer calls, warranty questions, service history',
+          'Active (Pipeline/Queue/Command) — manage current MicroGRID projects through the installation pipeline',
+          'Legacy projects do not appear in any active CRM views — they are completely separate',
+        ]} />
+      </Card>
+
       <SectionHeader title="Feedback Manager" />
       <Card title="Managing feedback">
         The admin portal includes a Feedback Manager that shows all submitted feedback. Filter by type
