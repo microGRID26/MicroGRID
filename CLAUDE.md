@@ -47,7 +47,7 @@ The Supabase client is globally mocked in `vitest.setup.ts`. Tests focus on busi
 
 All pages are in `app/*/page.tsx` as client components (`"use client"`). Each page fetches its own data via the Supabase browser client on mount and subscribes to realtime changes. Root `/` redirects to `/command`.
 
-Key pages: `/command` (SLA dashboard), `/queue` (PM-filtered task-based worklist with collapsible sections), `/pipeline` (visual stage grid), `/analytics` (6 tabs: Leadership, Pipeline Health, By PM, Funding, Cycle Times, Dealers), `/audit` (task compliance), `/audit-trail` (admin-only change log with sortable columns, filters, pagination at 50/page, and ProjectPanel integration), `/schedule` (crew calendar), `/service`, `/funding` (M1/M2/M3 milestones with sortable columns, powered by `funding_dashboard` Postgres view), `/change-orders` (HCO/change order queue with 6-step workflow), `/admin`, `/help`.
+Key pages: `/command` (SLA dashboard), `/queue` (PM-filtered task-based worklist with collapsible sections), `/pipeline` (visual stage grid), `/analytics` (6 tabs: Leadership, Pipeline Health, By PM, Funding, Cycle Times, Dealers), `/audit` (task compliance), `/audit-trail` (admin-only change log with sortable columns, filters, pagination at 50/page, and ProjectPanel integration), `/schedule` (crew calendar), `/service`, `/funding` (M1/M2/M3 milestones with sortable columns, powered by `funding_dashboard` Postgres view), `/change-orders` (HCO/change order queue with 6-step workflow), `/legacy` (read-only lookup of 14,705 In Service legacy TriSMART projects), `/admin`, `/help`.
 
 ### API Layer
 
@@ -184,13 +184,13 @@ Standalone page at `/audit-trail` (admin-only, guarded by `useCurrentUser().isAd
 
 ### Data Inventory
 
-As of March 2026: 938 projects, 53K+ notes (49,517 project-level + 3,660 task-level), 67K+ task history entries, 4,185 adders, 922 service cases, 937 project_funding records, 4,500+ files in Google Drive across 937 project folders. NetSuite is potentially permanently unavailable.
+As of March 2026: 938 active projects, 14,705 legacy In Service projects (imported from TriSMART/NetSuite), 53K+ notes (49,517 project-level + 3,660 task-level), 67K+ task history entries, 4,185 adders, 922 service cases, 12,054 funding records (937 active + ~11,117 legacy M2/M3), 4,500+ files in Google Drive across 937 project folders. NetSuite is potentially permanently unavailable.
 
 ### SLA System
 
 SLA thresholds are centralized in `lib/utils.ts` (`SLA_THRESHOLDS`). Command Center classifies projects in priority order: Overdue → Blocked → Critical → At Risk → Stalled (5+ days, SLA ok) → Aging (90+ cycle days) → On Track. Loyalty and In Service dispositions are separated out.
 
-**SLA thresholds are active** with original values: evaluation (3/4/6), survey (3/5/10), design (3/5/10), permit (21/30/45), install (5/7/10), inspection (14/21/30), complete (3/5/7). All 12 SLA-related tests are enabled and passing.
+**SLA thresholds are active** — evaluation (3/4/6), survey (3/5/10), design (3/5/10), permit (21/30/45), install (5/7/10), inspection (14/21/30), complete (3/5/7) days for on-track/at-risk/critical. All 12 SLA-related tests are enabled and passing.
 
 ### Task System
 
@@ -318,13 +318,11 @@ The Info tab now includes `permit_fee` and `reinspection_fee` fields in the Perm
 
 **Type safety improved**: `as any` casts reduced from ~198 to ~43 across the codebase. Remaining casts are justified (dynamic property access in admin, test mocks, Supabase RPC calls). New code should use the API layer (`@/lib/api`) or `db()` helper rather than adding new `as any` casts.
 
-Also note: the `Project` type defines a `loyalty: string | null` field, but it is **never read anywhere** in the codebase. All loyalty logic uses `p.disposition === 'Loyalty'` instead. The `loyalty` column appears to be legacy/dead.
-
 ### Role-Based Access
 
 The `users` table has a `role` column with values: `super_admin`, `admin`, `finance`, `manager`, `user`. The `useCurrentUser()` hook returns `role`, `isAdmin`, `isSuperAdmin`, `isFinance`, `isManager` convenience booleans. RLS policies use `auth_is_admin()` and `auth_is_super_admin()` Postgres functions that check the `role` column. When adding admin-gated features, check `isAdmin` or `isSuperAdmin` from the hook on the client side; the database enforces the same via RLS.
 
-**Permission model**: All authenticated users can create and edit projects (not just admins). Project deletion is super-admin-only. Admin portal access requires `admin` or `super_admin` role. Feedback submission uses a `SECURITY DEFINER` function to allow all users to insert regardless of RLS policies.
+**Permission model**: All authenticated users can create and edit projects (not just admins). Project deletion is super-admin-only. **Cancel/Reactivate disposition changes are gated to Admin+ users** (enforced in InfoTab and BulkActionBar). Admin portal access requires `admin` or `super_admin` role. Feedback submission uses a `SECURITY DEFINER` function to allow all users to insert regardless of RLS policies. The Permission Matrix in the Admin portal reflects the actual RLS enforcement.
 
 ### Crews Table Quirk
 
@@ -437,6 +435,17 @@ All in `supabase/`:
 - `019-notification-rules.sql` — DB-driven notification rules
 - `020-queue-config.sql` — DB-driven queue sections
 - `021-user-preferences.sql` — Per-user UI preferences
+- `022-legacy-projects.sql` — Legacy projects table for 14,705 In Service TriSMART projects
+
+### Legacy Projects
+
+The `legacy_projects` table stores 14,705 In Service projects imported from TriSMART/NetSuite. These are historical records not actively managed in the pipeline.
+
+- **Table**: `legacy_projects` (~45 fields) — `id` (TEXT PK, format `PROJ-XXXXX`), `name`, `address`, `city`, `state`, `zip`, `stage`, `disposition`, `pm`, `financier`, `system_kw`, `panel_count`, `panel_type`, `inverter_type`, `contract_amount`, `sale_date`, `install_complete_date`, `pto_date`, `msp_bus_rating`, plus M2/M3 funding fields and more
+- **Page**: `/legacy` — read-only lookup with search (name/ID/address/city), sortable columns, detail panel showing all fields. No editing capability.
+- **Import scripts**: `scripts/import-legacy-projects.ts` (parses NetSuite JSON export), `scripts/upload-legacy-projects.ts` (uploads to Supabase in batches, filters to In Service only). 500 records skipped (null names).
+- **Funding merge**: 12,054 funding records (M2/M3 amounts and dates) merged into legacy_projects from project_funding data.
+- RLS: read-only for all authenticated users.
 
 ### File Consolidation (Complete)
 
@@ -455,11 +464,10 @@ All three planned consolidation targets from Session 15 have been completed in S
 
 ### Code Quality
 
-**Current rating: 9/10** (up from 8/10 after Session 16). Session 16 improvements: file consolidation complete (admin split into 16 components, classify.ts extracted, FilesTab extracted), reusable hook infrastructure (`useSupabaseQuery`, `useRealtimeSubscription`, `useServerFilter`), bulk operations system, pagination component, standalone audit trail page. All 28 audit issues from code review fixed, plus 23 additional page-level fixes. **144 tests passing with 0 failures** (12 SLA tests remain skipped). Previous 3 `useCurrentUser` test failures fixed. Remaining debt: some untyped tables still accessed via `as any` casts (~43 remaining).
+**Current rating: 9.5/10** (up from 9/10 after Session 17). Session 17 improvements: SLA thresholds re-enabled with real values, dead `loyalty` column dropped, permission matrix updated to reflect actual RLS, Cancel/Reactivate gated to Admin+, legacy projects page and import pipeline, construction banner removed. **298 tests passing with 0 failures, 0 skipped** (12 SLA tests un-skipped). Remaining debt: some untyped tables still accessed via `as any` casts (~43 remaining).
 
 ## Known Bugs
 
-- The `loyalty` field on `projects` is unused — all loyalty logic checks `disposition === 'Loyalty'` instead. The column should eventually be dropped or reconciled.
 - RLS policies are enforced but still evolving. `auth_is_admin()` and `auth_is_super_admin()` Postgres functions gate write access based on the `role` column. Some tables may still have permissive policies that need tightening.
 - The `active` field on `crews` is a string instead of a boolean, leading to defensive dual-case checking throughout the codebase.
 - `useSupabaseQuery` only supports typed tables from `types/database.ts` — cannot query views (e.g., `funding_dashboard`) or untyped tables directly. Use `lib/api/` or `db()` for those.
