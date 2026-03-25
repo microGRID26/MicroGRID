@@ -12,7 +12,6 @@ import { Nav } from '@/components/Nav'
 import { usePreferences } from '@/lib/usePreferences'
 import type { ExportPreset } from '@/lib/usePreferences'
 import { useSupabaseQuery } from '@/lib/hooks'
-import { Pagination } from '@/components/Pagination'
 import type { Project, Schedule } from '@/types/database'
 
 /** Schedule entry enriched with project/crew names for today's schedule display */
@@ -352,8 +351,7 @@ export default function CommandPage() {
   const projectsQuery = useSupabaseQuery('projects', {
     select: 'id, name, city, pm, pm_id, stage, stage_date, sale_date, contract, blocker, disposition, address, financier, follow_up_date',
     order: { column: 'stage_date', ascending: true },
-    page: 1,
-    pageSize: 200,
+    limit: 5000,
   })
 
   // Optimized: only load stuck tasks (Pending Resolution / Revision Required / Complete)
@@ -446,12 +444,6 @@ export default function CommandPage() {
   const [lastRefresh, setLastRefresh] = useState(0)
   const [minutesAgo, setMinutesAgo] = useState(0)
   const [showExport, setShowExport] = useState(false)
-
-  // Reset pagination to page 1 when filters change
-  useEffect(() => {
-    projectsQuery.setPage(1)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pmFilter, search])
 
   // Track last refresh timestamp when data finishes loading
   const prevLoading = useRef(true)
@@ -557,16 +549,8 @@ export default function CommandPage() {
             {pms.map(pm => <option key={pm.id} value={pm.id}>{pm.name}</option>)}
           </select>
           <span className="text-xs text-gray-500">
-            Showing {filtered.length} of {projectsQuery.totalCount ?? filtered.length}
+            {filtered.length} projects
           </span>
-          <Pagination
-            currentPage={projectsQuery.currentPage}
-            totalCount={projectsQuery.totalCount ?? 0}
-            pageSize={200}
-            hasMore={projectsQuery.hasMore}
-            onPrevPage={projectsQuery.prevPage}
-            onNextPage={projectsQuery.nextPage}
-          />
           <button onClick={refresh} className="text-xs text-gray-500 hover:text-white transition-colors">
             ↻ {minutesAgo}m ago
           </button>

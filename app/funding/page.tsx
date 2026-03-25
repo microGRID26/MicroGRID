@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { db } from '@/lib/db'
 import { Nav } from '@/components/Nav'
-import { Pagination } from '@/components/Pagination'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import { fmt$, fmtDate, daysAgo, STAGE_LABELS } from '@/lib/utils'
 import { ProjectPanel } from '@/components/project/ProjectPanel'
@@ -286,9 +285,6 @@ export default function FundingPage() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [dashLoading, setDashLoading] = useState(true)
   const [toast, setToast] = useState<string | null>(null)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalCount, setTotalCount] = useState(0)
-  const PAGE_SIZE = 100
 
   const [statusFilter, setStatusFilter] = useState<FundingFilter>('all')
   const [financierFilter, setFinancierFilter] = useState('all')
@@ -312,10 +308,8 @@ export default function FundingPage() {
   // funding_dashboard is a view (not in Database types), must query manually
   const loadDashboard = useCallback(async () => {
     const supabase = createClient()
-    const from = (currentPage - 1) * PAGE_SIZE
-    const to = from + PAGE_SIZE - 1
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error, count } = await (supabase as any).from('funding_dashboard').select('*', { count: 'exact' }).range(from, to)
+    const { data, error } = await (supabase as any).from('funding_dashboard').select('*').limit(5000)
     if (error) console.error('funding_dashboard load failed:', error)
     if (data) {
       const projList: Project[] = []
@@ -368,10 +362,9 @@ export default function FundingPage() {
       })
       setProjects(projList)
       setFunding(fundMap)
-      if (count != null) setTotalCount(count)
     }
     setDashLoading(false)
-  }, [currentPage])
+  }, [])
 
   useEffect(() => { loadDashboard() }, [loadDashboard])
 
@@ -607,7 +600,7 @@ export default function FundingPage() {
 
       {/* Filters */}
       <div className="bg-gray-950 border-b border-gray-800 flex items-center gap-2 px-4 py-2 flex-shrink-0 flex-wrap">
-        <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value as FundingFilter); setCurrentPage(1) }}
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as FundingFilter)}
           className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">
           <option value="all">All Statuses</option>
           <option value="ready">Ready to Submit</option>
@@ -617,24 +610,14 @@ export default function FundingPage() {
           <option value="funded">Funded</option>
           <option value="nonfunded">Has NF Code</option>
         </select>
-        <select value={financierFilter} onChange={e => { setFinancierFilter(e.target.value); setCurrentPage(1) }}
+        <select value={financierFilter} onChange={e => setFinancierFilter(e.target.value)}
           className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">
           <option value="all">All Financiers</option>
           {financiers.map(f => <option key={f} value={f}>{f}</option>)}
         </select>
         <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search projects..."
           className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5 w-48" />
-        <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs text-gray-500">{totalCount} total</span>
-          <Pagination
-            currentPage={currentPage}
-            totalCount={totalCount}
-            pageSize={PAGE_SIZE}
-            hasMore={currentPage * PAGE_SIZE < totalCount}
-            onPrevPage={() => setCurrentPage(p => Math.max(1, p - 1))}
-            onNextPage={() => setCurrentPage(p => p + 1)}
-          />
-        </div>
+        <span className="ml-auto text-xs text-gray-500">{rows.length} projects</span>
       </div>
 
       {/* Task-based sections */}

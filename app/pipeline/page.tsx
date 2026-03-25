@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { Nav } from '@/components/Nav'
-import { Pagination } from '@/components/Pagination'
 import { daysAgo, fmt$, STAGE_LABELS, STAGE_ORDER, SLA_THRESHOLDS } from '@/lib/utils'
 import { ProjectPanel } from '@/components/project/ProjectPanel'
 import { NewProjectModal } from '@/components/project/NewProjectModal'
@@ -63,24 +62,15 @@ export default function PipelinePage() {
 
   const searchOr = useMemo(() => buildSearchOr(), [buildSearchOr])
 
-  // Main query using the hook (paginated — 100 per page)
-  const PAGE_SIZE = 100
+  // Main query — load all projects (Pipeline needs full view for Kanban)
   const {
     data: projects, loading, refresh,
-    totalCount, hasMore, nextPage, prevPage, setPage, currentPage,
   } = useSupabaseQuery('projects', {
     select: PROJECT_COLUMNS,
     filters: queryFilters,
     or: searchOr,
-    page: 1,
-    pageSize: PAGE_SIZE,
+    limit: 5000,
   })
-
-  // Reset to page 1 when filters or search change
-  const filterKey = JSON.stringify(queryFilters) + (searchOr ?? '')
-  useEffect(() => {
-    setPage(1)
-  }, [filterKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Feed loaded data back into useServerFilter for dropdown extraction
   // Note: useServerFilter was initialized with [] — we need to re-create with actual data
@@ -142,7 +132,7 @@ export default function PipelinePage() {
             className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-3 py-1.5 w-40 focus:outline-none focus:border-green-500 placeholder-gray-500"
           />
           <span className="text-xs text-gray-500">
-            {filtered.length}{totalCount !== null && totalCount > filtered.length ? ` of ${totalCount}` : ''} projects · {fmt$(totalContract)}
+            {filtered.length} projects · {fmt$(totalContract)}
           </span>
         </>} />
 
@@ -163,18 +153,6 @@ export default function PipelinePage() {
           <option value="all">All AHJs</option>
           {ahjs.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
         </select>
-        {/* Pagination controls */}
-        {totalCount !== null && totalCount > PAGE_SIZE && (
-          <Pagination
-            currentPage={currentPage}
-            totalCount={totalCount}
-            pageSize={PAGE_SIZE}
-            hasMore={hasMore}
-            onPrevPage={prevPage}
-            onNextPage={nextPage}
-          />
-        )}
-
         <div className="ml-auto flex items-center gap-2">
           <span className="text-xs text-gray-500">Sort:</span>
           {(['sla','name','contract','cycle'] as const).map(s => (
