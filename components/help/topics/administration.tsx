@@ -1,0 +1,111 @@
+import type { HelpTopicData } from './index'
+
+function AdminPortal() {
+  return (
+    <div>
+      <p className="text-xs text-gray-400 mb-3">Click the gear icon in the nav bar. Admin and Super Admin roles only. Sections include:</p>
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        {[
+          'Users -- CRUD, roles, active status',
+          'Crews -- 5 crews, 10 member roles each',
+          'AHJ -- 1,633 TX AHJ records',
+          'Utilities -- 203 utility companies',
+          'HOA -- 421 HOA records',
+          'Financiers -- 10 financing companies',
+          'SLA -- Editable thresholds per stage',
+          'Equipment -- Catalog management',
+          'Feedback -- User-submitted bugs/features',
+          'Audit Trail -- Session + change tracking',
+        ].map((item, i) => (
+          <div key={i} className="bg-gray-800 rounded-md px-3 py-2 text-gray-400">{item}</div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function UserManagement() {
+  return (
+    <div>
+      <p className="text-xs text-gray-400 mb-2">Full CRUD for team members. Fields: name, email, department, position, role, active status, avatar color. Use Add User to create accounts. Roles control access level throughout the system.</p>
+    </div>
+  )
+}
+
+function PermissionMatrix() {
+  return (
+    <div>
+      <p className="text-xs text-gray-400 mb-3">Role-based permissions:</p>
+      <div className="border border-gray-700 rounded-lg overflow-hidden text-xs">
+        <div className="grid grid-cols-4 gap-0 px-3 py-2 bg-gray-800/50 border-b border-gray-700">
+          <span className="text-gray-500 font-medium">Action</span>
+          <span className="text-gray-500 font-medium text-center">User</span>
+          <span className="text-gray-500 font-medium text-center">Admin</span>
+          <span className="text-gray-500 font-medium text-center">Super</span>
+        </div>
+        {[
+          { action: 'Create/edit projects', user: true, admin: true, superA: true },
+          { action: 'Update tasks & notes', user: true, admin: true, superA: true },
+          { action: 'Admin portal', user: false, admin: true, superA: true },
+          { action: 'Delete projects', user: false, admin: false, superA: true },
+          { action: 'Manage users', user: false, admin: true, superA: true },
+        ].map(r => (
+          <div key={r.action} className="grid grid-cols-4 gap-0 px-3 py-1.5 border-b border-gray-800/50">
+            <span className="text-gray-300">{r.action}</span>
+            <span className="text-center">{r.user ? <span className="text-green-400">&#10003;</span> : <span className="text-gray-600">--</span>}</span>
+            <span className="text-center">{r.admin ? <span className="text-green-400">&#10003;</span> : <span className="text-gray-600">--</span>}</span>
+            <span className="text-center">{r.superA ? <span className="text-green-400">&#10003;</span> : <span className="text-gray-600">--</span>}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function EquipmentManager() {
+  return (
+    <div>
+      <p className="text-xs text-gray-400 mb-2">Admin catalog CRUD for the 2,517-item equipment database. Add panels, inverters, batteries, and optimizers with manufacturer, model, wattage, and specifications. Equipment added here appears in project panel autocomplete dropdowns.</p>
+    </div>
+  )
+}
+
+export const administrationTopics: HelpTopicData[] = [
+  {
+    id: 'admin-portal',
+    title: 'Admin Portal',
+    description: 'Access via gear icon, admin roles only',
+    category: 'Administration',
+    keywords: ['admin', 'portal', 'gear', 'settings', 'configuration', 'manage'],
+    tryItLink: '/admin',
+    relatedTopics: ['user-management', 'permission-matrix'],
+    content: AdminPortal,
+  },
+  {
+    id: 'user-management',
+    title: 'User Management',
+    description: 'CRUD users, assign roles, toggle active',
+    category: 'Administration',
+    keywords: ['user', 'create', 'edit', 'delete', 'role', 'active', 'team'],
+    relatedTopics: ['admin-portal', 'understanding-roles'],
+    content: UserManagement,
+  },
+  {
+    id: 'permission-matrix',
+    title: 'Permission Matrix',
+    description: 'Who can do what by role',
+    category: 'Administration',
+    keywords: ['permission', 'role', 'access', 'matrix', 'user', 'admin', 'super'],
+    relatedTopics: ['understanding-roles', 'admin-portal'],
+    content: PermissionMatrix,
+  },
+  {
+    id: 'equipment-manager',
+    title: 'Equipment Manager',
+    description: 'Admin catalog CRUD for equipment',
+    category: 'Administration',
+    keywords: ['equipment', 'catalog', 'admin', 'panel', 'inverter', 'battery', 'manage'],
+    relatedTopics: ['equipment-catalog', 'admin-portal'],
+    content: EquipmentManager,
+  },
+]
