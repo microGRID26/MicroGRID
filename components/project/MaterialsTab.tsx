@@ -8,12 +8,14 @@ import {
   updateProjectMaterial,
   deleteProjectMaterial,
   autoGenerateMaterials,
+  createPurchaseOrder,
+  generatePONumber,
   MATERIAL_STATUSES,
   MATERIAL_SOURCES,
   MATERIAL_CATEGORIES,
 } from '@/lib/api/inventory'
 import type { ProjectMaterial, MaterialStatus } from '@/lib/api/inventory'
-import { Package, Plus, Wand2, Trash2, ChevronDown, ChevronUp, X } from 'lucide-react'
+import { Package, Plus, Wand2, Trash2, ChevronDown, ChevronUp, X, ShoppingCart, Check } from 'lucide-react'
 
 // ── Category badge colors ──────────────────────────────────────────────────
 const CATEGORY_COLORS: Record<string, string> = {
@@ -56,6 +58,12 @@ export function MaterialsTab({ project }: MaterialsTabProps) {
   const [addSource, setAddSource] = useState('tbd')
   const [addVendor, setAddVendor] = useState('')
   const [addSaving, setAddSaving] = useState(false)
+
+  // ── PO creation state ──────────────────────────────────────────────────
+  const [selectedForPO, setSelectedForPO] = useState<Set<string>>(new Set())
+  const [showPOForm, setShowPOForm] = useState(false)
+  const [poVendor, setPOVendor] = useState('')
+  const [poCreating, setPOCreating] = useState(false)
 
   // ── Inline edit state ───────────────────────────────────────────────────
   const [editDraft, setEditDraft] = useState<Partial<ProjectMaterial>>({})
@@ -183,6 +191,70 @@ export function MaterialsTab({ project }: MaterialsTabProps) {
     return count
   }
 
+  // ── Toggle PO selection ─────────────────────────────────────────────────
+  function togglePOSelect(id: string) {
+    setSelectedForPO(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  // ── Create PO from selected materials ──────────────────────────────────
+  async function handleCreatePO() {
+    if (!poVendor.trim() || selectedForPO.size === 0) return
+    setPOCreating(true)
+    try {
+      const poNumber = await generatePONumber()
+      const selectedMats = materials.filter(m => selectedForPO.has(m.id))
+      const lineItems = selectedMats.map(m => ({
+        material_id: m.id,
+        equipment_id: m.equipment_id ?? null,
+        name: m.name,
+        quantity: m.quantity,
+        unit_price: null as number | null,
+        total_price: null as number | null,
+        notes: null as string | null,
+      }))
+
+      const result = await createPurchaseOrder(
+        {
+          po_number: poNumber,
+          vendor: poVendor.trim(),
+          project_id: project.id,
+          status: 'draft',
+          total_amount: null,
+          notes: null,
+          created_by: null,
+          submitted_at: null,
+          confirmed_at: null,
+          shipped_at: null,
+          delivered_at: null,
+          tracking_number: null,
+          expected_delivery: null,
+        },
+        lineItems
+      )
+
+      if (result) {
+        // Update local materials with PO number and ordered status
+        setMaterials(prev =>
+          prev.map(m =>
+            selectedForPO.has(m.id) ? { ...m, po_number: result.po_number, status: 'ordered' } : m
+          )
+        )
+        setSelectedForPO(new Set())
+        setShowPOForm(false)
+        setPOVendor('')
+        showToastMsg(`Created ${result.po_number} with ${lineItems.length} item${lineItems.length !== 1 ? 's' : ''}`)
+      }
+    } catch (err) {
+      console.error('[handleCreatePO]', err)
+    }
+    setPOCreating(false)
+  }
+
   if (loading) {
     return (
       <div className="flex-1 overflow-y-auto p-5">
@@ -208,6 +280,14 @@ export function MaterialsTab({ project }: MaterialsTabProps) {
           <span className="text-xs text-gray-500">({materials.length} item{materials.length !== 1 ? 's' : ''})</span>
         </div>
         <div className="flex items-center gap-2">
+          {selectedForPO.size > 0 && (
+            <button
+              onClick={() => setShowPOForm(true)}
+              className="text-xs px-3 py-1.5 rounded-md bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 transition-colors flex items-center gap-1"
+            >
+              <ShoppingCart className="w-3 h-3" /> Create PO ({selectedForPO.size})
+            </button>
+          )}
           <button
             onClick={() => setConfirmGenerate(true)}
             className="text-xs px-3 py-1.5 rounded-md bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 transition-colors flex items-center gap-1"
@@ -260,6 +340,56 @@ export function MaterialsTab({ project }: MaterialsTabProps) {
               className="text-xs px-3 py-1.5 rounded bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"
             >
               Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Create PO form */}
+      {showPOForm && (
+        <div className="bg-gray-800 border border-blue-700/50 rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium text-white flex items-center gap-2">
+              <ShoppingCart className="w-4 h-4 text-blue-400" />
+              Create Purchase Order
+            </h4>
+            <button onClick={() => setShowPOForm(false)} className="text-gray-500 hover:text-white">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <p className="text-xs text-gray-400">
+            {selectedForPO.size} item{selectedForPO.size !== 1 ? 's' : ''} selected for this PO.
+          </p>
+          <div className="space-y-2">
+            {materials.filter(m => selectedForPO.has(m.id)).map(m => (
+              <div key={m.id} className="flex items-center justify-between text-xs bg-gray-900 rounded px-3 py-1.5">
+                <span className="text-white">{m.name}</span>
+                <span className="text-gray-400">x{m.quantity}</span>
+              </div>
+            ))}
+          </div>
+          <div>
+            <label className="text-xs text-gray-400 block mb-1">Vendor *</label>
+            <input
+              value={poVendor}
+              onChange={e => setPOVendor(e.target.value)}
+              placeholder="e.g., CED Greentech"
+              className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-white placeholder-gray-600"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              onClick={() => { setShowPOForm(false); setSelectedForPO(new Set()) }}
+              className="text-xs px-3 py-1.5 rounded bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleCreatePO}
+              disabled={!poVendor.trim() || poCreating}
+              className="text-xs px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 transition-colors"
+            >
+              {poCreating ? 'Creating...' : 'Create PO'}
             </button>
           </div>
         </div>
@@ -373,7 +503,8 @@ export function MaterialsTab({ project }: MaterialsTabProps) {
       ) : (
         <div className="space-y-1">
           {/* Table header */}
-          <div className="grid grid-cols-[1fr_80px_50px_80px_80px_80px_auto] gap-2 text-xs text-gray-500 font-medium px-3 py-1.5">
+          <div className="grid grid-cols-[24px_1fr_80px_50px_80px_80px_80px_auto] gap-2 text-xs text-gray-500 font-medium px-3 py-1.5">
+            <span></span>
             <span>Item</span>
             <span>Category</span>
             <span>Qty</span>
@@ -387,7 +518,7 @@ export function MaterialsTab({ project }: MaterialsTabProps) {
             <div key={m.id}>
               {/* Row */}
               <div
-                className={`grid grid-cols-[1fr_80px_50px_80px_80px_80px_auto] gap-2 items-center text-sm px-3 py-2 rounded-lg transition-colors cursor-pointer ${
+                className={`grid grid-cols-[24px_1fr_80px_50px_80px_80px_80px_auto] gap-2 items-center text-sm px-3 py-2 rounded-lg transition-colors cursor-pointer ${
                   expandedId === m.id ? 'bg-gray-800 border border-gray-700' : 'hover:bg-gray-800/50'
                 }`}
                 onClick={() => {
@@ -406,6 +537,15 @@ export function MaterialsTab({ project }: MaterialsTabProps) {
                   }
                 }}
               >
+                <button
+                  onClick={e => { e.stopPropagation(); togglePOSelect(m.id) }}
+                  className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                    selectedForPO.has(m.id) ? 'bg-blue-600 border-blue-600' : 'border-gray-600 hover:border-gray-400'
+                  }`}
+                  title={m.po_number ? `Already on ${m.po_number}` : 'Select for PO'}
+                >
+                  {selectedForPO.has(m.id) && <Check className="w-3 h-3 text-white" />}
+                </button>
                 <span className="text-white truncate">{m.name}</span>
                 <span className={`text-xs px-1.5 py-0.5 rounded text-center ${CATEGORY_COLORS[m.category] || CATEGORY_COLORS.other}`}>
                   {m.category}

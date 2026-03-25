@@ -1,5 +1,8 @@
-// lib/api/inventory.ts — Project materials and warehouse stock data access
+// lib/api/inventory.ts — Project materials, warehouse stock, and purchase order data access
 import { db } from '@/lib/db'
+import type { PurchaseOrder, POLineItem } from '@/types/database'
+
+export type { PurchaseOrder, POLineItem }
 
 export interface ProjectMaterial {
   id: string
@@ -239,4 +242,202 @@ export async function loadAllProjectMaterials(filters?: {
     project_name: row.projects?.name ?? null,
     projects: undefined,
   })) as (ProjectMaterial & { project_name?: string })[]
+}
+
+// ── Purchase Order constants ──────────────────────────────────────────────────
+export const PO_STATUSES = ['draft', 'submitted', 'confirmed', 'shipped', 'delivered', 'cancelled'] as const
+export type POStatus = typeof PO_STATUSES[number]
+
+export const PO_STATUS_COLORS: Record<string, string> = {
+  draft: 'bg-gray-500/20 text-gray-400',
+  submitted: 'bg-blue-500/20 text-blue-400',
+  confirmed: 'bg-indigo-500/20 text-indigo-400',
+  shipped: 'bg-amber-500/20 text-amber-400',
+  delivered: 'bg-green-500/20 text-green-400',
+  cancelled: 'bg-red-500/20 text-red-400',
+}
+
+/**
+ * Generate a PO number in format PO-YYYYMMDD-NNN
+ */
+export async function generatePONumber(): Promise<string> {
+  const supabase = db()
+  const today = new Date()
+  const dateStr = today.toISOString().split('T')[0].replace(/-/g, '')
+  const prefix = `PO-${dateStr}-`
+
+  // Find the highest existing PO number with today's prefix
+  const { data } = await supabase
+    .from('purchase_orders')
+    .select('po_number')
+    .like('po_number', `${prefix}%`)
+    .order('po_number', { ascending: false })
+    .limit(1)
+
+  let seq = 1
+  if (data && data.length > 0) {
+    const last = (data[0] as any).po_number as string
+    const lastSeq = parseInt(last.replace(prefix, ''), 10)
+    if (!isNaN(lastSeq)) seq = lastSeq + 1
+  }
+
+  return `${prefix}${String(seq).padStart(3, '0')}`
+}
+
+/**
+ * Load purchase orders with optional filters.
+ */
+export async function loadPurchaseOrders(filters?: {
+  status?: string
+  vendor?: string
+  projectId?: string
+}): Promise<PurchaseOrder[]> {
+  const supabase = db()
+  let q = supabase
+    .from('purchase_orders')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(2000)
+  if (filters?.status) q = q.eq('status', filters.status)
+  if (filters?.vendor) q = q.eq('vendor', filters.vendor)
+  if (filters?.projectId) q = q.eq('project_id', filters.projectId)
+  const { data, error } = await q
+  if (error) console.error('[loadPurchaseOrders]', error.message)
+  return (data ?? []) as PurchaseOrder[]
+}
+
+/**
+ * Load a single purchase order with its line items.
+ */
+export async function loadPurchaseOrder(id: string): Promise<{ po: PurchaseOrder; items: POLineItem[] } | null> {
+  const supabase = db()
+  const { data: po, error: poErr } = await supabase
+    .from('purchase_orders')
+    .select('*')
+    .eq('id', id)
+    .single()
+  if (poErr || !po) {
+    console.error('[loadPurchaseOrder]', poErr?.message)
+    return null
+  }
+  const { data: items, error: itemsErr } = await supabase
+    .from('po_line_items')
+    .select('*')
+    .eq('po_id', id)
+    .order('name')
+  if (itemsErr) console.error('[loadPurchaseOrder items]', itemsErr.message)
+  return { po: po as PurchaseOrder, items: (items ?? []) as POLineItem[] }
+}
+
+/**
+ * Create a purchase order with line items.
+ */
+export async function createPurchaseOrder(
+  po: Omit<PurchaseOrder, 'id' | 'created_at' | 'updated_at'>,
+  items: Omit<POLineItem, 'id' | 'po_id'>[]
+): Promise<PurchaseOrder | null> {
+  const supabase = db()
+  const { data: created, error: poErr } = await supabase
+    .from('purchase_orders')
+    .insert(po)
+    .select()
+    .single()
+  if (poErr || !created) {
+    console.error('[createPurchaseOrder]', poErr?.message)
+    return null
+  }
+  const createdPO = created as PurchaseOrder
+
+  // Insert line items
+  if (items.length > 0) {
+    const rows = items.map(item => ({ ...item, po_id: createdPO.id }))
+    const { error: itemsErr } = await supabase.from('po_line_items').insert(rows)
+    if (itemsErr) console.error('[createPurchaseOrder items]', itemsErr.message)
+  }
+
+  // Update linked project_materials with the PO number
+  for (const item of items) {
+    if (item.material_id) {
+      await supabase
+        .from('project_materials')
+        .update({ po_number: createdPO.po_number, status: 'ordered', updated_at: new Date().toISOString() })
+        .eq('id', item.material_id)
+    }
+  }
+
+  return createdPO
+}
+
+/**
+ * Update a purchase order's status.
+ * When status is 'delivered', auto-update linked project_materials.
+ */
+export async function updatePurchaseOrderStatus(id: string, status: string): Promise<boolean> {
+  const supabase = db()
+
+  // Build timestamp updates based on status
+  const timestamps: Record<string, string | null> = {}
+  const now = new Date().toISOString()
+  if (status === 'submitted') timestamps.submitted_at = now
+  if (status === 'confirmed') timestamps.confirmed_at = now
+  if (status === 'shipped') timestamps.shipped_at = now
+  if (status === 'delivered') timestamps.delivered_at = now
+
+  const { error } = await supabase
+    .from('purchase_orders')
+    .update({ status, updated_at: now, ...timestamps })
+    .eq('id', id)
+  if (error) {
+    console.error('[updatePurchaseOrderStatus]', error.message)
+    return false
+  }
+
+  // When delivered, update all linked project_materials
+  if (status === 'delivered') {
+    const { data: lineItems } = await supabase
+      .from('po_line_items')
+      .select('material_id')
+      .eq('po_id', id)
+    const today = new Date().toISOString().split('T')[0]
+    for (const item of (lineItems ?? []) as { material_id: string | null }[]) {
+      if (item.material_id) {
+        await supabase
+          .from('project_materials')
+          .update({ status: 'delivered', delivered_date: today, updated_at: now })
+          .eq('id', item.material_id)
+      }
+    }
+  }
+
+  return true
+}
+
+/**
+ * Update purchase order fields (notes, tracking_number, expected_delivery, etc.).
+ */
+export async function updatePurchaseOrder(id: string, updates: Partial<PurchaseOrder>): Promise<boolean> {
+  const supabase = db()
+  const { error } = await supabase
+    .from('purchase_orders')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) {
+    console.error('[updatePurchaseOrder]', error.message)
+    return false
+  }
+  return true
+}
+
+/**
+ * Load line items for a specific PO.
+ */
+export async function loadPOLineItems(poId: string): Promise<POLineItem[]> {
+  const supabase = db()
+  const { data, error } = await supabase
+    .from('po_line_items')
+    .select('*')
+    .eq('po_id', poId)
+    .order('name')
+  if (error) console.error('[loadPOLineItems]', error.message)
+  return (data ?? []) as POLineItem[]
 }

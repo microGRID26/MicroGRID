@@ -500,6 +500,37 @@ export interface WarehouseStock {
   updated_at: string
 }
 
+export interface PurchaseOrder {
+  id: string
+  po_number: string
+  vendor: string
+  project_id: string | null
+  status: string
+  total_amount: number | null
+  notes: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+  submitted_at: string | null
+  confirmed_at: string | null
+  shipped_at: string | null
+  delivered_at: string | null
+  tracking_number: string | null
+  expected_delivery: string | null
+}
+
+export interface POLineItem {
+  id: string
+  po_id: string
+  material_id: string | null
+  equipment_id: string | null
+  name: string
+  quantity: number
+  unit_price: number | null
+  total_price: number | null
+  notes: string | null
+}
+
 export interface LegacyProject {
   id: string
   ns_internal_id: string | null
@@ -761,6 +792,18 @@ export type Database = {
         Row: WarehouseStock
         Insert: Omit<WarehouseStock, 'id' | 'updated_at'> & { id?: string; updated_at?: string }
         Update: Partial<WarehouseStock>
+
+      }
+      purchase_orders: {
+        Row: PurchaseOrder
+        Insert: Omit<PurchaseOrder, 'id' | 'created_at' | 'updated_at'> & { id?: string; created_at?: string; updated_at?: string }
+        Update: Partial<PurchaseOrder>
+
+      }
+      po_line_items: {
+        Row: POLineItem
+        Insert: Omit<POLineItem, 'id'> & { id?: string }
+        Update: Partial<POLineItem>
 
       }
       legacy_projects: {
