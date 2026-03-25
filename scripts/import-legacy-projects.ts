@@ -161,7 +161,7 @@ interface MappedProject {
   pm: string | null
   sale_date: string | null
   survey_date: string | null
-  install_complete_date: string | null
+  install_date: string | null
   pto_date: string | null
   in_service_date: string | null
   disposition: string | null
@@ -232,7 +232,7 @@ function mapProject(data: Record<string, unknown>): { project: MappedProject; fu
     pm: refName(data.custentity_ts_cust_serv_rep) || refName(data.custentityoperations_manager) || null,
     sale_date: saleDate,
     survey_date: parseDate(data.custentityts_site_survey_date),
-    install_complete_date: parseDate(data.custentityts_installation_start_date),
+    install_date: parseDate(data.custentityts_installation_start_date),
     pto_date: parseDate(data.custentityts_pto_date),
     in_service_date: parseDate(data.custentity_ts_in_service_date),
     disposition: mapDisposition(data.custentity_ts_disposition),
@@ -349,6 +349,12 @@ async function main() {
 
       // Skip if already in NOVA
       if (existingIds.has(result.project.id)) {
+        skipped++
+        continue
+      }
+
+      // Only import In Service projects
+      if (result.project.disposition !== 'In Service') {
         skipped++
         continue
       }

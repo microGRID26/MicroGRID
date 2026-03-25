@@ -3,7 +3,7 @@
 // ── CONSTRUCTION BANNER ───────────────────────────────────────────────────────
 // Drop <ConstructionBanner /> anywhere in a nav bar
 // To turn off: set SHOW_BANNER = false and redeploy
-const SHOW_BANNER = true
+const SHOW_BANNER = false
 
 export function ConstructionBanner() {
   if (!SHOW_BANNER) return null

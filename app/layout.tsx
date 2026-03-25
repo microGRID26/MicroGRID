@@ -20,7 +20,7 @@ export const viewport: Viewport = {
 
 // ── CONSTRUCTION BANNER ───────────────────────────────────────────────────────
 // Set to false when the CRM is ready for full use
-export const SHOW_BANNER = true
+export const SHOW_BANNER = false
 
 export default function RootLayout({
   children,
