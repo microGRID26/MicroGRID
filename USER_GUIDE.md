@@ -23,13 +23,14 @@ A comprehensive guide for Project Managers and team members at MicroGRID Energy 
 15. [Audit Trail](#audit-trail)
 16. [Admin Portal](#admin-portal)
 17. [Document Management](#document-management)
-18. [Redesign Tool](#redesign-tool)
-19. [AI Reports](#ai-reports)
-20. [Legacy Projects](#legacy-projects)
-21. [Help Center](#help-center)
-22. [@Mentions and Notifications](#mentions-and-notifications)
-23. [Pagination](#pagination)
-24. [Tips and Best Practices](#tips-and-best-practices)
+18. [Equipment Catalog](#equipment-catalog)
+19. [Redesign Tool](#redesign-tool)
+20. [Atlas (AI Reports)](#atlas-ai-reports)
+21. [Legacy Projects](#legacy-projects)
+22. [Help Center](#help-center)
+23. [@Mentions and Notifications](#mentions-and-notifications)
+24. [Pagination](#pagination)
+25. [Tips and Best Practices](#tips-and-best-practices)
 
 ---
 
@@ -77,6 +78,7 @@ The navigation bar runs across the top of every page with a two-tier layout:
 - **Service** -- Service call tracking
 - **Change Orders** -- HCO/change order workflow
 - **Documents** -- Document hub and file browser
+- **Atlas** -- AI-powered natural language data queries (Manager+ only)
 - **Redesign** -- Equipment calculator and SLD generator
 - **Legacy** -- Historical TriSMART project lookup
 - **Audit Trail** -- Change log (Admin/Super Admin only)
@@ -369,7 +371,7 @@ The Overview tab displays all project information organized into sections:
 
 - **Customer** -- Name, address (clickable link to Google Maps), city, phone, email
 - **Project** -- Disposition, contract value, system kW, financier, financing type, down payment, TPO escalator, financier advance payment, dealer
-- **Equipment** -- Module (model and qty), inverter (model and qty), battery (model and qty), optimizer (model and qty)
+- **Equipment** -- Module (model and qty), inverter (model and qty), battery (model and qty), optimizer (model and qty). Equipment fields use autocomplete from a catalog of 2,517 items. System kW is auto-calculated from module wattage and panel count.
 - **Site** -- Meter location, panel location, voltage, MSP bus rating, MPU, shutdown type, performance meter, IBC breaker, main breaker, HOA, ESID
 
 **Right Column:**
@@ -1228,6 +1230,40 @@ Task notes may include historical comments imported from NetSuite, identified by
 
 ---
 
+## Equipment Catalog
+
+NOVA includes a centralized equipment catalog with 2,517 items covering panels, inverters, batteries, and optimizers used in solar installations.
+
+### Autocomplete in Project Panel
+
+When editing a project's Equipment section in the Info tab, the module, inverter, battery, and optimizer fields use **autocomplete dropdowns** powered by the equipment catalog:
+
+1. Open the Project Panel and click Edit
+2. In the Equipment section, start typing a manufacturer or model name
+3. A dropdown appears showing matching equipment from the catalog
+4. Select an item to populate the field
+5. Use the X button to clear a selection
+
+### Auto-Calculate System kW
+
+When both the module model and panel count are set on a project, the system automatically calculates the `system_kw` field:
+
+- The calculation uses the module's wattage from the equipment catalog multiplied by the panel count
+- The result is displayed in the Project section of the Info tab
+- This eliminates manual entry errors and keeps system size consistent with equipment specs
+
+### Equipment Manager (Admin)
+
+Administrators can manage the equipment catalog from the Admin portal:
+
+- **Search** -- Find equipment by manufacturer or model name
+- **Filter by category** -- Show only panels, inverters, batteries, or optimizers
+- **Add new equipment** -- Enter category, manufacturer, model, wattage, and description
+- **Edit existing** -- Update any equipment record
+- **Deactivate** -- Toggle equipment active/inactive without deleting (inactive items do not appear in autocomplete)
+
+---
+
 ## Redesign Tool
 
 **URL:** `/redesign`
@@ -1276,16 +1312,16 @@ A batch processor button in the header allows processing multiple redesigns at o
 
 ---
 
-## AI Reports
+## Atlas (AI Reports)
 
 **URL:** `/reports`
 **Access:** Manager, Finance, Admin, and Super Admin roles
 
-AI Reports lets you ask questions about your project data in plain English. Instead of building filters or exporting spreadsheets, type a question and get results instantly.
+Atlas lets you ask questions about your project data in plain English. Instead of building filters or exporting spreadsheets, type a question and get results instantly.
 
 ### How to Use
 
-1. Navigate to **Reports** from the "More" dropdown in the navigation bar.
+1. Navigate to **Atlas** from the "More" dropdown in the navigation bar.
 2. Type a question in the input field at the bottom, or click one of the starter prompts to get started.
 3. The system analyzes your question, queries the database, and displays results in a sortable table.
 4. Click any column header to sort the results.

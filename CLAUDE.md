@@ -81,7 +81,7 @@ Pages should import from `@/lib/api` instead of querying Supabase directly. The 
 - `lib/hooks/` — reusable hook infrastructure (see [Hook Infrastructure](#hook-infrastructure) section below)
 - `lib/export-utils.ts` — CSV export with field picker (50+ fields, grouped)
 - `types/database.ts` — full TypeScript types for all Supabase tables
-- `components/Nav.tsx` — two-tier navigation bar. 6 primary links always visible (Command, Queue, Pipeline, Schedule, Funding, Analytics) + "More" dropdown for secondary pages (Service, Change Orders, Documents, Reports, Redesign, Legacy). Audit Trail link in More dropdown for admins. Right-side slot for page controls.
+- `components/Nav.tsx` — two-tier navigation bar. 6 primary links always visible (Command, Queue, Pipeline, Schedule, Funding, Analytics) + "More" dropdown for secondary pages (Service, Change Orders, Documents, Atlas, Redesign, Legacy). Audit Trail link in More dropdown for admins. Right-side slot for page controls.
 - `components/project/ProjectPanel.tsx` — large modal (overview/tasks/notes/files/BOM tabs) used across multiple pages
 - `components/project/FilesTab.tsx` — extracted Files tab component for ProjectPanel (Google Drive link or "no folder" state)
 - `components/BulkActionBar.tsx` — bulk operations toolbar (see [Bulk Operations](#bulk-operations) section below)
@@ -182,6 +182,7 @@ Standalone page at `/audit-trail` (admin-only, guarded by `useCurrentUser().isAd
 - **feedback** — user-submitted feedback. Fields: `type` (Bug/Feature Request/Improvement/Question), `message`, `status` (New/Reviewing/In Progress/Addressed/Won't Fix), `user_name`, `user_email`, `page`, `admin_notes`. Delete policy uses `auth_is_super_admin()` SECURITY DEFINER function.
 - **user_sessions** — login/session tracking. Fields: `user_id`, `user_name`, `user_email`, `logged_in_at`, `last_active_at`, `page`. Updated via 60-second heartbeat from `SessionTracker` component. Duration computed client-side.
 - **audit_log** — change audit trail. Records all project field changes with `project_id`, `field`, `old_value`, `new_value`, `changed_by`, `changed_by_id`, `changed_at`. Also logs project deletions (`field = 'project_deleted'`) before cascade.
+- **equipment** — equipment catalog with 2,517 items. Fields: `id` (UUID PK), `category` (panel/inverter/battery/optimizer), `manufacturer`, `model`, `wattage` (NUMERIC), `description`, `active` (BOOLEAN). Used for autocomplete in project Info tab equipment fields. Admin CRUD via EquipmentManager.
 - **ahjs**, **utilities** — reference data for permit authorities and utility companies
 - **project_adders** — project adders/extras (e.g., EV charger, critter guard, ground mount). Fields: `id`, `project_id`, `name`, `price`, `quantity`, `created_at`. RLS open to all authenticated users. Migration: `supabase/013-adders.sql`. Contains 4,185 records imported from NetSuite.
 
@@ -219,6 +220,17 @@ When task statuses change in ProjectPanel, a chain of automations fires:
 ### Adders UI
 
 The project panel Info tab includes an Adders section. In view mode it displays a read-only list of adders with name, quantity, and price. In edit mode, users can add new adders (name/price/quantity) and delete existing ones. Data is stored in the `project_adders` table.
+
+### Equipment Catalog
+
+The `equipment` table stores 2,517 equipment items (panels, inverters, batteries, optimizers) with manufacturer, model, wattage/capacity, and category. Used for:
+
+- **Autocomplete dropdowns** in the project Info tab's Equipment section — module, inverter, battery, and optimizer fields use typeahead search against the equipment catalog
+- **Auto-calculate system kW** — when module model and panel count are both set, `system_kw` is automatically calculated from the equipment's wattage and the panel count
+- **EquipmentManager** in Admin portal (`components/admin/EquipmentManager.tsx`) — full CRUD with search, filter by category, add/edit/delete
+- **Migration 024** (`supabase/024-equipment.sql`) — `equipment` table with fields: `id` (UUID PK), `category` (panel/inverter/battery/optimizer), `manufacturer`, `model`, `wattage` (NUMERIC), `description`, `active` (BOOLEAN DEFAULT true), `created_at`
+- **Import scripts**: `scripts/import-equipment.ts` (parses equipment data), `scripts/upload-equipment.ts` (uploads to Supabase in batches)
+- 9 UI improvements applied: debounced autocomplete, dropdown positioning, click-outside dismiss, selected item display, clear button, keyboard navigation
 
 ### File References in Notes
 
@@ -400,19 +412,19 @@ API endpoint at `/api/webhooks/subhub` (route: `app/api/webhooks/subhub/route.ts
 - **Idempotency** — checks for existing project by ID before creating to prevent duplicates
 - **GET endpoint** — health check returning enabled/disabled status
 
-### AI Reports
+### Atlas (AI Reports)
 
-Natural language query interface at `/reports` (page: `app/reports/page.tsx`, API: `app/api/reports/chat/route.ts`). Users type questions about project data in plain English, and Claude generates a Supabase query plan, executes it, and returns results in a sortable table.
+Natural language query interface at `/reports` (page: `app/reports/page.tsx`, API: `app/api/reports/chat/route.ts`). Branded as "Atlas" in the UI. Users type questions about project data in plain English, and Claude generates a Supabase query plan, executes it, and returns results in a sortable table.
 
 - **Access**: Manager+ role required (`isManager` check from `useCurrentUser`)
 - **AI model**: Claude Sonnet (`claude-sonnet-4-6`) for fast query generation
-- **Rate limiting**: 10 requests/minute + 25 requests/day per user (in-memory, per Vercel instance)
+- **Rate limiting**: session-based — 25 requests/day per user tracked via `user_sessions` table (persistent across Vercel instances, not in-memory). 10 requests/minute burst limit.
 - **Allowed tables**: projects, project_funding, task_state, notes, schedule, service_calls, change_orders
 - **Max results**: 500 rows per query
 - **Features**: sortable results table, CSV export, follow-up suggestions, conversation history, clickable project IDs (opens ProjectPanel), starter prompts
 - **Client-side filters**: `daysAgo_gt` and `daysAgo_lt` for date-relative queries (e.g., "projects stuck more than 30 days")
-- **Security**: query plan validated before execution; only whitelisted tables/ops allowed; service role key used for read-only queries
-- **Requires**: `ANTHROPIC_API_KEY` environment variable; returns 503 if not configured
+- **Security**: query plan validated before execution; only whitelisted tables/ops allowed; `SUPABASE_SECRET_KEY` (service role key) used for read-only database queries
+- **Requires**: `ANTHROPIC_API_KEY` and `SUPABASE_SECRET_KEY` environment variables; returns 503 if not configured
 
 ### Analytics Page Tabs
 
@@ -457,6 +469,7 @@ All in `supabase/`:
 - `022-legacy-projects.sql` — Legacy projects table for 14,705 In Service TriSMART projects
 - `legacy_notes` table — created directly in production (no numbered migration file). 150,633 BluChat messages for 8,299 legacy projects.
 - `023-document-management.sql` — Document management tables: `project_files` (Drive file inventory), `document_requirements` (admin-configurable required docs per stage), `project_documents` (per-project document status tracking)
+- `024-equipment.sql` — Equipment catalog table (2,517 items: panels, inverters, batteries, optimizers)
 - `seed-document-requirements.sql` — Seeds 23 document requirements across all 7 pipeline stages
 
 ### Legacy Projects
@@ -475,13 +488,22 @@ The `legacy_projects` table stores 14,705 In Service projects imported from TriS
 
 The construction banner (`SHOW_BANNER`) is disabled (`false`). The banner component no longer renders.
 
-### Security Headers
+### Security
 
-`next.config.ts` includes security headers applied to all routes:
+**Headers** — `next.config.ts` includes security headers applied to all routes:
 - `X-Frame-Options: DENY` — prevents clickjacking
 - `X-Content-Type-Options: nosniff` — prevents MIME type sniffing
 - `Referrer-Policy: origin-when-cross-origin` — limits referrer information
 - `X-XSS-Protection: 1; mode=block` — enables XSS filtering
+- `Strict-Transport-Security: max-age=63072000` — HSTS enforcement
+
+**Auth** — Email domain whitelist enforced on sign-in: only `@gomicrogridenergy.com`, `@energydevelopmentgroup.com`, and `@trismartsolar.com` domains are allowed. Unauthorized domains are redirected to login with an error message.
+
+**Webhook** — SubHub webhook secret comparison uses timing-safe comparison (`timingSafeEqual`) to prevent timing attacks.
+
+**Data masking** — AHJ credentials (login usernames/passwords) are masked in the UI and only visible on explicit reveal.
+
+**Error sanitization** — API error responses do not expose internal details; stack traces and Supabase error messages are logged server-side only.
 
 ### E2E Tests
 
@@ -499,6 +521,8 @@ All in `scripts/`:
 - `upload-action-comments.ts` — uploads 127K action comments to `notes` table with `[NS]` prefix and `task_id`
 - `sync-drive-files.py` — Python script to scan Google Drive shared drive and export file metadata as JSON
 - `upload-drive-files.ts` — uploads Drive file metadata JSON to `project_files` table
+- `import-equipment.ts` — parses equipment data for catalog import
+- `upload-equipment.ts` — uploads equipment catalog to `equipment` table in batches
 
 ### File Consolidation (Complete)
 
@@ -517,7 +541,7 @@ All three planned consolidation targets from Session 15 have been completed in S
 
 ### Code Quality
 
-**Current rating: 9.5/10** (up from 9/10 after Session 16). Session 17 improvements: comprehensive audit fixed 40 issues across 24 files, dead `loyalty` column dropped, permission matrix updated to reflect actual RLS, Cancel/Reactivate gated to Admin+, legacy projects page and import pipeline (14,705 projects + 150K notes), API layer expanded (6 new functions, 4 pages migrated), document management system (3 tables, file browser, missing docs report, admin CRUD), 127K NetSuite action comments imported, nav redesigned to two-tier, pipeline utility filter + multi-select AHJ/Utility, construction banner removed, security headers added. **447 tests passing with 0 failures, 12 skipped** (SLA tests remain skipped while thresholds are paused). **E2E tests:** Playwright installed with 3 smoke test specs in `e2e/`. Remaining debt: some untyped tables still accessed via `as any` casts (~43 remaining).
+**Current rating: 9.5/10** (up from 9/10 after Session 16). Session 17 improvements: two comprehensive audits fixed 79 total issues (40 across 24 files + 39 across 18 files), dead `loyalty` column dropped, permission matrix updated to reflect actual RLS, Cancel/Reactivate gated to Admin+, legacy projects page and import pipeline (14,705 projects + 150K notes), API layer expanded (6 new functions, 4 pages migrated), document management system (3 tables, file browser, missing docs report, admin CRUD), 127K NetSuite action comments imported, nav redesigned to two-tier, pipeline utility filter + multi-select AHJ/Utility, construction banner removed, security headers added, equipment catalog (2,517 items with autocomplete and auto-kW calculation), Atlas AI Reports (Manager+, 25/day session-based rate limiting), email domain whitelist on auth. **447 tests passing with 0 failures, 12 skipped** (SLA tests remain skipped while thresholds are paused). **E2E tests:** Playwright installed with 3 smoke test specs in `e2e/`. Remaining debt: some untyped tables still accessed via `as any` casts (~43 remaining).
 
 ## Known Bugs
 
