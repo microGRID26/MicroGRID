@@ -23,6 +23,7 @@ const NAV_LINKS = [
   { label: 'Funding',  href: '/funding'  },
   { label: 'Change Orders', href: '/change-orders' },
   { label: 'Redesign', href: '/redesign' },
+  { label: 'Legacy',   href: '/legacy'   },
 ]
 
 const GEAR_ICON = (

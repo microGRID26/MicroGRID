@@ -1,0 +1,365 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { Nav } from '@/components/Nav'
+import { db } from '@/lib/db'
+import { cn, escapeIlike, fmtDate, fmt$ } from '@/lib/utils'
+import { Search, X, ChevronUp, ChevronDown, Archive, ChevronLeft, ChevronRight } from 'lucide-react'
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
+interface LegacyProject {
+  id: string
+  name: string | null
+  phone: string | null
+  email: string | null
+  address: string | null
+  city: string | null
+  state: string | null
+  zip: string | null
+  system_size: number | null
+  module: string | null
+  inverter: string | null
+  battery: string | null
+  voltage: number | null
+  msp: string | null
+  contract_value: number | null
+  financier: string | null
+  financing_type: string | null
+  dealer: string | null
+  sale_date: string | null
+  survey_date: string | null
+  install_date: string | null
+  pto_date: string | null
+  in_service_date: string | null
+  ahj: string | null
+  utility: string | null
+  permit_number: string | null
+  utility_app_number: string | null
+  m2_amount: number | null
+  m2_date: string | null
+  m3_amount: number | null
+  m3_date: string | null
+  status: string | null
+}
+
+type SortCol = 'id' | 'name' | 'city' | 'system_size' | 'financier' | 'install_date' | 'status'
+
+const PAGE_SIZE = 50
+
+// ── Main Page ────────────────────────────────────────────────────────────────
+
+export default function LegacyPage() {
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [results, setResults] = useState<LegacyProject[]>([])
+  const [totalCount, setTotalCount] = useState(0)
+  const [page, setPage] = useState(1)
+  const [sortCol, setSortCol] = useState<SortCol>('name')
+  const [sortAsc, setSortAsc] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const [selected, setSelected] = useState<LegacyProject | null>(null)
+
+  // Debounce search input
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search)
+      setPage(1)
+    }, 350)
+    return () => clearTimeout(t)
+  }, [search])
+
+  const fetchResults = useCallback(async () => {
+    setLoading(true)
+    const supabase = db()
+    const from = (page - 1) * PAGE_SIZE
+    const to = from + PAGE_SIZE - 1
+
+    let query = supabase
+      .from('legacy_projects')
+      .select('*', { count: 'exact' })
+
+    if (debouncedSearch.trim()) {
+      const q = escapeIlike(debouncedSearch.trim())
+      query = query.or(
+        `name.ilike.%${q}%,id.ilike.%${q}%,phone.ilike.%${q}%,email.ilike.%${q}%,city.ilike.%${q}%,address.ilike.%${q}%`
+      )
+    }
+
+    query = query
+      .order(sortCol, { ascending: sortAsc })
+      .range(from, to)
+
+    const { data, count, error } = await query
+
+    if (error) {
+      console.error('Legacy query error:', error)
+      setResults([])
+      setTotalCount(0)
+    } else {
+      setResults((data ?? []) as LegacyProject[])
+      setTotalCount(count ?? 0)
+    }
+    setLoading(false)
+  }, [debouncedSearch, page, sortCol, sortAsc])
+
+  useEffect(() => {
+    fetchResults()
+  }, [fetchResults])
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
+
+  function toggleSort(col: SortCol) {
+    if (sortCol === col) {
+      setSortAsc(!sortAsc)
+    } else {
+      setSortCol(col)
+      setSortAsc(true)
+    }
+    setPage(1)
+  }
+
+  function SortIcon({ col }: { col: SortCol }) {
+    if (sortCol !== col) return <ChevronUp className="w-3 h-3 text-gray-600 inline ml-1" />
+    return sortAsc
+      ? <ChevronUp className="w-3 h-3 text-green-400 inline ml-1" />
+      : <ChevronDown className="w-3 h-3 text-green-400 inline ml-1" />
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-900 flex flex-col">
+      <Nav active="Legacy" />
+
+      {/* Header + Search */}
+      <div className="px-6 pt-6 pb-4 flex-shrink-0">
+        <div className="flex items-center gap-3 mb-1">
+          <Archive className="w-6 h-6 text-green-400" />
+          <h1 className="text-2xl font-bold text-white">Legacy Projects</h1>
+        </div>
+        <p className="text-gray-400 text-sm mb-4">
+          TriSMART historical projects — read-only archive
+        </p>
+
+        <div className="relative max-w-xl">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by name, phone, email, address, city, or project ID..."
+            className="w-full pl-10 pr-10 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Result count + pagination */}
+        <div className="flex items-center justify-between mt-3">
+          <p className="text-xs text-gray-500">
+            {loading ? 'Searching...' : `${totalCount.toLocaleString()} projects found`}
+          </p>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="text-xs px-2 py-1 rounded bg-gray-800 text-gray-400 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-xs text-gray-400">{page} / {totalPages}</span>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="text-xs px-2 py-1 rounded bg-gray-800 text-gray-400 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Results Table */}
+      <div className="flex-1 overflow-auto px-6 pb-6">
+        <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-850 border-b border-gray-700">
+                {([
+                  ['id', 'ID'],
+                  ['name', 'Name'],
+                  ['city', 'City'],
+                  ['system_size', 'System (kW)'],
+                  ['financier', 'Financier'],
+                  ['install_date', 'Install Date'],
+                  ['status', 'Status'],
+                ] as [SortCol, string][]).map(([col, label]) => (
+                  <th
+                    key={col}
+                    onClick={() => toggleSort(col)}
+                    className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white select-none"
+                  >
+                    {label}
+                    <SortIcon col={col} />
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-700/50">
+              {loading && results.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-12 text-green-400 animate-pulse">
+                    Loading...
+                  </td>
+                </tr>
+              ) : results.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-12 text-gray-500">
+                    {debouncedSearch ? 'No projects match your search' : 'Enter a search term to find legacy projects'}
+                  </td>
+                </tr>
+              ) : (
+                results.map(p => (
+                  <tr
+                    key={p.id}
+                    onClick={() => setSelected(p)}
+                    className={cn(
+                      'cursor-pointer transition-colors hover:bg-gray-750',
+                      selected?.id === p.id && 'bg-gray-700/50'
+                    )}
+                  >
+                    <td className="px-4 py-3 text-green-400 font-mono text-xs">{p.id}</td>
+                    <td className="px-4 py-3 text-white font-medium">{p.name ?? '—'}</td>
+                    <td className="px-4 py-3 text-gray-300">{p.city ?? '—'}</td>
+                    <td className="px-4 py-3 text-gray-300">{p.system_size ? `${p.system_size} kW` : '—'}</td>
+                    <td className="px-4 py-3 text-gray-300">{p.financier ?? '—'}</td>
+                    <td className="px-4 py-3 text-gray-300">{fmtDate(p.install_date)}</td>
+                    <td className="px-4 py-3">
+                      <span className={cn(
+                        'text-xs px-2 py-0.5 rounded-full',
+                        p.status === 'In Service' ? 'bg-green-900 text-green-300' :
+                        p.status === 'Complete' ? 'bg-blue-900 text-blue-300' :
+                        'bg-gray-700 text-gray-300'
+                      )}>
+                        {p.status ?? '—'}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Detail Slide-out Panel */}
+      {selected && (
+        <DetailPanel project={selected} onClose={() => setSelected(null)} />
+      )}
+    </div>
+  )
+}
+
+// ── Detail Panel ─────────────────────────────────────────────────────────────
+
+function DetailPanel({ project: p, onClose }: { project: LegacyProject; onClose: () => void }) {
+  return (
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
+
+      {/* Panel */}
+      <div className="fixed top-0 right-0 h-full w-full max-w-lg bg-gray-900 border-l border-gray-700 z-50 overflow-y-auto shadow-2xl">
+        {/* Header */}
+        <div className="sticky top-0 bg-gray-900 border-b border-gray-700 px-6 py-4 flex items-center justify-between z-10">
+          <div>
+            <h2 className="text-lg font-bold text-white">{p.name ?? 'Unknown'}</h2>
+            <p className="text-xs text-green-400 font-mono">{p.id}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-white p-1">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="px-6 py-4 space-y-6">
+          {/* Customer Info */}
+          <Section title="Customer Info">
+            <Field label="Name" value={p.name} />
+            <Field label="Phone" value={p.phone} />
+            <Field label="Email" value={p.email} />
+            <Field label="Address" value={[p.address, p.city, p.state, p.zip].filter(Boolean).join(', ') || null} />
+          </Section>
+
+          {/* System Specs */}
+          <Section title="System Specs">
+            <Field label="Module" value={p.module} />
+            <Field label="Inverter" value={p.inverter} />
+            <Field label="Battery" value={p.battery} />
+            <Field label="System Size" value={p.system_size ? `${p.system_size} kW` : null} />
+            <Field label="Voltage" value={p.voltage ? `${p.voltage}V` : null} />
+            <Field label="MSP" value={p.msp} />
+          </Section>
+
+          {/* Financial */}
+          <Section title="Financial">
+            <Field label="Contract Value" value={p.contract_value ? fmt$(p.contract_value) : null} />
+            <Field label="Financier" value={p.financier} />
+            <Field label="Financing Type" value={p.financing_type} />
+            <Field label="Dealer" value={p.dealer} />
+          </Section>
+
+          {/* Dates */}
+          <Section title="Dates">
+            <Field label="Sale" value={fmtDate(p.sale_date)} />
+            <Field label="Survey" value={fmtDate(p.survey_date)} />
+            <Field label="Install" value={fmtDate(p.install_date)} />
+            <Field label="PTO" value={fmtDate(p.pto_date)} />
+            <Field label="In Service" value={fmtDate(p.in_service_date)} />
+          </Section>
+
+          {/* Permit */}
+          <Section title="Permit">
+            <Field label="AHJ" value={p.ahj} />
+            <Field label="Utility" value={p.utility} />
+            <Field label="Permit #" value={p.permit_number} />
+            <Field label="Utility App #" value={p.utility_app_number} />
+          </Section>
+
+          {/* Funding */}
+          <Section title="Funding">
+            <Field label="M2 Amount" value={p.m2_amount ? fmt$(p.m2_amount) : null} />
+            <Field label="M2 Date" value={fmtDate(p.m2_date)} />
+            <Field label="M3 Amount" value={p.m3_amount ? fmt$(p.m3_amount) : null} />
+            <Field label="M3 Date" value={fmtDate(p.m3_date)} />
+          </Section>
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ── Shared components ────────────────────────────────────────────────────────
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h3 className="text-xs font-semibold text-green-400 uppercase tracking-wider mb-2">{title}</h3>
+      <div className="bg-gray-800 rounded-lg border border-gray-700 divide-y divide-gray-700/50">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function Field({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div className="flex items-center justify-between px-4 py-2.5">
+      <span className="text-xs text-gray-400">{label}</span>
+      <span className="text-sm text-white">{value || '—'}</span>
+    </div>
+  )
+}
