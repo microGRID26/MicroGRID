@@ -8,311 +8,15 @@ import { useCurrentUser } from '@/lib/useCurrentUser'
 import { fmt$, fmtDate, daysAgo, STAGE_LABELS } from '@/lib/utils'
 import { ProjectPanel } from '@/components/project/ProjectPanel'
 import { useSupabaseQuery } from '@/lib/hooks'
+import { Download } from 'lucide-react'
 import type { Project, ProjectFunding, NonfundedCode } from '@/types/database'
+import {
+  EditableCell, StatusSelect, NfCodePicker, MsBadge, MsCells, getSubmissionAge,
+  exportFundingCSV, getMsData,
+  type MilestoneKey, type FundingFilter, type FundingDashboardRow, type MsData, type FundingRow, type SortColumn,
+} from '@/components/funding'
 
-/** Row shape returned by the funding_dashboard Postgres view */
-interface FundingDashboardRow {
-  id: string
-  name: string
-  city: string | null
-  address: string | null
-  financier: string | null
-  ahj: string | null
-  install_complete_date: string | null
-  pto_date: string | null
-  contract: number | null
-  sale_date: string | null
-  stage: string
-  disposition: string | null
-  m1_amount: number | null
-  m1_funded_date: string | null
-  m1_status: string | null
-  m1_notes: string | null
-  m1_cb: string | null
-  m1_cb_credit: number | null
-  m2_amount: number | null
-  m2_funded_date: string | null
-  m2_status: string | null
-  m2_notes: string | null
-  m2_cb: string | null
-  m2_cb_credit: number | null
-  m3_amount: number | null
-  m3_funded_date: string | null
-  m3_status: string | null
-  m3_notes: string | null
-  m3_projected: number | null
-  nonfunded_code_1: string | null
-  nonfunded_code_2: string | null
-  nonfunded_code_3: string | null
-}
-
-type MilestoneKey = 'm1' | 'm2' | 'm3'
-type FundingFilter = 'all' | 'ready' | 'submitted' | 'pending' | 'revision' | 'funded' | 'nonfunded'
-type FundingStatus = 'Ready To Start' | 'Submitted' | 'Pending Resolution' | 'Revision Required' | 'Funded'
-
-const FUNDING_STATUSES: FundingStatus[] = ['Ready To Start', 'Submitted', 'Pending Resolution', 'Revision Required', 'Funded']
-
-const FUNDING_STATUS_COMPACT: Record<string, string> = {
-  'Ready To Start': 'RTS',
-  'Submitted': 'Sub',
-  'Pending Resolution': 'Pnd',
-  'Revision Required': 'Rev',
-  'Funded': 'Fun',
-}
-
-interface MsData {
-  amount: number | null
-  funded_date: string | null
-  status: string | null
-  notes: string | null
-  isEligible: boolean
-  isFunded: boolean
-}
-
-interface FundingRow {
-  project: Project
-  funding: ProjectFunding | null
-  m1: MsData
-  m2: MsData
-  m3: MsData
-  nf1: string | null
-  nf2: string | null
-  nf3: string | null
-}
-
-function getMsData(f: ProjectFunding | null, p: Project, ms: MilestoneKey): MsData {
-  const eligible = ms === 'm1' ? true : ms === 'm2' ? !!p.install_complete_date : !!p.pto_date
-  if (!f) return { amount: null, funded_date: null, status: null, notes: null, isEligible: eligible, isFunded: false }
-  const amount = ms === 'm1' ? f.m1_amount : ms === 'm2' ? f.m2_amount : f.m3_amount
-  const funded_date = ms === 'm1' ? f.m1_funded_date : ms === 'm2' ? f.m2_funded_date : f.m3_funded_date
-  const status = ms === 'm1' ? f.m1_status : ms === 'm2' ? f.m2_status : f.m3_status
-  const notes = ms === 'm1' ? f.m1_notes : ms === 'm2' ? f.m2_notes : f.m3_notes
-  return { amount, funded_date, status, notes, isEligible: eligible, isFunded: !!funded_date }
-}
-
-// ── Inline Editable Cell ──────────────────────────────────────────────────────
-
-function EditableCell({ value, onSave, type = 'text', placeholder = '—', className = '', disabled = false }: {
-  value: string | number | null
-  onSave: (val: string | null) => Promise<void>
-  type?: 'text' | 'number' | 'date' | 'currency'
-  placeholder?: string
-  className?: string
-  disabled?: boolean
-}) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState('')
-  const [saving, setSaving] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const startEdit = (e: React.MouseEvent) => {
-    if (disabled) return
-    e.stopPropagation()
-    setDraft(value != null ? String(value) : '')
-    setEditing(true)
-    setTimeout(() => inputRef.current?.focus(), 0)
-  }
-
-  const save = async () => {
-    const newVal = draft.trim() || null
-    const oldVal = value != null ? String(value) : null
-    if (newVal === oldVal) { setEditing(false); return }
-    setSaving(true)
-    await onSave(newVal)
-    setSaving(false)
-    setEditing(false)
-  }
-
-  const cancel = () => { setEditing(false) }
-
-  if (editing) {
-    return (
-      <div className="relative w-full">
-        {type === 'currency' && <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>}
-        <input
-          ref={inputRef}
-          type={type === 'currency' || type === 'number' ? 'number' : type}
-          step={type === 'currency' ? '0.01' : undefined}
-          value={draft}
-          onChange={e => setDraft(e.target.value)}
-          onBlur={save}
-          onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel() }}
-          className={`bg-gray-700 text-white text-xs rounded px-2 py-1 border border-green-500 focus:outline-none w-full ${type === 'currency' ? 'pl-5' : ''} ${className}`}
-          onClick={e => e.stopPropagation()}
-        />
-      </div>
-    )
-  }
-
-  const display = type === 'currency' && value ? fmt$(Number(value))
-    : type === 'date' && value ? fmtDate(String(value))
-    : value ?? placeholder
-
-  return (
-    <div
-      onClick={startEdit}
-      className={`rounded px-1 py-0.5 -mx-1 -my-1 min-h-[24px] flex items-center transition-colors w-full text-gray-300 ${saving ? 'opacity-50' : ''} ${disabled ? '' : 'cursor-pointer hover:bg-gray-700 hover:text-white'} ${className}`}
-      title={disabled ? undefined : 'Click to edit'}
-    >
-      {display}
-    </div>
-  )
-}
-
-// ── Status Badge ──────────────────────────────────────────────────────────────
-
-function MsBadge({ ms, data }: { ms: MilestoneKey; data: MsData }) {
-  const color = data.status === 'Funded' || data.status === 'Complete' ? 'bg-green-900 text-green-300'
-    : data.status === 'Rejected' ? 'bg-red-900 text-red-300'
-    : data.status === 'Submitted' ? 'bg-blue-900 text-blue-300'
-    : data.isEligible ? 'bg-amber-900 text-amber-300'
-    : 'bg-gray-800 text-gray-500'
-  return <span className={`font-bold px-1 py-0.5 rounded text-[10px] ${color}`}>{ms.toUpperCase()}</span>
-}
-
-// ── Status Dropdown ───────────────────────────────────────────────────────────
-
-function StatusSelect({ value, onSave, compact, disabled = false }: { value: string | null; onSave: (val: string | null) => Promise<void>; compact?: boolean; disabled?: boolean }) {
-  const [saving, setSaving] = useState(false)
-
-  const handleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    e.stopPropagation()
-    const val = e.target.value || null
-    setSaving(true)
-    await onSave(val)
-    setSaving(false)
-  }
-
-  const color = value === 'Funded' ? 'text-green-400'
-    : value === 'Submitted' ? 'text-blue-400'
-    : value === 'Ready To Start' ? 'text-amber-400'
-    : value === 'Pending Resolution' ? 'text-red-400'
-    : value === 'Revision Required' ? 'text-amber-400'
-    : 'text-gray-500'
-
-  return (
-    <select
-      value={value ?? ''}
-      onChange={handleChange}
-      onClick={e => e.stopPropagation()}
-      disabled={saving || disabled}
-      className={`bg-transparent border-0 text-[10px] focus:outline-none w-full ${color} ${saving ? 'opacity-50' : ''} ${disabled ? 'cursor-default' : 'cursor-pointer'}`}
-    >
-      <option value="">—</option>
-      {FUNDING_STATUSES.map(s => <option key={s} value={s}>{compact ? FUNDING_STATUS_COMPACT[s] : s}</option>)}
-    </select>
-  )
-}
-
-// ── NF Code Picker ────────────────────────────────────────────────────────────
-
-function NfCodePicker({ value, onSave, codes, slot, disabled = false }: {
-  value: string | null
-  onSave: (val: string | null) => Promise<void>
-  codes: NonfundedCode[]
-  slot: number
-  disabled?: boolean
-}) {
-  const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState('')
-  const [saving, setSaving] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function handle(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handle)
-    return () => document.removeEventListener('mousedown', handle)
-  }, [])
-
-  const filtered = query.trim()
-    ? codes.filter(c => c.code.toLowerCase().includes(query.toLowerCase()) || c.description.toLowerCase().includes(query.toLowerCase()) || c.master_code.toLowerCase().includes(query.toLowerCase()))
-    : codes
-
-  const groups: Record<string, NonfundedCode[]> = {}
-  filtered.forEach(c => { (groups[c.master_code] ??= []).push(c) })
-
-  const select = async (code: string | null) => {
-    setSaving(true)
-    await onSave(code)
-    setSaving(false)
-    setOpen(false)
-    setQuery('')
-  }
-
-  return (
-    <div className="relative inline-block" ref={ref}>
-      {value ? (
-        <span className="inline-flex items-center gap-0.5">
-          <span
-            className={`bg-red-900/50 text-red-300 text-[10px] px-1 py-0.5 rounded ${disabled ? '' : 'cursor-pointer hover:bg-red-800'}`}
-            onClick={e => { e.stopPropagation(); if (!disabled) setOpen(!open) }}
-            title={codes.find(c => c.code === value)?.description ?? value}
-          >{value}</span>
-          {!disabled && <button onClick={e => { e.stopPropagation(); select(null) }} className="text-gray-600 hover:text-red-400 text-[10px]" title="Remove">x</button>}
-        </span>
-      ) : (
-        !disabled && <button onClick={e => { e.stopPropagation(); setOpen(!open) }} className="text-gray-600 hover:text-gray-300 text-xs" title={`Add NF code ${slot}`}>+</button>
-      )}
-      {open && (
-        <div className="absolute z-50 top-full left-0 mt-1 w-80 bg-gray-800 border border-gray-600 rounded-lg shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-          <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search codes..." autoFocus
-            className="w-full bg-gray-900 text-white text-xs px-3 py-2 border-b border-gray-700 focus:outline-none" />
-          <div className="max-h-64 overflow-y-auto">
-            {Object.entries(groups).map(([group, items]) => (
-              <div key={group}>
-                <div className="px-3 py-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-900">{group}</div>
-                {items.map(c => (
-                  <button key={c.code} onClick={() => select(c.code)}
-                    className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-700 transition-colors flex items-start gap-2">
-                    <span className="text-amber-400 font-mono font-bold flex-shrink-0 w-12">{c.code}</span>
-                    <span className="text-gray-300">{c.description}</span>
-                  </button>
-                ))}
-              </div>
-            ))}
-            {filtered.length === 0 && <div className="px-3 py-4 text-center text-gray-500 text-xs">No codes match &ldquo;{query}&rdquo;</div>}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── Milestone Cell Group ──────────────────────────────────────────────────────
-
-function MsCells({ ms, data, pid, saveFundingField, disabled = false }: {
-  ms: MilestoneKey
-  data: MsData
-  pid: string
-  saveFundingField: (projectId: string, field: string, value: string | number | null) => Promise<void>
-  disabled?: boolean
-}) {
-  const field = (f: string) => `${ms}_${f}`
-  return (
-    <>
-      <td className="px-1 py-1.5 font-mono text-center">
-        <MsBadge ms={ms} data={data} />
-      </td>
-      <td className="px-1 py-1.5 font-mono">
-        <EditableCell value={data.amount} type="currency" disabled={disabled}
-          onSave={async val => saveFundingField(pid, field('amount'), val ? Number(val) : null)} />
-      </td>
-      <td className="px-1 py-1.5">
-        <EditableCell value={data.funded_date} type="date" disabled={disabled}
-          onSave={async val => saveFundingField(pid, field('funded_date'), val)} />
-      </td>
-      <td className="px-1 py-1.5">
-        <StatusSelect value={data.status} disabled={disabled}
-          onSave={async val => saveFundingField(pid, field('status'), val)} compact />
-      </td>
-    </>
-  )
-}
-
-// ── Main Page ─────────────────────────────────────────────────────────────────
-
+// ── Main Page ─────────────────────────────────────────────────────────
 export default function FundingPage() {
   const { user: currentUser, loading: userLoading } = useCurrentUser()
   const canEditFunding = currentUser?.isFinance ?? false
@@ -327,7 +31,7 @@ export default function FundingPage() {
             <p className="text-lg text-gray-400">Access Restricted</p>
             <p className="text-sm text-gray-500 mt-2">Funding is available to Finance and above.</p>
             <a href="/command" className="inline-block mt-4 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-              ← Back to Command Center
+              &larr; Back to Command Center
             </a>
           </div>
         </div>
@@ -344,7 +48,7 @@ export default function FundingPage() {
   const [statusFilter, setStatusFilter] = useState<FundingFilter>('all')
   const [financierFilter, setFinancierFilter] = useState('all')
   const [search, setSearch] = useState('')
-  const [sortCol, setSortCol] = useState<string>('financier')
+  const [sortCol, setSortCol] = useState<SortColumn>('financier')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [showGuide, setShowGuide] = useState(() => {
     if (typeof window === 'undefined') return true
@@ -365,7 +69,6 @@ export default function FundingPage() {
   // separate Project[] and ProjectFunding record structures client-side.
   const loadDashboard = useCallback(async () => {
     const supabase = createClient()
-    // funding_dashboard is a Postgres view not in Database types — db() required
     const { data, error } = await db().from('funding_dashboard').select('*').limit(5000)
     if (error) console.error('funding_dashboard load failed:', error)
     if (data) {
@@ -373,7 +76,6 @@ export default function FundingPage() {
       const fundMap: Record<string, ProjectFunding> = {}
       const rows = data as unknown as FundingDashboardRow[]
       rows.forEach((row) => {
-        // Extract project fields
         projList.push({
           id: row.id,
           name: row.name,
@@ -388,7 +90,6 @@ export default function FundingPage() {
           stage: row.stage,
           disposition: row.disposition,
         } as Project)
-        // Extract funding fields (may be null from LEFT JOIN)
         if (row.m1_amount != null || row.m2_amount != null || row.m3_amount != null ||
             row.m1_status != null || row.m2_status != null || row.m3_status != null ||
             row.m1_funded_date != null || row.m2_funded_date != null || row.m3_funded_date != null) {
@@ -448,23 +149,43 @@ export default function FundingPage() {
   }
 
   const nfField = (slot: number) => `nonfunded_code_${slot}`
-  const financiers = useMemo(() => [...new Set(projects.map(p => p.financier).filter(Boolean))].sort() as string[], [projects])
 
-  const toggleSort = (col: string) => {
+  // Financier list with counts for dropdown
+  const financierCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    projects.forEach(p => {
+      const key = p.financier ?? '(none)'
+      counts[key] = (counts[key] ?? 0) + 1
+    })
+    return counts
+  }, [projects])
+  const financiers = useMemo(() => Object.keys(financierCounts).filter(k => k !== '(none)').sort(), [financierCounts])
+
+  const toggleSort = (col: SortColumn) => {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
     else { setSortCol(col); setSortDir('asc') }
   }
-  const sortIcon = (col: string) => sortCol === col ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''
+  const sortIcon = (col: SortColumn) => sortCol === col ? (sortDir === 'asc' ? ' \u25B2' : ' \u25BC') : ''
 
   // Build one row per project
   const rows = useMemo(() => {
     const result: FundingRow[] = []
     projects.forEach(p => {
       if (financierFilter !== 'all' && p.financier !== financierFilter) return
+
+      // Search: name, id, city, address, financier, AHJ
       if (search.trim()) {
         const q = search.toLowerCase()
-        if (!p.name?.toLowerCase().includes(q) && !p.id?.toLowerCase().includes(q) && !p.city?.toLowerCase().includes(q) && !p.address?.toLowerCase().includes(q)) return
+        if (
+          !p.name?.toLowerCase().includes(q) &&
+          !p.id?.toLowerCase().includes(q) &&
+          !p.city?.toLowerCase().includes(q) &&
+          !p.address?.toLowerCase().includes(q) &&
+          !p.financier?.toLowerCase().includes(q) &&
+          !p.ahj?.toLowerCase().includes(q)
+        ) return
       }
+
       const f = funding[p.id] ?? null
       const m1 = getMsData(f, p, 'm1')
       const m2 = getMsData(f, p, 'm2')
@@ -493,8 +214,17 @@ export default function FundingPage() {
         case 'install': av = a.project.install_complete_date; bv = b.project.install_complete_date; break
         case 'pto': av = a.project.pto_date; bv = b.project.pto_date; break
         case 'contract': av = a.project.contract; bv = b.project.contract; break
+        case 'stage': av = a.project.stage; bv = b.project.stage; break
+        case 'm1_amount': av = a.m1.amount; bv = b.m1.amount; break
+        case 'm1_funded': av = a.m1.funded_date; bv = b.m1.funded_date; break
+        case 'm1_status': av = a.m1.status; bv = b.m1.status; break
         case 'm2_amount': av = a.m2.amount; bv = b.m2.amount; break
         case 'm2_funded': av = a.m2.funded_date; bv = b.m2.funded_date; break
+        case 'm2_status': av = a.m2.status; bv = b.m2.status; break
+        case 'm3_amount': av = a.m3.amount; bv = b.m3.amount; break
+        case 'm3_funded': av = a.m3.funded_date; bv = b.m3.funded_date; break
+        case 'm3_status': av = a.m3.status; bv = b.m3.status; break
+        case 'nf': av = a.nf1; bv = b.nf1; break
         default: av = a.project.financier; bv = b.project.financier
       }
       if (av === null && bv === null) return 0
@@ -518,6 +248,14 @@ export default function FundingPage() {
     const m2Eligible = rows.filter(r => r.m2.isEligible && r.m2.status !== 'Funded').length
     const m3Eligible = rows.filter(r => r.m3.isEligible && r.m3.status !== 'Funded').length
     const withNf = rows.filter(r => r.nf1).length
+
+    // Stale submissions (>30 days)
+    const staleCount = rows.reduce((count, r) => {
+      const m2Stale = getSubmissionAge(r.m2.status, r.project.install_complete_date)
+      const m3Stale = getSubmissionAge(r.m3.status, r.project.pto_date)
+      return count + (m2Stale && m2Stale.days > 30 ? 1 : 0) + (m3Stale && m3Stale.days > 30 ? 1 : 0)
+    }, 0)
+
     return {
       totalProjects: rows.length,
       totalContract,
@@ -534,10 +272,11 @@ export default function FundingPage() {
       m2Eligible,
       m3Eligible,
       withNf,
+      staleCount,
     }
   }, [rows])
 
-  // Task-based sections computed from rows
+  // Task-based sections
   const readyToSubmit = useMemo(() => {
     const items: { row: FundingRow; milestone: 'm2' | 'm3'; data: MsData }[] = []
     rows.forEach(r => {
@@ -548,11 +287,21 @@ export default function FundingPage() {
   }, [rows])
 
   const awaitingPayment = useMemo(() => {
-    const items: { row: FundingRow; milestone: 'm2' | 'm3'; data: MsData }[] = []
+    const items: { row: FundingRow; milestone: 'm2' | 'm3'; data: MsData; daysWaiting: number; staleColor: string }[] = []
     rows.forEach(r => {
-      if (r.m2.status === 'Submitted') items.push({ row: r, milestone: 'm2', data: r.m2 })
-      if (r.m3.status === 'Submitted') items.push({ row: r, milestone: 'm3', data: r.m3 })
+      if (r.m2.status === 'Submitted') {
+        const days = daysAgo(r.project.install_complete_date)
+        const staleColor = days > 60 ? 'text-red-400' : days > 30 ? 'text-amber-400' : 'text-blue-300'
+        items.push({ row: r, milestone: 'm2', data: r.m2, daysWaiting: days, staleColor })
+      }
+      if (r.m3.status === 'Submitted') {
+        const days = daysAgo(r.project.pto_date)
+        const staleColor = days > 60 ? 'text-red-400' : days > 30 ? 'text-amber-400' : 'text-blue-300'
+        items.push({ row: r, milestone: 'm3', data: r.m3, daysWaiting: days, staleColor })
+      }
     })
+    // Sort stale items to top
+    items.sort((a, b) => b.daysWaiting - a.daysWaiting)
     return items
   }, [rows])
 
@@ -571,18 +320,28 @@ export default function FundingPage() {
     </div>
   )
 
+  // Sortable column header helper
+  const SortHeader = ({ col, children, className = '' }: { col: SortColumn; children?: React.ReactNode; className?: string }) => (
+    <th
+      className={`text-left text-[10px] text-gray-500 font-medium px-1 py-2 border-b border-gray-800 cursor-pointer hover:text-white select-none whitespace-nowrap ${className}`}
+      onClick={() => toggleSort(col)}
+    >
+      {children}{sortIcon(col)}
+    </th>
+  )
+
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
       <Nav active="Funding" />
 
-      {/* Stats bar */}
-      <div className="bg-gray-900 border-b border-gray-800 flex items-center justify-between px-6 py-4 flex-shrink-0 flex-wrap gap-y-3">
+      {/* Stats bar - wraps on mobile */}
+      <div className="bg-gray-900 border-b border-gray-800 grid grid-cols-2 sm:grid-cols-4 lg:flex lg:items-center lg:justify-between px-6 py-4 flex-shrink-0 gap-y-3 gap-x-4">
         <div>
           <div className="text-xs text-gray-500">Projects</div>
           <div className="text-2xl font-bold text-white font-mono">{stats.totalProjects}</div>
           <div className="text-xs text-gray-500 font-mono">{fmt$(stats.totalContract)}</div>
         </div>
-        <div className="border-l border-gray-700 pl-6">
+        <div className="lg:border-l lg:border-gray-700 lg:pl-6">
           <div className="text-xs text-gray-500">M2 Eligible</div>
           <div className="text-2xl font-bold text-amber-400 font-mono">{stats.m2Eligible}</div>
         </div>
@@ -590,7 +349,7 @@ export default function FundingPage() {
           <div className="text-xs text-gray-500">M3 Eligible</div>
           <div className="text-2xl font-bold text-amber-400 font-mono">{stats.m3Eligible}</div>
         </div>
-        <div className="border-l border-gray-700 pl-6">
+        <div className="lg:border-l lg:border-gray-700 lg:pl-6">
           <div className="text-xs text-gray-500">Ready to Submit</div>
           <div className="text-2xl font-bold text-amber-400 font-mono">{stats.readyToStart}</div>
           {stats.readyAmount > 0 && <div className="text-xs text-gray-500 font-mono">{fmt$(stats.readyAmount)}</div>}
@@ -604,7 +363,11 @@ export default function FundingPage() {
           <div className="text-xs text-gray-500">Needs Attention</div>
           <div className="text-2xl font-bold text-red-400 font-mono">{stats.needsAttention}</div>
         </div>}
-        <div className="border-l border-gray-700 pl-6">
+        {stats.staleCount > 0 && <div>
+          <div className="text-xs text-gray-500">Stale (&gt;30d)</div>
+          <div className="text-2xl font-bold text-amber-400 font-mono">{stats.staleCount}</div>
+        </div>}
+        <div className="lg:border-l lg:border-gray-700 lg:pl-6">
           <div className="text-xs text-gray-500">Funded</div>
           <div className="text-2xl font-bold text-green-400 font-mono">{stats.funded}</div>
           <div className="text-xs text-gray-500 font-mono">{fmt$(stats.fundedAmount)}</div>
@@ -625,7 +388,7 @@ export default function FundingPage() {
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <div className="text-xs font-bold text-indigo-300 uppercase tracking-wider mb-2">How to use the Funding page</div>
-              <div className="grid grid-cols-3 gap-6 text-xs text-indigo-200">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-indigo-200">
                 <div>
                   <div className="font-semibold text-white mb-1">Inline editing</div>
                   <div className="text-indigo-300 space-y-1">
@@ -672,12 +435,22 @@ export default function FundingPage() {
         </select>
         <select value={financierFilter} onChange={e => setFinancierFilter(e.target.value)}
           className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">
-          <option value="all">All Financiers</option>
-          {financiers.map(f => <option key={f} value={f}>{f}</option>)}
+          <option value="all">All Financiers ({projects.length})</option>
+          {financiers.map(f => <option key={f} value={f}>{f} ({financierCounts[f]})</option>)}
         </select>
-        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search projects..."
-          className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5 w-48" />
-        <span className="ml-auto text-xs text-gray-500">{rows.length} projects</span>
+        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, ID, city, financier, AHJ..."
+          className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5 w-64" />
+        <span className="ml-auto text-xs text-gray-500 flex items-center gap-3">
+          {rows.length} projects
+          <button
+            onClick={() => exportFundingCSV(rows)}
+            className="inline-flex items-center gap-1 text-gray-400 hover:text-green-400 transition-colors"
+            title="Export filtered results to CSV"
+          >
+            <Download size={14} />
+            <span className="hidden sm:inline">CSV</span>
+          </button>
+        </span>
       </div>
 
       {/* Task-based sections */}
@@ -687,7 +460,7 @@ export default function FundingPage() {
           {readyToSubmit.length > 0 && (
             <div className="bg-amber-950/30 border border-amber-900/50 rounded-xl p-4">
               <button onClick={() => toggleBucket('readyToSubmit')} className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2 w-full text-left hover:text-amber-300 transition-colors">
-                <span className="text-[10px]">{collapsed.readyToSubmit ? '▸' : '▾'}</span>
+                <span className="text-[10px]">{collapsed.readyToSubmit ? '\u25B8' : '\u25BE'}</span>
                 Ready to Submit ({readyToSubmit.length})
               </button>
               {!collapsed.readyToSubmit && (
@@ -704,9 +477,9 @@ export default function FundingPage() {
                       </div>
                       <div className="flex items-center gap-2 text-xs text-gray-400">
                         <span>{item.row.project.id}</span>
-                        <span>·</span>
-                        <span>{item.row.project.financier ?? '—'}</span>
-                        {item.data.amount && <><span>·</span><span className="text-amber-300 font-mono">{fmt$(item.data.amount)}</span></>}
+                        <span>&middot;</span>
+                        <span>{item.row.project.financier ?? '\u2014'}</span>
+                        {item.data.amount && <><span>&middot;</span><span className="text-amber-300 font-mono">{fmt$(item.data.amount)}</span></>}
                       </div>
                     </div>
                   ))}
@@ -718,35 +491,32 @@ export default function FundingPage() {
           {awaitingPayment.length > 0 && (
             <div className="bg-blue-950/30 border border-blue-900/50 rounded-xl p-4">
               <button onClick={() => toggleBucket('awaitingPayment')} className="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center gap-2 w-full text-left hover:text-blue-300 transition-colors">
-                <span className="text-[10px]">{collapsed.awaitingPayment ? '▸' : '▾'}</span>
-                Submitted — Awaiting Payment ({awaitingPayment.length})
+                <span className="text-[10px]">{collapsed.awaitingPayment ? '\u25B8' : '\u25BE'}</span>
+                Submitted &mdash; Awaiting Payment ({awaitingPayment.length})
               </button>
               {!collapsed.awaitingPayment && (
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
-                  {awaitingPayment.map(item => {
-                    // Use install_complete_date for M2, pto_date for M3 as proxy for submission timing
-                    const proxyDate = item.milestone === 'm2' ? item.row.project.install_complete_date : item.row.project.pto_date
-                    const daysSince = proxyDate ? daysAgo(proxyDate) : 0
-                    return (
-                      <div
-                        key={`${item.row.project.id}-${item.milestone}`}
-                        onClick={() => setSelectedProject(item.row.project)}
-                        className="bg-gray-800/80 hover:bg-gray-700 border border-gray-700 rounded-lg p-3 cursor-pointer transition-colors"
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-semibold text-white text-sm truncate">{item.row.project.name}</span>
-                          <span className="bg-blue-900 text-blue-300 text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0">{item.milestone.toUpperCase()}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-400">
-                          <span>{item.row.project.id}</span>
-                          <span>·</span>
-                          <span>{item.row.project.financier ?? '—'}</span>
-                          {item.data.amount && <><span>·</span><span className="text-blue-300 font-mono">{fmt$(item.data.amount)}</span></>}
-                          {daysSince > 0 && <><span>·</span><span className="text-blue-300">{daysSince}d waiting</span></>}
-                        </div>
+                  {awaitingPayment.map(item => (
+                    <div
+                      key={`${item.row.project.id}-${item.milestone}`}
+                      onClick={() => setSelectedProject(item.row.project)}
+                      className={`bg-gray-800/80 hover:bg-gray-700 border rounded-lg p-3 cursor-pointer transition-colors ${
+                        item.daysWaiting > 60 ? 'border-red-700/60' : item.daysWaiting > 30 ? 'border-amber-700/60' : 'border-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-semibold text-white text-sm truncate">{item.row.project.name}</span>
+                        <span className="bg-blue-900 text-blue-300 text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0">{item.milestone.toUpperCase()}</span>
                       </div>
-                    )
-                  })}
+                      <div className="flex items-center gap-2 text-xs text-gray-400">
+                        <span>{item.row.project.id}</span>
+                        <span>&middot;</span>
+                        <span>{item.row.project.financier ?? '\u2014'}</span>
+                        {item.data.amount && <><span>&middot;</span><span className="text-blue-300 font-mono">{fmt$(item.data.amount)}</span></>}
+                        {item.daysWaiting > 0 && <><span>&middot;</span><span className={item.staleColor}>{item.daysWaiting}d waiting</span></>}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -755,7 +525,7 @@ export default function FundingPage() {
           {needsAttention.length > 0 && (
             <div className="bg-red-950/30 border border-red-900/50 rounded-xl p-4">
               <button onClick={() => toggleBucket('needsAttention')} className="text-xs font-bold text-red-400 uppercase tracking-wider flex items-center gap-2 w-full text-left hover:text-red-300 transition-colors">
-                <span className="text-[10px]">{collapsed.needsAttention ? '▸' : '▾'}</span>
+                <span className="text-[10px]">{collapsed.needsAttention ? '\u25B8' : '\u25BE'}</span>
                 Needs Attention ({needsAttention.length})
               </button>
               {!collapsed.needsAttention && (
@@ -774,10 +544,10 @@ export default function FundingPage() {
                         </div>
                         <div className="flex items-center gap-2 text-xs text-gray-400">
                           <span>{item.row.project.id}</span>
-                          <span>·</span>
-                          <span>{item.row.project.financier ?? '—'}</span>
-                          <span>·</span>
-                          <span className={item.data.status === 'Pending Resolution' ? 'text-red-400' : 'text-amber-400'}>{item.data.status === 'Pending Resolution' ? 'Pending' : 'Revision'}</span>
+                          <span>&middot;</span>
+                          <span>{item.row.project.financier ?? '\u2014'}</span>
+                          <span>&middot;</span>
+                          <span className={item.data.status === 'Pending Resolution' ? 'text-red-400' : 'text-orange-400'}>{item.data.status === 'Pending Resolution' ? 'Pending' : 'Revision'}</span>
                         </div>
                         {nfCodes_display.length > 0 && (
                           <div className="flex items-center gap-1 mt-1.5">
@@ -804,9 +574,9 @@ export default function FundingPage() {
             {/* Group headers */}
             <tr>
               <th colSpan={6} className="border-b border-gray-800"></th>
-              <th colSpan={4} className="text-center text-[10px] text-amber-400 font-bold border-b border-gray-800 border-l border-gray-700 bg-amber-950/20 py-1">M1 — Advance</th>
-              <th colSpan={4} className="text-center text-[10px] text-blue-400 font-bold border-b border-gray-800 border-l border-gray-700 bg-blue-950/20 py-1">M2 — Install</th>
-              <th colSpan={4} className="text-center text-[10px] text-green-400 font-bold border-b border-gray-800 border-l border-gray-700 bg-green-950/20 py-1">M3 — PTO</th>
+              <th colSpan={4} className="text-center text-[10px] text-amber-400 font-bold border-b border-gray-800 border-l border-gray-700 bg-amber-950/20 py-1 hidden lg:table-cell">M1 &mdash; Advance</th>
+              <th colSpan={4} className="text-center text-[10px] text-blue-400 font-bold border-b border-gray-800 border-l border-gray-700 bg-blue-950/20 py-1">M2 &mdash; Install</th>
+              <th colSpan={4} className="text-center text-[10px] text-green-400 font-bold border-b border-gray-800 border-l border-gray-700 bg-green-950/20 py-1">M3 &mdash; PTO</th>
               <th colSpan={2} className="border-b border-gray-800 border-l border-gray-700"></th>
             </tr>
             {/* Column headers */}
@@ -817,23 +587,23 @@ export default function FundingPage() {
               <th className="text-left text-xs text-gray-400 font-medium px-2 py-2 border-b border-gray-800 whitespace-nowrap cursor-pointer hover:text-white select-none" onClick={() => toggleSort('install')}>Install{sortIcon('install')}</th>
               <th className="text-left text-xs text-gray-400 font-medium px-2 py-2 border-b border-gray-800 whitespace-nowrap cursor-pointer hover:text-white select-none" onClick={() => toggleSort('pto')}>PTO{sortIcon('pto')}</th>
               <th className="text-left text-xs text-gray-400 font-medium px-2 py-2 border-b border-gray-800 whitespace-nowrap cursor-pointer hover:text-white select-none" onClick={() => toggleSort('contract')}>Contract{sortIcon('contract')}</th>
-              {/* M1 */}
-              <th className="text-center text-[10px] text-gray-500 font-medium px-1 py-2 border-b border-gray-800 border-l border-gray-700"></th>
-              <th className="text-left text-[10px] text-gray-500 font-medium px-1 py-2 border-b border-gray-800">Amt Due</th>
-              <th className="text-left text-[10px] text-gray-500 font-medium px-1 py-2 border-b border-gray-800">Funded</th>
-              <th className="text-left text-[10px] text-gray-500 font-medium px-1 py-2 border-b border-gray-800">Status</th>
+              {/* M1 - hidden on small screens */}
+              <SortHeader col="m1_status" className="border-l border-gray-700 hidden lg:table-cell" />
+              <SortHeader col="m1_amount" className="hidden lg:table-cell">Amt Due</SortHeader>
+              <SortHeader col="m1_funded" className="hidden lg:table-cell">Funded</SortHeader>
+              <th className="text-left text-[10px] text-gray-500 font-medium px-1 py-2 border-b border-gray-800 hidden lg:table-cell">Status</th>
               {/* M2 */}
-              <th className="text-center text-[10px] text-gray-500 font-medium px-1 py-2 border-b border-gray-800 border-l border-gray-700"></th>
-              <th className="text-left text-[10px] text-gray-500 font-medium px-1 py-2 border-b border-gray-800 cursor-pointer hover:text-white select-none" onClick={() => toggleSort('m2_amount')}>Amt Due{sortIcon('m2_amount')}</th>
-              <th className="text-left text-[10px] text-gray-500 font-medium px-1 py-2 border-b border-gray-800 cursor-pointer hover:text-white select-none" onClick={() => toggleSort('m2_funded')}>Funded{sortIcon('m2_funded')}</th>
+              <SortHeader col="m2_status" className="border-l border-gray-700" />
+              <SortHeader col="m2_amount">Amt Due</SortHeader>
+              <SortHeader col="m2_funded">Funded</SortHeader>
               <th className="text-left text-[10px] text-gray-500 font-medium px-1 py-2 border-b border-gray-800">Status</th>
               {/* M3 */}
-              <th className="text-center text-[10px] text-gray-500 font-medium px-1 py-2 border-b border-gray-800 border-l border-gray-700"></th>
-              <th className="text-left text-[10px] text-gray-500 font-medium px-1 py-2 border-b border-gray-800">Amt Due</th>
-              <th className="text-left text-[10px] text-gray-500 font-medium px-1 py-2 border-b border-gray-800">Funded</th>
+              <SortHeader col="m3_status" className="border-l border-gray-700" />
+              <SortHeader col="m3_amount">Amt Due</SortHeader>
+              <SortHeader col="m3_funded">Funded</SortHeader>
               <th className="text-left text-[10px] text-gray-500 font-medium px-1 py-2 border-b border-gray-800">Status</th>
               {/* NF + Notes */}
-              <th className="text-left text-xs text-gray-400 font-medium px-2 py-2 border-b border-gray-800 border-l border-gray-700">NF Codes</th>
+              <th className="text-left text-xs text-gray-400 font-medium px-2 py-2 border-b border-gray-800 border-l border-gray-700 cursor-pointer hover:text-white select-none" onClick={() => toggleSort('nf')}>NF Codes{sortIcon('nf')}</th>
               <th className="text-left text-xs text-gray-400 font-medium px-2 py-2 border-b border-gray-800">Notes</th>
             </tr>
           </thead>
@@ -841,7 +611,6 @@ export default function FundingPage() {
             {rows.map((row) => {
               const pid = row.project.id
               const f = row.funding
-              // Combine notes from all milestones for display
               const allNotes = [row.m1.notes, row.m2.notes, row.m3.notes].filter(Boolean).join(' | ')
               return (
                 <tr key={pid} className="border-b border-gray-800/50 hover:bg-gray-800/40 transition-colors">
@@ -850,14 +619,29 @@ export default function FundingPage() {
                     <div className="font-medium text-green-400 hover:text-green-300 truncate text-xs">{row.project.name}</div>
                     <div className="text-gray-500 truncate text-[10px]">{pid}</div>
                   </td>
-                  <td className="px-2 py-1.5 text-gray-300 whitespace-nowrap">{row.project.financier ?? '—'}</td>
-                  <td className="px-2 py-1.5 text-gray-400 whitespace-nowrap">{row.project.ahj ?? '—'}</td>
+                  <td className="px-2 py-1.5 text-gray-300 whitespace-nowrap">{row.project.financier ?? '\u2014'}</td>
+                  <td className="px-2 py-1.5 text-gray-400 whitespace-nowrap">{row.project.ahj ?? '\u2014'}</td>
                   <td className="px-2 py-1.5 text-gray-400 whitespace-nowrap text-[10px]">{fmtDate(row.project.install_complete_date)}</td>
                   <td className="px-2 py-1.5 text-gray-400 whitespace-nowrap text-[10px]">{fmtDate(row.project.pto_date)}</td>
-                  <td className="px-2 py-1.5 text-gray-300 font-mono whitespace-nowrap">{row.project.contract ? fmt$(Number(row.project.contract)) : '—'}</td>
+                  <td className="px-2 py-1.5 text-gray-300 font-mono whitespace-nowrap">{row.project.contract ? fmt$(Number(row.project.contract)) : '\u2014'}</td>
 
-                  {/* M1 */}
-                  <MsCells ms="m1" data={row.m1} pid={pid} saveFundingField={saveFundingField} disabled={!canEditFunding} />
+                  {/* M1 - hidden on small screens */}
+                  <td className="px-1 py-1.5 font-mono text-center hidden lg:table-cell">
+                    <MsBadge ms="m1" data={row.m1} />
+                  </td>
+                  <td className="px-1 py-1.5 font-mono hidden lg:table-cell">
+                    <EditableCell value={row.m1.amount} type="currency" disabled={!canEditFunding}
+                      onSave={async val => saveFundingField(pid, 'm1_amount', val ? Number(val) : null)} />
+                  </td>
+                  <td className="px-1 py-1.5 hidden lg:table-cell">
+                    <EditableCell value={row.m1.funded_date} type="date" disabled={!canEditFunding}
+                      onSave={async val => saveFundingField(pid, 'm1_funded_date', val)} />
+                  </td>
+                  <td className="px-1 py-1.5 hidden lg:table-cell">
+                    <StatusSelect value={row.m1.status} disabled={!canEditFunding}
+                      onSave={async val => saveFundingField(pid, 'm1_status', val)} compact />
+                  </td>
+
                   {/* M2 */}
                   <MsCells ms="m2" data={row.m2} pid={pid} saveFundingField={saveFundingField} disabled={!canEditFunding} />
                   {/* M3 */}
@@ -871,12 +655,12 @@ export default function FundingPage() {
                       <NfCodePicker value={row.nf3} codes={nfCodes} slot={3} disabled={!canEditFunding} onSave={async val => saveFundingField(pid, nfField(3), val)} />
                     </div>
                   </td>
-                  {/* Notes — show combined, edit m1 notes for now */}
+                  {/* Notes */}
                   <td className="px-2 py-1.5 max-w-[180px]">
                     <EditableCell
                       value={allNotes || null}
                       type="text"
-                      placeholder={canEditFunding ? "Add note..." : "—"}
+                      placeholder={canEditFunding ? "Add note..." : "\u2014"}
                       className="text-gray-400 text-[10px]"
                       disabled={!canEditFunding}
                       onSave={async val => saveFundingField(pid, 'm1_notes', val)}
