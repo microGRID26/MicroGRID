@@ -16,6 +16,7 @@ import { escapeIlike, fmtDate, fmt$ } from '@/lib/utils'
 import { Package, Search, Warehouse, ShoppingCart, ChevronDown, ChevronUp, Truck, CheckCircle2, X, AlertTriangle } from 'lucide-react'
 import { searchVendors } from '@/lib/api/vendors'
 import type { Vendor } from '@/lib/api/vendors'
+import { useCurrentUser } from '@/lib/useCurrentUser'
 
 // ── Category badge colors ──────────────────────────────────────────────────
 const CATEGORY_COLORS: Record<string, string> = {
@@ -42,6 +43,7 @@ type SortDir = 'asc' | 'desc'
 const PAGE_SIZE = 50
 
 export default function InventoryPage() {
+  const { user: authUser, loading: authLoading } = useCurrentUser()
   const [activeTab, setActiveTab] = useState<'materials' | 'warehouse' | 'purchase-orders'>('materials')
   const [materials, setMaterials] = useState<(ProjectMaterial & { project_name: string | null })[]>([])
   const [warehouseStock, setWarehouseStock] = useState<WarehouseStock[]>([])
@@ -136,8 +138,11 @@ export default function InventoryPage() {
     if (po?.vendor) lookupVendor(po.vendor)
   }
 
-  // Status advance
+  // Status advance (with double-submit guard)
+  const [poAdvancing, setPOAdvancing] = useState(false)
   async function handleStatusAdvance(poId: string, newStatus: string) {
+    if (poAdvancing) return
+    setPOAdvancing(true)
     setConfirmAction(null)
     const ok = await updatePurchaseOrderStatus(poId, newStatus)
     if (ok) {
@@ -147,6 +152,7 @@ export default function InventoryPage() {
       setToast('Failed to update PO status')
     }
     setTimeout(() => setToast(null), 3000)
+    setPOAdvancing(false)
   }
 
   // Save PO field edits
@@ -257,6 +263,39 @@ export default function InventoryPage() {
   function sortIcon(field: SortField) {
     if (sort.field !== field) return ''
     return sort.dir === 'asc' ? ' \u25B2' : ' \u25BC'
+  }
+
+  // ── Auth gate: Manager+ required ──────────────────────────────────────────
+  const isManager = authUser?.isManager ?? false
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="text-gray-500 text-sm">Checking permissions…</div>
+      </div>
+    )
+  }
+
+  if (!isManager) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex flex-col">
+        <Nav active="Inventory" />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <h1 className="text-lg font-semibold text-white mb-2">Access Restricted</h1>
+            <p className="text-sm text-gray-500">Manager or higher role required to view this page.</p>
+            <a href="/command" className="inline-block mt-4 text-xs text-blue-400 hover:text-blue-300 transition-colors">
+              ← Back to Command Center
+            </a>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -483,9 +522,10 @@ export default function InventoryPage() {
                     <button onClick={() => setConfirmAction(null)} className="text-xs px-3 py-1.5 rounded bg-gray-700 text-gray-300 hover:bg-gray-600">Cancel</button>
                     <button
                       onClick={() => handleStatusAdvance(confirmAction.poId, confirmAction.newStatus)}
-                      className="text-xs px-3 py-1.5 rounded bg-green-600 text-white hover:bg-green-500"
+                      disabled={poAdvancing}
+                      className="text-xs px-3 py-1.5 rounded bg-green-600 text-white hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Confirm
+                      {poAdvancing ? 'Updating…' : 'Confirm'}
                     </button>
                   </div>
                 </div>

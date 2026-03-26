@@ -107,6 +107,30 @@ const inflight = new Map<string, Promise<CacheEntry>>()
 /** Cache TTL in ms — data older than this is considered stale */
 const CACHE_TTL = 30_000
 
+/** Hard eviction age — entries older than this are deleted on read */
+const CACHE_MAX_AGE = 300_000
+
+/** Maximum cache entries — LRU eviction when exceeded */
+const MAX_CACHE_ENTRIES = 50
+
+function addToCache(key: string, entry: CacheEntry) {
+  // Evict oldest entry if at capacity
+  if (queryCache.size >= MAX_CACHE_ENTRIES && !queryCache.has(key)) {
+    const firstKey = queryCache.keys().next().value
+    if (firstKey) queryCache.delete(firstKey)
+  }
+  queryCache.set(key, entry)
+}
+
+function getFromCache(key: string): CacheEntry | undefined {
+  const entry = queryCache.get(key)
+  if (entry && Date.now() - entry.timestamp > CACHE_MAX_AGE) {
+    queryCache.delete(key)
+    return undefined
+  }
+  return entry
+}
+
 function buildCacheKey(table: string, options: UseSupabaseQueryOptions): string {
   return table + '|' + JSON.stringify({
     select: options.select ?? '*',
@@ -179,7 +203,7 @@ export function useSupabaseQuery<T extends TableName>(
     const thisFetchId = ++fetchIdRef.current
 
     // Check cache — return immediately if fresh
-    const cached = queryCache.get(cacheKey) as CacheEntry<Row> | undefined
+    const cached = getFromCache(cacheKey) as CacheEntry<Row> | undefined
     if (cached && !background) {
       const isFresh = Date.now() - cached.timestamp < CACHE_TTL
       if (isFresh) {
@@ -299,7 +323,7 @@ export function useSupabaseQuery<T extends TableName>(
       }
 
       // Update cache
-      queryCache.set(cacheKey, result as CacheEntry)
+      addToCache(cacheKey, result as CacheEntry)
 
       return result
     })()

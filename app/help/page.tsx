@@ -6,6 +6,8 @@ import { HelpSearch } from '@/components/help/HelpSearch'
 import { HelpSidebar } from '@/components/help/HelpSidebar'
 import { HelpCategory } from '@/components/help/HelpCategory'
 import { CATEGORIES } from '@/components/help/topics/index'
+// NOTE: At scale, ALL_TOPICS could be lazy-loaded per category via dynamic import
+// to reduce initial bundle size. Currently premature — topic count is small.
 import { ALL_TOPICS } from '@/components/help/topics/all-topics'
 
 export default function HelpPage() {

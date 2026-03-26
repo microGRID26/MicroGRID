@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
+import { escapeIlike } from '@/lib/utils'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -326,9 +327,14 @@ async function executeQuery(plan: QueryPlan) {
       case 'neq':
         query = query.neq(f.field, f.value)
         break
-      case 'ilike':
-        query = query.ilike(f.field, f.value as string)
+      case 'ilike': {
+        const val = String(f.value ?? '')
+        // Claude sends values like %Houston% — escape the inner content
+        const inner = val.replace(/^%|%$/g, '')
+        const escaped = inner.length > 0 ? `%${escapeIlike(inner)}%` : val
+        query = query.ilike(f.field, escaped)
         break
+      }
       case 'gt':
         query = query.gt(f.field, f.value)
         break
@@ -369,7 +375,7 @@ async function executeQuery(plan: QueryPlan) {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let results = (data || []) as Record<string, any>[]
+  let results = (Array.isArray(data) ? data : []) as Record<string, any>[]
 
   // Apply client-side filters
   if (clientFilters?.length) {

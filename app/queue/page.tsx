@@ -100,6 +100,8 @@ export default function QueuePage() {
   const { user: currentUser } = useCurrentUser()
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [showNewProject, setShowNewProject] = useState(false)
+  // SSR guard: localStorage is only available in the browser; the typeof check
+  // prevents a ReferenceError during server-side rendering / static generation.
   const [userPm, setUserPm] = useState<string>(() => {
     if (typeof window !== 'undefined') return localStorage.getItem('mg_pm') ?? ''
     return ''

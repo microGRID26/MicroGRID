@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { db } from '@/lib/db'
 import { cn, fmtDate } from '@/lib/utils'
 import { useSupabaseQuery, useRealtimeSubscription } from '@/lib/hooks'
+import { useCurrentUser } from '@/lib/useCurrentUser'
 import type { Crew, Project, Schedule } from '@/types/database'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -294,6 +295,7 @@ function JobCard({ job, onStatusChange }: { job: JobWithProject; onStatusChange:
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function CrewPage() {
+  const { user: currentUser, loading: userLoading } = useCurrentUser()
   const supabase = db()
   const [jobs, setJobs] = useState<JobWithProject[]>([])
   const [crewFilter, setCrewFilter] = useState('all')
@@ -492,6 +494,15 @@ export default function CrewPage() {
   }
 
   const todayFormatted = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+
+  // Auth gate: authenticated users only
+  if (!userLoading && !currentUser) {
+    return (
+      <div className="min-h-dvh bg-gray-950 flex items-center justify-center">
+        <p className="text-gray-400 text-lg">Authentication required.</p>
+      </div>
+    )
+  }
 
   if (loading) {
     return (

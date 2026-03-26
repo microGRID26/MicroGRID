@@ -15,7 +15,8 @@ const CATEGORY_COLORS: Record<string, string> = {
 }
 
 export default function VendorsPage() {
-  const { user: authUser } = useCurrentUser()
+  const { user: authUser, loading: authLoading } = useCurrentUser()
+  const isManager = authUser?.isManager ?? false
   const isSuperAdmin = authUser?.isSuperAdmin ?? false
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [loading, setLoading] = useState(true)
@@ -153,6 +154,37 @@ export default function VendorsPage() {
   function toggleEquipType(types: string[] | null | undefined, type: string): string[] {
     const arr = types ?? []
     return arr.includes(type) ? arr.filter(t => t !== type) : [...arr, type]
+  }
+
+  // ── Auth gate: Manager+ required ──────────────────────────────────────────
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="text-gray-500 text-sm">Checking permissions…</div>
+      </div>
+    )
+  }
+
+  if (!isManager) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex flex-col">
+        <Nav active="Vendors" />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <h1 className="text-lg font-semibold text-white mb-2">Access Restricted</h1>
+            <p className="text-sm text-gray-500">Manager or higher role required to view this page.</p>
+            <a href="/command" className="inline-block mt-4 text-xs text-blue-400 hover:text-blue-300 transition-colors">
+              ← Back to Command Center
+            </a>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

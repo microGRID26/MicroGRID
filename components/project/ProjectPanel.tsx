@@ -109,6 +109,8 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       supabase.from('task_state').select('task_id, status, reason, completed_date, started_date, follow_up_date').eq('project_id', pid),
       supabase.from('notes').select('id, task_id, text, time, pm').eq('project_id', pid).not('task_id', 'is', null).order('time', { ascending: true }),
     ])
+    if (taskRes.error) console.error('loadTasks: task_state query failed', taskRes.error)
+    if (noteRes.error) console.error('loadTasks: notes query failed', noteRes.error)
     if (taskRes.data) {
       const statusMap: Record<string, string> = {}
       const reasonMap: Record<string, string> = {}
@@ -134,24 +136,27 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   }, [pid])
 
   const loadNotes = useCallback(async () => {
-    const { data } = await supabase.from('notes').select('*').eq('project_id', pid).is('task_id', null).order('time', { ascending: false })
+    const { data, error } = await supabase.from('notes').select('*').eq('project_id', pid).is('task_id', null).order('time', { ascending: false })
+    if (error) console.error('loadNotes: query failed', error)
     if (data) setNotes(data as Note[])
   }, [pid])
 
   const loadStageHistory = useCallback(async () => {
-    const { data } = await supabase.from('stage_history').select('*').eq('project_id', pid).order('entered', { ascending: false })
+    const { data, error } = await supabase.from('stage_history').select('*').eq('project_id', pid).order('entered', { ascending: false })
+    if (error) console.error('loadStageHistory: query failed', error)
     if (data) setStageHistory(data)
   }, [pid])
 
   // Lazy — only called when user navigates to History view
   // Indexes on project_id + changed_at keep this fast at 20k+ projects
   const loadTaskHistory = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('task_history')
       .select('task_id, status, reason, changed_by, changed_at')
       .eq('project_id', pid)
       .order('changed_at', { ascending: false })
       .limit(200)
+    if (error) console.error('loadTaskHistory: query failed', error)
     if (data) {
       setTaskHistory(data)
       setTaskHistoryLoaded(true)
@@ -159,12 +164,14 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   }, [pid])
 
   const loadServiceCalls = useCallback(async () => {
-    const { data } = await supabase.from('service_calls').select('*').eq('project_id', pid).order('created_at', { ascending: false }).limit(5)
+    const { data, error } = await supabase.from('service_calls').select('*').eq('project_id', pid).order('created_at', { ascending: false }).limit(5)
+    if (error) console.error('loadServiceCalls: query failed', error)
     if (data) setServiceCalls(data)
   }, [pid])
 
   const loadAdders = useCallback(async () => {
-    const { data } = await supabase.from('project_adders').select('*').eq('project_id', pid).order('created_at', { ascending: true })
+    const { data, error } = await supabase.from('project_adders').select('*').eq('project_id', pid).order('created_at', { ascending: true })
+    if (error) console.error('loadAdders: query failed', error)
     if (data) setAdders(data)
   }, [pid])
 
@@ -289,22 +296,29 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   }, [pid])
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }: any) => setUserEmail(data.user?.email ?? ''))
+    let mounted = true
+    supabase.auth.getUser().then(({ data }: any) => {
+      if (mounted) setUserEmail(data.user?.email ?? '')
+    })
+    return () => { mounted = false }
   }, [])
 
   useEffect(() => {
+    let mounted = true
     setProject(initialProject)
     setBlockerInput(initialProject.blocker ?? '')
     // Fetch full project data (parent pages may pass trimmed columns from optimized queries)
     supabase.from('projects').select('*').eq('id', initialProject.id).single().then(({ data }: any) => {
-      if (data) {
+      if (mounted && data) {
         setProject(data as Project)
         setBlockerInput((data as Project).blocker ?? '')
       }
     })
+    return () => { mounted = false }
   }, [initialProject.id])
 
   useEffect(() => {
+    let mounted = true
     setAhjInfo(null)
     setUtilityInfo(null)
     setHoaInfo(null)
@@ -319,17 +333,19 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       loadServiceCalls(),
       loadStageHistory(),
       loadAdders(),
-    ])
+    ]).catch(() => { /* individual loaders handle errors */ })
     // Load notification rules (cached for panel lifetime)
     ;supabase.from('notification_rules').select('id, task_id, trigger_status, trigger_reason, action_type, action_message, notify_role').eq('active', true).then(({ data: rulesData }: { data: { id: string; task_id: string; trigger_status: string; trigger_reason: string | null; action_type: string; action_message: string; notify_role: string | null }[] | null }) => {
-      if (rulesData) setNotificationRules(rulesData)
-    })
+      if (mounted && rulesData) setNotificationRules(rulesData)
+    }).catch(() => { /* non-critical */ })
     // Load change order count for this project
     ;supabase.from('change_orders')
       .select('id', { count: 'exact', head: true })
       .eq('project_id', initialProject.id)
       .not('status', 'in', '("Complete","Cancelled")')
-      .then(({ count }: any) => setChangeOrderCount(count ?? 0))
+      .then(({ count }: any) => { if (mounted) setChangeOrderCount(count ?? 0) })
+      .catch(() => { /* non-critical */ })
+    return () => { mounted = false }
   }, [initialProject.id])
 
   // Eager-load task history for inline expansion in stage view

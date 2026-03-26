@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from 'react'
 import { Nav } from '@/components/Nav'
 import { cn } from '@/lib/utils'
+import { useCurrentUser } from '@/lib/useCurrentUser'
 import {
   Layers, Upload, Plus, Play, Download, ChevronDown, ChevronUp,
   AlertTriangle, CheckCircle2, XCircle, Clock, Trash2, FileText,
@@ -620,6 +621,7 @@ function ProjectResultsDetail({ project, target }: { project: ProjectInput; targ
 // ── PAGE ─────────────────────────────────────────────────────────────────────
 
 export default function BatchPage() {
+  const { user: currentUser, loading: userLoading } = useCurrentUser()
   const [target, setTarget] = useState<TargetSystem>(DEFAULT_TARGET)
   const [projects, setProjects] = useState<ProjectInput[]>([])
   const [showTarget, setShowTarget] = useState(false)
@@ -807,6 +809,21 @@ export default function BatchPage() {
   const errorCount = projects.filter(p => p.status === 'error').length
   const pendingCount = projects.filter(p => p.status === 'pending' || p.status === 'editing').length
   const totalWarnings = projects.reduce((s, p) => s + (p.results?.warnings.length ?? 0), 0)
+
+  // ── Role gate: Manager+ only ──────────────────────────────────────────────
+  if (!userLoading && currentUser && !currentUser.isManager) {
+    return (
+      <>
+        <Nav active="Redesign" />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <p className="text-lg text-gray-400">Access Restricted</p>
+            <p className="text-sm text-gray-500 mt-2">Batch processing is available to Managers and above.</p>
+          </div>
+        </div>
+      </>
+    )
+  }
 
   // ── RENDER ────────────────────────────────────────────────────────────────
 

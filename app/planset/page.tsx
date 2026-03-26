@@ -3,6 +3,7 @@
 import { Nav } from '@/components/Nav'
 import { calculateSldLayout } from '@/lib/sld-layout'
 import { SldRenderer } from '@/components/SldRenderer'
+import { useCurrentUser } from '@/lib/useCurrentUser'
 
 // ── HARDCODED PROJECT DATA (PROJ-29857) ─────────────────────────────────────
 
@@ -1150,6 +1151,23 @@ function handlePrintAll() {
 // ── PAGE COMPONENT ──────────────────────────────────────────────────────────
 
 export default function PlanSetPage() {
+  const { user: currentUser, loading: userLoading } = useCurrentUser()
+
+  // Role gate: Manager+ only
+  if (!userLoading && currentUser && !currentUser.isManager) {
+    return (
+      <>
+        <Nav active="Redesign" />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <p className="text-lg text-gray-400">Access Restricted</p>
+            <p className="text-sm text-gray-500 mt-2">Plan sets are available to Managers and above.</p>
+          </div>
+        </div>
+      </>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-900">
       <Nav active="Redesign" />
