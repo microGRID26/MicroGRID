@@ -12,7 +12,7 @@ function escapeHtml(str: string): string {
 
 type Enrollment = EmailOnboarding
 
-export function EmailManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
+export function EmailManager({ isSuperAdmin, currentUserEmail, currentUserName }: { isSuperAdmin: boolean; currentUserEmail?: string; currentUserName?: string }) {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -108,6 +108,30 @@ export function EmailManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
     setEnrolling(false)
   }
 
+  const [testDay, setTestDay] = useState(1)
+  const [testSending, setTestSending] = useState(false)
+
+  const sendTestToMe = async () => {
+    if (!currentUserEmail) { flash('No email found for current user'); return }
+    setTestSending(true)
+    try {
+      const res = await fetch('/api/email/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: currentUserEmail, day: testDay, name: currentUserName ?? 'there' }),
+      })
+      const data = await res.json()
+      if (data.sent) {
+        flash(`Day ${testDay} email sent to ${currentUserEmail}`)
+      } else {
+        flash(data.error || 'Failed to send test email')
+      }
+    } catch {
+      flash('Error sending test email')
+    }
+    setTestSending(false)
+  }
+
   const sendAnnouncement = async () => {
     if (!announceSubject.trim() || !announceMessage.trim()) {
       flash('Subject and message are required')
@@ -178,7 +202,29 @@ export function EmailManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
           </span>
         </div>
         <div className="flex-1" />
-        {isSuperAdmin && (
+        {isSuperAdmin && (<>
+          {/* Test Email */}
+          <div className="flex items-center gap-2 mb-3 bg-gray-800 rounded-lg px-3 py-2">
+            <span className="text-xs text-gray-400">Send test:</span>
+            <select
+              value={testDay}
+              onChange={e => setTestDay(Number(e.target.value))}
+              className="text-xs bg-gray-700 text-white border border-gray-600 rounded px-2 py-1"
+            >
+              {Array.from({ length: 30 }, (_, i) => (
+                <option key={i + 1} value={i + 1}>Day {i + 1}</option>
+              ))}
+            </select>
+            <span className="text-xs text-gray-500">to {currentUserEmail ?? 'you'}</span>
+            <button
+              onClick={sendTestToMe}
+              disabled={testSending || !currentUserEmail}
+              className="px-3 py-1 bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-medium rounded-md transition-colors"
+            >
+              {testSending ? 'Sending...' : 'Send Test to Me'}
+            </button>
+          </div>
+
           <div className="flex gap-2">
             <button
               onClick={() => setShowAnnounce(true)}
@@ -201,7 +247,7 @@ export function EmailManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
               {enrolling ? 'Enrolling...' : 'Enroll All Users'}
             </button>
           </div>
-        )}
+        </>)}
       </div>
 
       {/* Search */}

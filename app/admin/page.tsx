@@ -140,7 +140,7 @@ export default function AdminPage() {
             {activeModule === 'reasons'  && <ReasonsManager isSuperAdmin={isSuperAdmin} />}
             {activeModule === 'doc_requirements' && <DocumentRequirementsManager isSuperAdmin={isSuperAdmin} />}
             {activeModule === 'edge_integration' && <EdgeIntegrationManager />}
-            {activeModule === 'email_onboarding' && <EmailManager isSuperAdmin={isSuperAdmin} />}
+            {activeModule === 'email_onboarding' && <EmailManager isSuperAdmin={isSuperAdmin} currentUserEmail={authUser?.email ?? undefined} currentUserName={authUser?.name ?? undefined} />}
           </div>
         </main>
       </div>
