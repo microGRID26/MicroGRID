@@ -23,6 +23,7 @@ import { DocumentRequirementsManager } from '@/components/admin/DocumentRequirem
 import { EquipmentManager } from '@/components/admin/EquipmentManager'
 import { EdgeIntegrationManager } from '@/components/admin/EdgeIntegrationManager'
 import { VendorManager } from '@/components/admin/VendorManager'
+import { EmailManager } from '@/components/admin/EmailManager'
 
 export default function AdminPage() {
   const { user: authUser, loading } = useCurrentUser()
@@ -139,6 +140,7 @@ export default function AdminPage() {
             {activeModule === 'reasons'  && <ReasonsManager isSuperAdmin={isSuperAdmin} />}
             {activeModule === 'doc_requirements' && <DocumentRequirementsManager isSuperAdmin={isSuperAdmin} />}
             {activeModule === 'edge_integration' && <EdgeIntegrationManager />}
+            {activeModule === 'email_onboarding' && <EmailManager isSuperAdmin={isSuperAdmin} />}
           </div>
         </main>
       </div>

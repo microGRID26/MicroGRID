@@ -646,6 +646,18 @@ export interface WOChecklistItem {
   photo_url: string | null
 }
 
+export interface EmailOnboarding {
+  id: string
+  user_id: string
+  user_email: string
+  user_name: string | null
+  current_day: number
+  started_at: string
+  last_sent_at: string | null
+  paused: boolean
+  completed: boolean
+}
+
 export interface Vendor {
   id: string
   name: string
@@ -913,6 +925,12 @@ export type Database = {
         Row: Vendor
         Insert: Omit<Vendor, 'id' | 'active' | 'created_at'> & { id?: string; active?: boolean; created_at?: string }
         Update: Partial<Vendor>
+
+      }
+      email_onboarding: {
+        Row: EmailOnboarding
+        Insert: Omit<EmailOnboarding, 'id' | 'current_day' | 'paused' | 'completed' | 'started_at'> & { id?: string; current_day?: number; paused?: boolean; completed?: boolean; started_at?: string }
+        Update: Partial<EmailOnboarding>
 
       }
       work_orders: {
