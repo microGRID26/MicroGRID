@@ -5,7 +5,7 @@ function escapeHtml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://nova.gomicrogridenergy.com'
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://microgrid-crm.vercel.app'
 
 function layout(day: number, body: string): string {
   return `<!DOCTYPE html>
