@@ -1351,7 +1351,7 @@ When both the module model and panel count are set on a project, the system auto
 
 ### Equipment Manager (Admin)
 
-Administrators can manage the equipment catalog from the Admin portal (`components/admin/EquipmentManager.tsx`). The Equipment Manager provides full CRUD operations:
+Administrators can manage the equipment catalog from the Admin portal (`components/admin/EquipmentManager.tsx`). The Equipment Manager provides full add, view, edit, delete operations:
 
 - **Search** -- Find equipment by manufacturer, model name, or description. Search uses partial matching across multiple fields
 - **Filter by category** -- Show only a specific category: module, inverter, battery, optimizer, racking, electrical, adder, or other

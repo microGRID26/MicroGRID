@@ -198,7 +198,7 @@ Standalone page at `/audit-trail` (admin-only, guarded by `useCurrentUser().isAd
 - **user_sessions** — login/session tracking. Fields: `user_id`, `user_name`, `user_email`, `logged_in_at`, `last_active_at`, `page`. Updated via 60-second heartbeat from `SessionTracker` component. Duration computed client-side.
 - **audit_log** — change audit trail. Records all project field changes with `project_id`, `field`, `old_value`, `new_value`, `changed_by`, `changed_by_id`, `changed_at`. Also logs project deletions (`field = 'project_deleted'`) before cascade.
 - **edge_sync_log** — NOVA-EDGE webhook event log. Fields: `id` (UUID PK), `project_id` (TEXT), `event_type` (TEXT), `direction` (`'outbound'` or `'inbound'`), `payload` (JSONB), `status` (`sent`/`delivered`/`failed`), `response_code` (INTEGER), `error_message` (TEXT), `created_at` (TIMESTAMPTZ). Indexes on project_id, event_type, created_at DESC. RLS: SELECT/INSERT for authenticated users. Migration: `supabase/028-edge-sync.sql`.
-- **equipment** — equipment catalog with 2,517 items. Fields: `id` (UUID PK), `category` (panel/inverter/battery/optimizer), `manufacturer`, `model`, `wattage` (NUMERIC), `description`, `active` (BOOLEAN). Used for autocomplete in project Info tab equipment fields. Admin CRUD via EquipmentManager.
+- **equipment** — equipment catalog with 2,517 items. Fields: `id` (UUID PK), `category` (panel/inverter/battery/optimizer), `manufacturer`, `model`, `wattage` (NUMERIC), `description`, `active` (BOOLEAN). Used for autocomplete in project Info tab equipment fields. Admin management via EquipmentManager.
 - **project_materials** — per-project material list. Fields: `id` (UUID PK), `project_id` (TEXT), `equipment_id` (UUID FK → equipment), `name`, `category` (module/inverter/battery/optimizer/racking/electrical/other), `quantity`, `unit` (each/ft/box/roll), `source` (dropship/warehouse/tbd), `vendor`, `status` (needed/ordered/shipped/delivered/installed), `po_number`, `expected_date`, `delivered_date`, `notes`, `created_at`, `updated_at`. RLS open to all authenticated users. Migration: `supabase/025-inventory.sql`.
 - **warehouse_stock** — BOS warehouse stock levels. Fields: `id` (UUID PK), `equipment_id` (UUID FK → equipment), `name`, `category`, `quantity_on_hand`, `reorder_point`, `unit`, `location` (shelf/bin), `last_counted_at`, `updated_at`. RLS: SELECT/INSERT/UPDATE for authenticated users. Migration: `supabase/025-inventory.sql`.
 - **warehouse_transactions** — warehouse check-out/check-in/adjustment audit trail. Fields: `id` (UUID PK), `stock_id` (UUID FK → warehouse_stock), `project_id` (TEXT, nullable), `transaction_type` (checkout/checkin/adjustment/recount), `quantity` (INTEGER), `notes`, `performed_by`, `created_at`. RLS: SELECT/INSERT for authenticated users. Migration: `supabase/027-warehouse-transactions.sql`. Indexes on stock_id, project_id, transaction_type.
@@ -251,7 +251,7 @@ The `equipment` table stores 2,517 equipment items (panels, inverters, batteries
 
 - **Autocomplete dropdowns** in the project Info tab's Equipment section — module, inverter, battery, and optimizer fields use typeahead search against the equipment catalog
 - **Auto-calculate system kW** — when module model and panel count are both set, `system_kw` is automatically calculated from the equipment's wattage and the panel count
-- **EquipmentManager** in Admin portal (`components/admin/EquipmentManager.tsx`) — full CRUD with search, filter by category, add/edit/delete
+- **EquipmentManager** in Admin portal (`components/admin/EquipmentManager.tsx`) — full add, view, edit, delete with search, filter by category, add/edit/delete
 - **Migration 024** (`supabase/024-equipment.sql`) — `equipment` table with fields: `id` (UUID PK), `category` (panel/inverter/battery/optimizer), `manufacturer`, `model`, `wattage` (NUMERIC), `description`, `active` (BOOLEAN DEFAULT true), `created_at`
 - **Import scripts**: `scripts/import-equipment.ts` (parses equipment data), `scripts/upload-equipment.ts` (uploads to Supabase in batches)
 - 9 UI improvements applied: debounced autocomplete, dropdown positioning, click-outside dismiss, selected item display, clear button, keyboard navigation
@@ -574,7 +574,7 @@ The Analytics page (`/analytics`) has 6 sub-tabs:
 
 Five database tables allow admins to configure system behavior without code changes:
 
-1. **Financiers** (`financiers`, migration 017) — Reference table for financing companies. Admin CRUD in Admin portal, autocomplete in project Info tab. Seeded with 10 financiers (Cash, EDGE, Mosaic, Sungage, GoodLeap, Dividend, Sunrun, Tesla, Sunnova, Loanpal).
+1. **Financiers** (`financiers`, migration 017) — Reference table for financing companies. Admin management in Admin portal, autocomplete in project Info tab. Seeded with 10 financiers (Cash, EDGE, Mosaic, Sungage, GoodLeap, Dividend, Sunrun, Tesla, Sunnova, Loanpal).
 2. **Task Reasons** (`task_reasons`, migration 018) — Pending Resolution and Revision Required reasons stored in DB per task. Replaces hardcoded `PENDING_REASONS` and `REVISION_REASONS`. Active/inactive toggle and sort order.
 3. **Notification Rules** (`notification_rules`, migration 019) — DB-driven rules that fire when a task reaches a specific status+reason combination. Replaces hardcoded Permit Drop Off auto-note. Admin can create rules: task + status + reason -> action (note/notify role).
 4. **Queue Sections** (`queue_sections`, migration 020) — Queue page sections are DB-driven instead of hardcoded. Admin can add/reorder/disable sections. Each section maps a task_id + match_status to a labeled collapsible section.
@@ -680,7 +680,7 @@ All three planned consolidation targets from Session 15 have been completed in S
 
 ### Code Quality
 
-**Current rating: 9.5/10** (up from 9/10 after Session 16). Session 17 improvements (~63 commits): three comprehensive audits fixed 100+ total issues across security, performance, and scale (40 + 39 + 30 issues across dozens of files). Type safety: 82 `as any` casts removed (down from ~43 to 3 remaining). Cache upgraded to LRU eviction (50 entries max) with 5-min TTL for scale readiness to 5K projects. Auth gates added to batch, planset, crew, vendors, and inventory pages. Dead `loyalty` column dropped, permission matrix updated to reflect actual RLS, Cancel/Reactivate gated to Admin+, legacy projects page and import pipeline (14,705 projects + 150K notes), API layer expanded (6 new functions, 4 pages migrated), document management system (3 tables, file browser, missing docs report, admin CRUD), 127K NetSuite action comments imported, nav redesigned to two-tier, pipeline utility filter + multi-select AHJ/Utility, construction banner removed, security headers added, equipment catalog (2,517 items with autocomplete and auto-kW calculation), Atlas AI Reports (Manager+, 25/day session-based rate limiting), inventory management (3 phases: materials, POs, warehouse), vendor management (CRUD + admin portal), mobile views (leadership dashboard + field operator), EDGE bidirectional webhook integration, help page overhaul (55 topics across 12 categories), email domain whitelist on auth. **677 tests total (665 passed, 12 skipped)** (SLA tests remain skipped while thresholds are paused). **E2E tests:** Playwright installed with 20+ E2E test specs in `e2e/`. Remaining debt: 3 `as any` casts in test mocks.
+**Current rating: 9.5/10** (up from 9/10 after Session 16). Session 17 improvements (~63 commits): three comprehensive audits fixed 100+ total issues across security, performance, and scale (40 + 39 + 30 issues across dozens of files). Type safety: 82 `as any` casts removed (down from ~43 to 3 remaining). Cache upgraded to LRU eviction (50 entries max) with 5-min TTL for scale readiness to 5K projects. Auth gates added to batch, planset, crew, vendors, and inventory pages. Dead `loyalty` column dropped, permission matrix updated to reflect actual RLS, Cancel/Reactivate gated to Admin+, legacy projects page and import pipeline (14,705 projects + 150K notes), API layer expanded (6 new functions, 4 pages migrated), document management system (3 tables, file browser, missing docs report, Admin management), 127K NetSuite action comments imported, nav redesigned to two-tier, pipeline utility filter + multi-select AHJ/Utility, construction banner removed, security headers added, equipment catalog (2,517 items with autocomplete and auto-kW calculation), Atlas AI Reports (Manager+, 25/day session-based rate limiting), inventory management (3 phases: materials, POs, warehouse), vendor management (CRUD + admin portal), mobile views (leadership dashboard + field operator), EDGE bidirectional webhook integration, help page overhaul (55 topics across 12 categories), email domain whitelist on auth. **677 tests total (665 passed, 12 skipped)** (SLA tests remain skipped while thresholds are paused). **E2E tests:** Playwright installed with 20+ E2E test specs in `e2e/`. Remaining debt: 3 `as any` casts in test mocks.
 
 ## Known Bugs
 
@@ -708,7 +708,7 @@ Notes can be deleted via a hover X button that appears on each note. A confirmat
 
 ## HOA Manager
 
-The Admin portal includes an HOA Manager for managing 421 HOA records stored in the `hoas` table. HOA data is referenced in the project Info tab with autocomplete lookup. The Info tab shows HOA contact details (name, phone, email, website, notes) when matched. Admin portal supports full CRUD on HOA records.
+The Admin portal includes an HOA Manager for managing 421 HOA records stored in the `hoas` table. HOA data is referenced in the project Info tab with autocomplete lookup. The Info tab shows HOA contact details (name, phone, email, website, notes) when matched. Admin portal supports full add, view, edit, delete on HOA records.
 
 ### hoas Table
 
@@ -731,7 +731,7 @@ Standalone page at `/vendors`. Displays all vendors in a searchable, filterable 
 
 ### VendorManager (Admin)
 
-Admin portal section (`components/admin/VendorManager.tsx`) provides the same CRUD in a modal-based interface with search, category filter, and table view. Uses shared admin components (`Input`, `Textarea`, `Modal`, `SaveBtn`, `SearchBar`).
+Admin portal section (`components/admin/VendorManager.tsx`) provides the same add, edit, delete functionality in a modal-based interface with search, category filter, and table view. Uses shared admin components (`Input`, `Textarea`, `Modal`, `SaveBtn`, `SearchBar`).
 
 ### API Layer
 
@@ -818,7 +818,7 @@ Three database tables power the document management system (migration `023-docum
 
 **Components:**
 - `components/project/FilesTab.tsx` — includes a `DocumentChecklist` showing required documents for the project's current stage with present/missing status indicators.
-- `components/admin/DocumentRequirementsManager.tsx` — admin CRUD for document requirements (add/edit/delete/reorder/toggle active).
+- `components/admin/DocumentRequirementsManager.tsx` — Admin management for document requirements (add/edit/delete/reorder/toggle active).
 
 **API:** `lib/api/documents.ts` — `loadAllProjectFiles`, `searchAllProjectFiles`, `loadProjectFiles`, `loadDocumentRequirements`, `loadProjectDocuments`, `upsertProjectDocument`.
 

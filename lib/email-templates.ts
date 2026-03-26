@@ -684,7 +684,7 @@ const templates: Record<number, TemplateFactory> = {
           ${sectionBadge('Documents')}
         </div>
       `)}
-      <p>Each module has search, CRUD operations, and validation. Changes take effect immediately across the platform.</p>
+      <p>Each module has search, add, view, edit, and delete, and validation. Changes take effect immediately across the platform.</p>
       ${ctaButton('Explore Admin →', '/admin')}
     `),
   }),

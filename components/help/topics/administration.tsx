@@ -6,7 +6,7 @@ function AdminPortal() {
       <p className="text-xs text-gray-400 mb-3">Click the gear icon in the nav bar. Admin and Super Admin roles only. Sections include:</p>
       <div className="grid grid-cols-2 gap-2 text-xs">
         {[
-          'Users -- CRUD, roles, active status',
+          'Users -- add/edit/delete, roles, active status',
           'Crews -- 5 crews, 10 member roles each',
           'AHJ -- 1,633 TX AHJ records',
           'Utilities -- 203 utility companies',
@@ -29,7 +29,7 @@ function AdminPortal() {
 function UserManagement() {
   return (
     <div>
-      <p className="text-xs text-gray-400 mb-2">Full CRUD for team members. Fields: name, email, department, position, role, active status, avatar color. Use Add User to create accounts. Roles control access level throughout the system.</p>
+      <p className="text-xs text-gray-400 mb-2">full add, view, edit, delete for team members. Fields: name, email, department, position, role, active status, avatar color. Use Add User to create accounts. Roles control access level throughout the system.</p>
     </div>
   )
 }
@@ -97,7 +97,7 @@ function EdgeIntegration() {
 function EquipmentManager() {
   return (
     <div>
-      <p className="text-xs text-gray-400 mb-2">Admin catalog CRUD for the 2,517-item equipment database. Add panels, inverters, batteries, and optimizers with manufacturer, model, wattage, and specifications. Equipment added here appears in project panel autocomplete dropdowns.</p>
+      <p className="text-xs text-gray-400 mb-2">Admin catalog management for the 2,517-item equipment database. Add panels, inverters, batteries, and optimizers with manufacturer, model, wattage, and specifications. Equipment added here appears in project panel autocomplete dropdowns.</p>
     </div>
   )
 }
@@ -214,7 +214,7 @@ export const administrationTopics: HelpTopicData[] = [
   {
     id: 'user-management',
     title: 'User Management',
-    description: 'CRUD users, assign roles, toggle active',
+    description: 'Add, edit, delete users, assign roles, toggle active',
     category: 'Administration',
     keywords: ['user', 'create', 'edit', 'delete', 'role', 'active', 'team'],
     relatedTopics: ['admin-portal', 'understanding-roles'],
@@ -232,7 +232,7 @@ export const administrationTopics: HelpTopicData[] = [
   {
     id: 'equipment-manager',
     title: 'Equipment Manager',
-    description: 'Admin catalog CRUD for equipment',
+    description: 'Admin catalog management for equipment',
     category: 'Administration',
     keywords: ['equipment', 'catalog', 'admin', 'panel', 'inverter', 'battery', 'manage'],
     relatedTopics: ['equipment-catalog', 'admin-portal'],

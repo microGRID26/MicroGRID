@@ -126,7 +126,7 @@ export async function generateWONumber(): Promise<string> {
   return `${prefix}${String(nextNum).padStart(3, '0')}`
 }
 
-// ── CRUD Operations ──────────────────────────────────────────────────────────
+// ── Create, Read, Update, Delete ──────────────────────────────────────────────────────────
 
 export interface WorkOrderFilters {
   status?: string

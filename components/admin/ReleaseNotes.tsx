@@ -359,7 +359,7 @@ export function ReleaseNotes() {
       <div className={cardCls}>
         <div className={titleCls}>Admin Portal</div>
         <div className={bodyCls}>
-          AHJ Manager (1,633 records, paginated), Utility Manager, Users CRUD,
+          AHJ Manager (1,633 records, paginated), Utility Manager, Users (add/edit/delete),
           Crews with role-based members, SLA Thresholds editor, CRM Info stats.
           AHJ/Utility autocomplete in project edit. Export field picker. Help page.
         </div>
