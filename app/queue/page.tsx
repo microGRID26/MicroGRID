@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { Nav } from '@/components/Nav'
 import { daysAgo, fmt$, fmtDate, STAGE_LABELS, STAGE_ORDER, SLA_THRESHOLDS, STAGE_TASKS } from '@/lib/utils'
 import { ALL_TASKS_MAP } from '@/lib/tasks'
@@ -10,7 +10,10 @@ import { usePreferences } from '@/lib/usePreferences'
 import { useSupabaseQuery } from '@/lib/hooks'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import { BulkActionBar, useBulkSelect, SelectCheckbox } from '@/components/BulkActionBar'
+import { updateProject, addNote } from '@/lib/api'
+import { db } from '@/lib/db'
 import type { Project } from '@/types/database'
+import { Calendar, X, MessageSquare, ArrowUpDown, ChevronDown } from 'lucide-react'
 
 /** Project with computed follow-up fields attached in the followUps memo */
 interface ProjectWithFollowUp extends Project {
@@ -30,6 +33,33 @@ const CARD_FIELD_OPTIONS: { key: string; label: string }[] = [
   { key: 'stage', label: 'Stage' },
   { key: 'sale_date', label: 'Sale Date' },
 ]
+
+// ── Filter types ────────────────────────────────────────────────────────────
+interface QueueFilters {
+  stages: Set<string>
+  financier: string
+  ahj: string
+  blockedOnly: boolean
+  daysRange: '' | '<7' | '7-30' | '30-90' | '90+'
+}
+
+const EMPTY_FILTERS: QueueFilters = {
+  stages: new Set<string>(),
+  financier: '',
+  ahj: '',
+  blockedOnly: false,
+  daysRange: '',
+}
+
+type SectionSortKey = 'days' | 'contract' | 'name'
+
+// ── Funding status type ──────────────────────────────────────────────────────
+interface FundingRecord {
+  project_id: string
+  m1_status: string | null
+  m2_status: string | null
+  m3_status: string | null
+}
 
 function getSLA(p: Project) {
   const t = SLA_THRESHOLDS[p.stage] ?? { target: 3, risk: 5, crit: 7 }
@@ -85,6 +115,37 @@ const STATUS_COLOR: Record<string, string> = {
   ok:   'bg-green-500',
 }
 
+// Stage filter chips (exclude 'complete')
+const FILTER_STAGES = STAGE_ORDER.filter(s => s !== 'complete')
+
+// Days range filter helpers
+function getDaysInStage(p: Project): number {
+  return daysAgo(p.stage_date)
+}
+
+function matchesDaysRange(p: Project, range: string): boolean {
+  const d = getDaysInStage(p)
+  switch (range) {
+    case '<7': return d < 7
+    case '7-30': return d >= 7 && d <= 30
+    case '30-90': return d > 30 && d <= 90
+    case '90+': return d > 90
+    default: return true
+  }
+}
+
+// Sort projects within a section
+function sortProjects(projects: Project[], sortKey: SectionSortKey): Project[] {
+  return [...projects].sort((a, b) => {
+    switch (sortKey) {
+      case 'days': return getDaysInStage(b) - getDaysInStage(a) // descending
+      case 'contract': return (Number(b.contract) || 0) - (Number(a.contract) || 0) // descending
+      case 'name': return (a.name ?? '').localeCompare(b.name ?? '') // ascending
+      default: return 0
+    }
+  })
+}
+
 // ── Configurable queue sections ──────────────────────────────────────────
 interface QueueSectionConfig { id: string; label: string; task_id: string; match_status: string; color: string; icon: string; sort_order: number }
 const HARDCODED_SECTIONS: QueueSectionConfig[] = [
@@ -99,8 +160,6 @@ export default function QueuePage() {
   const { user: currentUser } = useCurrentUser()
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [showNewProject, setShowNewProject] = useState(false)
-  // SSR guard: localStorage is only available in the browser; the typeof check
-  // prevents a ReferenceError during server-side rendering / static generation.
   const [userPm, setUserPm] = useState<string>(() => {
     if (typeof window !== 'undefined') return localStorage.getItem('mg_pm') ?? ''
     return ''
@@ -109,6 +168,37 @@ export default function QueuePage() {
   const [showCardConfig, setShowCardConfig] = useState(false)
   const { prefs, updatePref } = usePreferences()
   const cardFields = prefs.queue_card_fields
+
+  // ── Smart Filters ───────────────────────────────────────────────────────
+  const [filters, setFilters] = useState<QueueFilters>(EMPTY_FILTERS)
+
+  const hasActiveFilters = useMemo(() =>
+    filters.stages.size > 0 || filters.financier !== '' || filters.ahj !== '' || filters.blockedOnly || filters.daysRange !== '',
+    [filters]
+  )
+
+  const toggleStage = useCallback((stage: string) => {
+    setFilters(prev => {
+      const next = new Set(prev.stages)
+      if (next.has(stage)) next.delete(stage)
+      else next.add(stage)
+      return { ...prev, stages: next }
+    })
+  }, [])
+
+  const clearAllFilters = useCallback(() => setFilters(EMPTY_FILTERS), [])
+
+  // ── Section sorts ───────────────────────────────────────────────────────
+  const [sectionSorts, setSectionSorts] = useState<Record<string, SectionSortKey>>({})
+  const getSectionSort = (key: string): SectionSortKey => sectionSorts[key] ?? 'days'
+  const cycleSectionSort = useCallback((key: string) => {
+    setSectionSorts(prev => {
+      const current = prev[key] ?? 'days'
+      const order: SectionSortKey[] = ['days', 'contract', 'name']
+      const idx = order.indexOf(current)
+      return { ...prev, [key]: order[(idx + 1) % order.length] }
+    })
+  }, [])
 
   // ── Queue sections from DB (with hardcoded fallback) ───────────────────
   const [queueSections, setQueueSections] = useState<QueueSectionConfig[]>(HARDCODED_SECTIONS)
@@ -127,7 +217,6 @@ export default function QueuePage() {
   }, [queueSectionsData])
 
   // ── PM filter (server-side) via useServerFilter ────────────────────────
-  // Build PM filter for useSupabaseQuery
   const pmFilters = useMemo(() => {
     const f: Record<string, any> = {}
     if (userPm) f.pm_id = { eq: userPm }
@@ -152,7 +241,7 @@ export default function QueuePage() {
     loading: projectsLoading,
     refresh: refreshProjects,
   } = useSupabaseQuery('projects', {
-    select: 'id, name, city, address, pm, pm_id, stage, stage_date, sale_date, contract, blocker, financier, disposition, follow_up_date, consultant, advisor',
+    select: 'id, name, city, address, pm, pm_id, stage, stage_date, sale_date, contract, blocker, financier, disposition, follow_up_date, consultant, advisor, ahj, systemkw',
     filters: pmFilters,
     limit: 5000,
     subscribe: true,
@@ -197,12 +286,27 @@ export default function QueuePage() {
     subscribe: true,
   })
 
+  // ── Query 4: Project funding data ──────────────────────────────────────
+  const {
+    data: fundingRaw,
+  } = useSupabaseQuery('project_funding', {
+    select: 'project_id, m1_status, m2_status, m3_status',
+    limit: 5000,
+  })
+
+  const fundingMap = useMemo(() => {
+    const map: Record<string, FundingRecord> = {}
+    for (const f of (fundingRaw as unknown as FundingRecord[])) {
+      map[f.project_id] = f
+    }
+    return map
+  }, [fundingRaw])
+
   // ── Merge task data + follow-up data (filtered to PM-filtered projects) ──
   const projectIdSet = useMemo(() => new Set(projects.map(p => p.id)), [projects])
 
   const taskStates: TaskStateRow[] = useMemo(() => {
     const allTasks: TaskStateRow[] = [...(taskDataRaw as unknown as TaskStateRow[])]
-    // Only merge follow-up data for projects that match the current PM filter
     for (const fu of followUpDataRaw as unknown as TaskStateRow[]) {
       if (!projectIdSet.has(fu.project_id)) continue
       const existing = allTasks.find(t => t.project_id === fu.project_id && t.task_id === fu.task_id)
@@ -220,6 +324,19 @@ export default function QueuePage() {
     const pmMap = new Map<string, string>()
     projects.forEach(p => { if (p.pm_id && p.pm) pmMap.set(p.pm_id, p.pm) })
     return [...pmMap.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
+  }, [projects])
+
+  // ── Extract unique financiers and AHJs for filter dropdowns ────────────
+  const distinctFinanciers = useMemo(() => {
+    const set = new Set<string>()
+    projects.forEach(p => { if (p.financier) set.add(p.financier) })
+    return [...set].sort()
+  }, [projects])
+
+  const distinctAHJs = useMemo(() => {
+    const set = new Set<string>()
+    projects.forEach(p => { if (p.ahj) set.add(p.ahj) })
+    return [...set].sort()
   }, [projects])
 
   // ── Refresh all queries ────────────────────────────────────────────────
@@ -252,12 +369,10 @@ export default function QueuePage() {
   }))
   const toggleBucket = (key: string) => setCollapsed(prev => ({ ...prev, [key]: !prev[key] }))
 
-  // Build task map per project: { projectId: { taskId: { status, reason } } }
-  // Rebuilds when useSupabaseQuery refetches (subscribe: true handles realtime)
+  // Build task map per project
   const taskMap = useMemo(() => buildTaskMap(taskStates), [taskStates])
 
   // In Service, Cancelled, and Loyalty projects excluded from main sections
-  // Loyalty gets its own collapsible section below
   const live = useMemo(() => projects.filter(p => p.disposition !== 'In Service' && p.disposition !== 'Cancelled' && p.disposition !== 'Loyalty'), [projects])
   const loyaltyProjects = useMemo(() => projects.filter(p => p.disposition === 'Loyalty'), [projects])
 
@@ -283,7 +398,33 @@ export default function QueuePage() {
       })
     : loyaltyProjects, [loyaltyProjects, search])
 
-  const sorted = useMemo(() => [...searched].sort((a, b) => priority(a) - priority(b)), [searched])
+  // ── Apply smart filters ─────────────────────────────────────────────────
+  const filtered = useMemo(() => {
+    if (!hasActiveFilters) return searched
+    return searched.filter(p => {
+      if (filters.stages.size > 0 && !filters.stages.has(p.stage)) return false
+      if (filters.financier && p.financier !== filters.financier) return false
+      if (filters.ahj && p.ahj !== filters.ahj) return false
+      if (filters.blockedOnly && !p.blocker) return false
+      if (filters.daysRange && !matchesDaysRange(p, filters.daysRange)) return false
+      return true
+    })
+  }, [searched, filters, hasActiveFilters])
+
+  // Apply smart filters to loyalty too
+  const filteredLoyalty = useMemo(() => {
+    if (!hasActiveFilters) return searchedLoyalty
+    return searchedLoyalty.filter(p => {
+      if (filters.stages.size > 0 && !filters.stages.has(p.stage)) return false
+      if (filters.financier && p.financier !== filters.financier) return false
+      if (filters.ahj && p.ahj !== filters.ahj) return false
+      if (filters.blockedOnly && !p.blocker) return false
+      if (filters.daysRange && !matchesDaysRange(p, filters.daysRange)) return false
+      return true
+    })
+  }, [searchedLoyalty, filters, hasActiveFilters])
+
+  const sorted = useMemo(() => [...filtered].sort((a, b) => priority(a) - priority(b)), [filtered])
   const blocked = useMemo(() => sorted.filter(p => p.blocker), [sorted])
   const complete = useMemo(() => sorted.filter(p => p.stage === 'complete'), [sorted])
 
@@ -307,7 +448,7 @@ export default function QueuePage() {
       .filter(p => (p.follow_up_date && p.follow_up_date <= today) || taskFollowUpMap[p.id])
       .map((p): ProjectWithFollowUp => ({ ...p, _taskFollowUp: taskFollowUpMap[p.id] ?? null, _followUpDate: taskFollowUpMap[p.id]?.date ?? p.follow_up_date ?? null }))
       .sort((a, b) => (a._followUpDate ?? '').localeCompare(b._followUpDate ?? ''))
-  }, [sorted, taskStates])
+  }, [sorted, taskStates, todayStr])
 
   // ── Dynamic queue sections from config ────────────────────────────────
   const COLOR_MAP: Record<string, string> = {
@@ -345,6 +486,12 @@ export default function QueuePage() {
     for (const p of complete) specialPids.add(p.id)
     return sorted.filter(p => !specialPids.has(p.id) && p.stage !== 'complete')
   }, [sorted, dynamicSections, blocked, complete])
+
+  // ── Stat card metrics ──────────────────────────────────────────────────
+  const portfolioValue = useMemo(() => live.reduce((s, p) => s + (Number(p.contract) || 0), 0), [live])
+
+  // Ref for scrolling to follow-ups section
+  const followUpsRef = useRef<HTMLDivElement>(null)
 
   if (loading) {
     return (
@@ -394,41 +541,134 @@ export default function QueuePage() {
           </button>
         </>} />
 
-      {/* Stats + Search */}
-      <div className="bg-gray-900 border-b border-gray-800 flex items-center gap-6 px-6 py-3">
-        <div>
-          <div className="text-xs text-gray-500">Total</div>
-          <div className="text-xl font-bold text-white font-mono">{live.length}</div>
+      {/* ── Smart Filters Toolbar ─────────────────────────────────────── */}
+      <div className="bg-gray-900 border-b border-gray-800 px-6 py-3 space-y-2">
+        {/* Stage chips */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {FILTER_STAGES.map(stage => (
+            <button
+              key={stage}
+              onClick={() => toggleStage(stage)}
+              className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors font-medium ${
+                filters.stages.has(stage)
+                  ? 'bg-green-900/60 border-green-600 text-green-300'
+                  : 'bg-gray-800/60 border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600'
+              }`}
+            >
+              {STAGE_LABELS[stage]}
+            </button>
+          ))}
+          <div className="h-4 w-px bg-gray-700 mx-1" />
+          {/* Financier dropdown */}
+          <select
+            value={filters.financier}
+            onChange={e => setFilters(prev => ({ ...prev, financier: e.target.value }))}
+            className="text-[11px] bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1 focus:outline-none focus:border-green-500"
+          >
+            <option value="">Financier: All</option>
+            {distinctFinanciers.map(f => <option key={f} value={f}>{f}</option>)}
+          </select>
+          {/* AHJ dropdown */}
+          <select
+            value={filters.ahj}
+            onChange={e => setFilters(prev => ({ ...prev, ahj: e.target.value }))}
+            className="text-[11px] bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1 focus:outline-none focus:border-green-500"
+          >
+            <option value="">AHJ: All</option>
+            {distinctAHJs.map(a => <option key={a} value={a}>{a}</option>)}
+          </select>
+          {/* Blocked toggle */}
+          <button
+            onClick={() => setFilters(prev => ({ ...prev, blockedOnly: !prev.blockedOnly }))}
+            className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors font-medium ${
+              filters.blockedOnly
+                ? 'bg-red-900/60 border-red-600 text-red-300'
+                : 'bg-gray-800/60 border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600'
+            }`}
+          >
+            Blocked Only
+          </button>
         </div>
-        <div>
-          <div className="text-xs text-gray-500">Blocked</div>
-          <div className={`text-xl font-bold font-mono ${blocked.length ? 'text-red-400' : 'text-white'}`}>{blocked.length}</div>
+        {/* Days range chips + Clear All */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {(['<7', '7-30', '30-90', '90+'] as const).map(range => (
+            <button
+              key={range}
+              onClick={() => setFilters(prev => ({ ...prev, daysRange: prev.daysRange === range ? '' : range }))}
+              className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors font-medium ${
+                filters.daysRange === range
+                  ? 'bg-blue-900/60 border-blue-600 text-blue-300'
+                  : 'bg-gray-800/60 border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600'
+              }`}
+            >
+              {range === '<7' ? '<7d' : range === '7-30' ? '7-30d' : range === '30-90' ? '30-90d' : '90+d'}
+            </button>
+          ))}
+          {hasActiveFilters && (
+            <button
+              onClick={clearAllFilters}
+              className="text-[11px] px-2.5 py-1 rounded-full border border-gray-600 text-gray-400 hover:text-white hover:border-gray-500 transition-colors ml-2"
+            >
+              Clear All
+            </button>
+          )}
         </div>
-        <div>
-          <div className="text-xs text-gray-500">Critical</div>
-          <div className={`text-xl font-bold font-mono ${active.filter(p => getSLA(p).status === 'crit').length ? 'text-red-400' : 'text-white'}`}>
-            {active.filter(p => getSLA(p).status === 'crit').length}
-          </div>
-        </div>
-        <div>
-          <div className="text-xs text-gray-500">Portfolio</div>
-          <div className="text-xl font-bold text-white font-mono">
-            {fmt$(live.reduce((s, p) => s + (Number(p.contract) || 0), 0))}
-          </div>
-        </div>
+      </div>
 
+      {/* ── Stat Cards ────────────────────────────────────────────────── */}
+      <div className="bg-gray-900 border-b border-gray-800 px-6 py-3">
+        <div className="flex items-stretch gap-3 flex-wrap">
+          {/* Total */}
+          <button
+            onClick={clearAllFilters}
+            className={`flex-1 min-w-[100px] max-w-[160px] rounded-lg px-4 py-2.5 text-left transition-colors border ${
+              !hasActiveFilters ? 'border-green-600 bg-green-950/30' : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
+            }`}
+          >
+            <div className="text-[10px] text-gray-500 uppercase tracking-wider">Total</div>
+            <div className="text-xl font-bold text-white font-mono">{filtered.length}</div>
+          </button>
+          {/* Blocked */}
+          <button
+            onClick={() => setFilters(prev => ({ ...prev, blockedOnly: !prev.blockedOnly }))}
+            className={`flex-1 min-w-[100px] max-w-[160px] rounded-lg px-4 py-2.5 text-left transition-colors border ${
+              filters.blockedOnly ? 'border-red-600 bg-red-950/30' : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
+            }`}
+          >
+            <div className="text-[10px] text-gray-500 uppercase tracking-wider">Blocked</div>
+            <div className={`text-xl font-bold font-mono ${blocked.length ? 'text-red-400' : 'text-white'}`}>{blocked.length}</div>
+          </button>
+          {/* Follow-ups Due */}
+          <button
+            onClick={() => {
+              if (collapsed.followups) toggleBucket('followups')
+              followUpsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }}
+            className="flex-1 min-w-[100px] max-w-[160px] rounded-lg px-4 py-2.5 text-left transition-colors border border-gray-700 bg-gray-800/50 hover:border-amber-600"
+          >
+            <div className="text-[10px] text-gray-500 uppercase tracking-wider">Follow-ups</div>
+            <div className={`text-xl font-bold font-mono ${followUps.length ? 'text-amber-400' : 'text-white'}`}>{followUps.length}</div>
+          </button>
+          {/* Portfolio Value */}
+          <div className="flex-1 min-w-[120px] max-w-[180px] rounded-lg px-4 py-2.5 text-left border border-gray-700 bg-gray-800/50">
+            <div className="text-[10px] text-gray-500 uppercase tracking-wider">Portfolio</div>
+            <div className="text-xl font-bold text-white font-mono">{fmt$(portfolioValue)}</div>
+          </div>
+        </div>
       </div>
 
       {/* Queue list */}
       <div className={`flex-1 overflow-y-auto max-w-4xl mx-auto w-full px-4 py-4 ${selectMode && selectedIds.size > 0 ? 'pb-20' : ''}`}>
 
-        <div className="mb-6 bg-amber-950/30 border border-amber-900/50 rounded-xl p-4">
+        {/* Follow-ups Today */}
+        <div ref={followUpsRef} className="mb-6 bg-amber-950/30 border border-amber-900/50 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <button onClick={() => toggleBucket('followups')} className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2 text-left hover:text-amber-300 transition-colors flex-1">
                 <span className="text-[10px]">{collapsed.followups ? '▸' : '▾'}</span>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
                 Follow-ups Today ({followUps.length})
               </button>
+              <SortToggle sectionKey="followups" current={getSectionSort('followups')} onCycle={cycleSectionSort} />
               {selectMode && followUps.length > 0 && (
                 <button
                   onClick={() => selectAll(followUps.map(p => p.id))}
@@ -441,7 +681,9 @@ export default function QueuePage() {
             {!collapsed.followups && followUps.length === 0 && (
               <div className="text-xs text-gray-600 italic pl-6">No follow-ups due today. Set follow-up dates on tasks in the project panel.</div>
             )}
-            {!collapsed.followups && followUps.map(p => (
+            {!collapsed.followups && sortProjects(followUps as unknown as Project[], getSectionSort('followups')).map(proj => {
+              const p = followUps.find(f => f.id === proj.id) ?? proj as unknown as ProjectWithFollowUp
+              return (
               <div
                 key={p.id}
                 onClick={() => {
@@ -462,23 +704,25 @@ export default function QueuePage() {
                     <span className="text-xs text-gray-500">{p.id}</span>
                     <span className="text-xs text-gray-500">·</span>
                     <span className="text-xs text-green-400">{STAGE_LABELS[p.stage]}</span>
+                    <FundingBadge funding={fundingMap[p.id]} />
                   </div>
                   {p.city && <div className="text-xs text-gray-400 mt-0.5">{p.city}</div>}
                 </div>
                 <div className="text-right flex-shrink-0">
-                  {p._taskFollowUp && (
-                    <div className="text-[10px] text-gray-400 mb-0.5">{p._taskFollowUp.taskName}</div>
+                  {(p as ProjectWithFollowUp)._taskFollowUp && (
+                    <div className="text-[10px] text-gray-400 mb-0.5">{(p as ProjectWithFollowUp)._taskFollowUp!.taskName}</div>
                   )}
                   <div className={`text-xs font-medium ${
-                    p._followUpDate === todayStr ? 'text-amber-400' : 'text-red-400'
+                    (p as ProjectWithFollowUp)._followUpDate === todayStr ? 'text-amber-400' : 'text-red-400'
                   }`}>
-                    {p._followUpDate === todayStr
+                    {(p as ProjectWithFollowUp)._followUpDate === todayStr
                       ? 'Today'
-                      : `${daysAgo(p._followUpDate)}d overdue`}
+                      : `${daysAgo((p as ProjectWithFollowUp)._followUpDate)}d overdue`}
                   </div>
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
 
         {dynamicSections.map(sec => sec.items.length > 0 && (
@@ -488,6 +732,7 @@ export default function QueuePage() {
                 <span className="text-[10px]">{collapsed[sec.id] ? '▸' : '▾'}</span>
                 {sec.icon} {sec.label} ({sec.items.length})
               </button>
+              <SortToggle sectionKey={sec.id} current={getSectionSort(sec.id)} onCycle={cycleSectionSort} />
               {selectMode && (
                 <button
                   onClick={() => selectAll(sec.items.map(p => p.id))}
@@ -497,7 +742,11 @@ export default function QueuePage() {
                 </button>
               )}
             </div>
-            {!collapsed[sec.id] && sec.items.map(p => <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} cardFields={cardFields} selectMode={selectMode} isSelected={selectedIds.has(p.id)} onToggleSelect={toggleSelect} />)}
+            {!collapsed[sec.id] && sortProjects(sec.items, getSectionSort(sec.id)).map(p => (
+              <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} cardFields={cardFields}
+                selectMode={selectMode} isSelected={selectedIds.has(p.id)} onToggleSelect={toggleSelect}
+                fundingMap={fundingMap} currentUser={currentUser} onRefresh={refreshAll} todayStr={todayStr} />
+            ))}
           </div>
         ))}
 
@@ -506,8 +755,9 @@ export default function QueuePage() {
             <div className="flex items-center gap-2 mb-2">
               <button onClick={() => toggleBucket('blocked')} className="text-xs font-bold text-red-400 uppercase tracking-wider flex items-center gap-2 text-left hover:text-red-300 transition-colors flex-1">
                 <span className="text-[10px]">{collapsed.blocked ? '▸' : '▾'}</span>
-                🚫 Blocked ({blocked.length})
+                Blocked ({blocked.length})
               </button>
+              <SortToggle sectionKey="blocked" current={getSectionSort('blocked')} onCycle={cycleSectionSort} />
               {selectMode && (
                 <button
                   onClick={() => selectAll(blocked.map(p => p.id))}
@@ -517,7 +767,11 @@ export default function QueuePage() {
                 </button>
               )}
             </div>
-            {!collapsed.blocked && blocked.map(p => <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} cardFields={cardFields} selectMode={selectMode} isSelected={selectedIds.has(p.id)} onToggleSelect={toggleSelect} />)}
+            {!collapsed.blocked && sortProjects(blocked, getSectionSort('blocked')).map(p => (
+              <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} cardFields={cardFields}
+                selectMode={selectMode} isSelected={selectedIds.has(p.id)} onToggleSelect={toggleSelect}
+                fundingMap={fundingMap} currentUser={currentUser} onRefresh={refreshAll} todayStr={todayStr} />
+            ))}
           </div>
         )}
 
@@ -528,6 +782,7 @@ export default function QueuePage() {
                 <span className="text-[10px]">{collapsed.active ? '▸' : '▾'}</span>
                 Active ({active.length})
               </button>
+              <SortToggle sectionKey="active" current={getSectionSort('active')} onCycle={cycleSectionSort} />
               {selectMode && (
                 <button
                   onClick={() => selectAll(active.map(p => p.id))}
@@ -537,27 +792,36 @@ export default function QueuePage() {
                 </button>
               )}
             </div>
-            {!collapsed.active && active.map(p => <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} cardFields={cardFields} selectMode={selectMode} isSelected={selectedIds.has(p.id)} onToggleSelect={toggleSelect} />)}
+            {!collapsed.active && sortProjects(active, getSectionSort('active')).map(p => (
+              <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} cardFields={cardFields}
+                selectMode={selectMode} isSelected={selectedIds.has(p.id)} onToggleSelect={toggleSelect}
+                fundingMap={fundingMap} currentUser={currentUser} onRefresh={refreshAll} todayStr={todayStr} />
+            ))}
           </div>
         )}
 
-        {searchedLoyalty.length > 0 && (
+        {filteredLoyalty.length > 0 && (
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-2">
               <button onClick={() => toggleBucket('loyalty')} className="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-2 text-left hover:text-purple-300 transition-colors flex-1">
                 <span className="text-[10px]">{collapsed.loyalty ? '▸' : '▾'}</span>
-                💜 Loyalty ({searchedLoyalty.length})
+                Loyalty ({filteredLoyalty.length})
               </button>
+              <SortToggle sectionKey="loyalty" current={getSectionSort('loyalty')} onCycle={cycleSectionSort} />
               {selectMode && (
                 <button
-                  onClick={() => selectAll(searchedLoyalty.map(p => p.id))}
+                  onClick={() => selectAll(filteredLoyalty.map(p => p.id))}
                   className="text-[10px] px-2 py-0.5 rounded bg-gray-800 text-gray-400 hover:text-white border border-gray-700"
                 >
                   Select All
                 </button>
               )}
             </div>
-            {!collapsed.loyalty && searchedLoyalty.map(p => <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} cardFields={cardFields} selectMode={selectMode} isSelected={selectedIds.has(p.id)} onToggleSelect={toggleSelect} />)}
+            {!collapsed.loyalty && sortProjects(filteredLoyalty, getSectionSort('loyalty')).map(p => (
+              <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} cardFields={cardFields}
+                selectMode={selectMode} isSelected={selectedIds.has(p.id)} onToggleSelect={toggleSelect}
+                fundingMap={fundingMap} currentUser={currentUser} onRefresh={refreshAll} todayStr={todayStr} />
+            ))}
           </div>
         )}
 
@@ -577,13 +841,17 @@ export default function QueuePage() {
                 </button>
               )}
             </div>
-            {!collapsed.complete && complete.map(p => <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} cardFields={cardFields} selectMode={selectMode} isSelected={selectedIds.has(p.id)} onToggleSelect={toggleSelect} />)}
+            {!collapsed.complete && sortProjects(complete, getSectionSort('complete')).map(p => (
+              <QueueCard key={p.id} p={p} taskMap={taskMap[p.id] ?? {}} onOpen={setSelectedProject} cardFields={cardFields}
+                selectMode={selectMode} isSelected={selectedIds.has(p.id)} onToggleSelect={toggleSelect}
+                fundingMap={fundingMap} currentUser={currentUser} onRefresh={refreshAll} todayStr={todayStr} />
+            ))}
           </div>
         )}
 
         {projects.length === 0 && (
           <div className="text-center py-16 text-gray-500">
-            <div className="text-3xl mb-3">✓</div>
+            <div className="text-3xl mb-3">&#10003;</div>
             <div>No projects assigned to you.</div>
           </div>
         )}
@@ -627,6 +895,74 @@ export default function QueuePage() {
   )
 }
 
+// ── Sort Toggle Button ───────────────────────────────────────────────────────
+
+function SortToggle({ sectionKey, current, onCycle }: { sectionKey: string; current: SectionSortKey; onCycle: (key: string) => void }) {
+  const labels: Record<SectionSortKey, string> = { days: 'Days', contract: 'Value', name: 'Name' }
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onCycle(sectionKey) }}
+      className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-gray-300 transition-colors px-1.5 py-0.5 rounded border border-gray-700/50 hover:border-gray-600"
+      title={`Sort by: ${labels[current]}`}
+    >
+      <ArrowUpDown className="w-3 h-3" />
+      {labels[current]}
+    </button>
+  )
+}
+
+// ── Funding Badge ────────────────────────────────────────────────────────────
+
+function FundingBadge({ funding }: { funding?: FundingRecord }) {
+  if (!funding) return null
+
+  // Show the most relevant milestone status
+  const milestones: { label: string; status: string | null }[] = [
+    { label: 'M3', status: funding.m3_status },
+    { label: 'M2', status: funding.m2_status },
+    { label: 'M1', status: funding.m1_status },
+  ]
+
+  // Find the most advanced non-null milestone
+  const active = milestones.find(m => m.status && m.status !== 'Not Eligible')
+  if (!active || !active.status) return null
+
+  const statusShort: Record<string, string> = {
+    'Eligible': 'Eligible',
+    'Submitted': 'Sub',
+    'Funded': 'Funded',
+    'Rejected': 'Rej',
+  }
+
+  const statusColor: Record<string, string> = {
+    'Eligible': 'text-green-400',
+    'Submitted': 'text-blue-400',
+    'Funded': 'text-emerald-300',
+    'Rejected': 'text-red-400',
+  }
+
+  const display = statusShort[active.status] ?? active.status
+  const color = statusColor[active.status] ?? 'text-gray-400'
+
+  return (
+    <span className={`text-[10px] font-medium ${color} ml-1`}>
+      {active.label}: {display}
+    </span>
+  )
+}
+
+// ── Last Activity Indicator ──────────────────────────────────────────────────
+
+function LastActivity({ p }: { p: Project }) {
+  const days = daysAgo(p.stage_date) // Best available proxy
+  if (days > 5) {
+    return <span className="text-[10px] text-amber-400 font-medium">Stale {days}d</span>
+  }
+  return <span className="text-[10px] text-gray-600">{days}d ago</span>
+}
+
+// ── Card field renderer ──────────────────────────────────────────────────────
+
 function renderCardField(key: string, p: Project) {
   switch (key) {
     case 'name': return null
@@ -643,7 +979,9 @@ function renderCardField(key: string, p: Project) {
   }
 }
 
-function QueueCard({ p, taskMap, onOpen, cardFields, selectMode, isSelected, onToggleSelect }: {
+// ── Queue Card ───────────────────────────────────────────────────────────────
+
+function QueueCard({ p, taskMap, onOpen, cardFields, selectMode, isSelected, onToggleSelect, fundingMap, currentUser, onRefresh, todayStr }: {
   p: Project
   taskMap: Record<string, TaskEntry>
   onOpen: (p: Project) => void
@@ -651,6 +989,10 @@ function QueueCard({ p, taskMap, onOpen, cardFields, selectMode, isSelected, onT
   selectMode?: boolean
   isSelected?: boolean
   onToggleSelect?: (id: string) => void
+  fundingMap: Record<string, FundingRecord>
+  currentUser: any
+  onRefresh: () => void
+  todayStr: string
 }) {
   const sla = getSLA(p)
   const nextTask = getNextTask(p, taskMap)
@@ -660,102 +1002,248 @@ function QueueCard({ p, taskMap, onOpen, cardFields, selectMode, isSelected, onT
   const metaFields = cardFields.filter(k => k !== 'name' && k !== 'stage')
   const showStageInHeader = cardFields.includes('stage')
 
-  return (
-    <div
-      onClick={() => {
-        if (selectMode && onToggleSelect) {
-          onToggleSelect(p.id)
-        } else {
-          onOpen(p)
-        }
-      }}
-      className={`bg-gray-800 hover:bg-gray-700 border rounded-xl p-4 mb-3 cursor-pointer transition-colors relative ${
-        isSelected ? 'border-green-500 ring-1 ring-green-500/30' : 'border-gray-700'
-      }`}
-    >
-      {selectMode && (
-        <SelectCheckbox selected={!!isSelected} />
-      )}
-      <div className="flex items-start gap-3">
-        {/* Priority dot */}
-        <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
-          p.blocker ? 'bg-red-500' : STATUS_COLOR[sla.status]
-        }`} />
+  // Inline quick action states
+  const [showDatePicker, setShowDatePicker] = useState(false)
+  const [followUpDate, setFollowUpDate] = useState('')
+  const [showQuickNote, setShowQuickNote] = useState(false)
+  const [quickNote, setQuickNote] = useState('')
+  const [quickNoteSubmitting, setQuickNoteSubmitting] = useState(false)
+  const [clearingBlocker, setClearingBlocker] = useState(false)
 
-        <div className="flex-1 min-w-0">
-          {/* Name + ID + stage */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-white text-sm">{p.name}</span>
-            <span className="text-xs text-gray-500">{p.id}</span>
-            {showStageInHeader && <>
-              <span className="text-xs text-gray-500">·</span>
-              <span className="text-xs text-green-400">{STAGE_LABELS[p.stage]}</span>
-            </>}
+  const handleSetFollowUp = useCallback(async (date: string) => {
+    if (!date) return
+    await updateProject(p.id, { follow_up_date: date })
+    setShowDatePicker(false)
+    setFollowUpDate('')
+    onRefresh()
+  }, [p.id, onRefresh])
+
+  const handleClearBlocker = useCallback(async () => {
+    if (!p.blocker) return
+    if (!window.confirm(`Clear blocker on ${p.name}?`)) return
+    setClearingBlocker(true)
+    try {
+      // Log to audit
+      await db().from('audit_log').insert({
+        project_id: p.id,
+        field: 'blocker',
+        old_value: p.blocker,
+        new_value: null,
+        changed_by: currentUser?.name ?? 'unknown',
+        changed_by_id: currentUser?.id ?? null,
+      })
+      await updateProject(p.id, { blocker: null })
+      onRefresh()
+    } finally {
+      setClearingBlocker(false)
+    }
+  }, [p.id, p.name, p.blocker, currentUser, onRefresh])
+
+  const handleQuickNote = useCallback(async () => {
+    if (!quickNote.trim()) return
+    setQuickNoteSubmitting(true)
+    try {
+      await addNote({
+        project_id: p.id,
+        text: quickNote.trim(),
+        time: new Date().toISOString(),
+        pm: currentUser?.name ?? null,
+        pm_id: currentUser?.id ?? null,
+      })
+      setQuickNote('')
+      setShowQuickNote(false)
+    } finally {
+      setQuickNoteSubmitting(false)
+    }
+  }, [quickNote, p.id, currentUser])
+
+  return (
+    <div className="mb-3">
+      <div
+        onClick={() => {
+          if (selectMode && onToggleSelect) {
+            onToggleSelect(p.id)
+          } else {
+            onOpen(p)
+          }
+        }}
+        className={`group bg-gray-800 hover:bg-gray-700 border rounded-xl p-4 cursor-pointer transition-colors relative ${
+          isSelected ? 'border-green-500 ring-1 ring-green-500/30' : 'border-gray-700'
+        }`}
+      >
+        {selectMode && (
+          <SelectCheckbox selected={!!isSelected} />
+        )}
+        <div className="flex items-start gap-3">
+          {/* Priority dot */}
+          <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
+            p.blocker ? 'bg-red-500' : STATUS_COLOR[sla.status]
+          }`} />
+
+          <div className="flex-1 min-w-0">
+            {/* Name + ID + stage + funding */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-semibold text-white text-sm">{p.name}</span>
+              <span className="text-xs text-gray-500">{p.id}</span>
+              {showStageInHeader && <>
+                <span className="text-xs text-gray-500">·</span>
+                <span className="text-xs text-green-400">{STAGE_LABELS[p.stage]}</span>
+              </>}
+              <FundingBadge funding={fundingMap[p.id]} />
+            </div>
+
+            {/* Meta row driven by cardFields */}
+            {metaFields.length > 0 && (
+              <div className="flex items-center gap-1 mt-1 text-xs text-gray-400 flex-wrap">
+                {metaFields.map((key, i) => {
+                  const el = renderCardField(key, p)
+                  if (!el) return null
+                  return <span key={key} className="flex items-center gap-1">{i > 0 && <span className="text-gray-600 mx-1">·</span>}{el}</span>
+                })}
+              </div>
+            )}
+
+            {/* Blocker */}
+            {p.blocker && (
+              <div className="mt-2 text-xs text-red-400 bg-red-950 rounded-lg px-3 py-1.5 flex items-center gap-2">
+                <span className="flex-1">{p.blocker}</span>
+                {!selectMode && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleClearBlocker() }}
+                    className="text-red-500 hover:text-red-300 transition-colors flex-shrink-0"
+                    title="Clear blocker"
+                    disabled={clearingBlocker}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Stuck tasks */}
+            {stuck.length > 0 && (
+              <div className="mt-2 flex flex-col gap-1.5">
+                {stuck.map(t => (
+                  <div key={t.name} className={`flex items-baseline gap-1.5 text-xs rounded-lg px-2.5 py-1 ${
+                    t.status === 'Pending Resolution'
+                      ? 'bg-red-950 text-red-300'
+                      : 'bg-amber-950 text-amber-300'
+                  }`}>
+                    <span>{t.status === 'Pending Resolution' ? '⏸' : '↩'}</span>
+                    <span className="font-medium">{t.name}</span>
+                    {t.reason && (
+                      <>
+                        <span className="opacity-50">--</span>
+                        <span className="opacity-75">{t.reason}</span>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Next task */}
+            {!p.blocker && stuck.length === 0 && nextTask && (
+              <div className="mt-2 text-xs text-gray-400">
+                Next: <span className="text-white">{nextTask}</span>
+              </div>
+            )}
           </div>
 
-          {/* Meta row driven by cardFields */}
-          {metaFields.length > 0 && (
-            <div className="flex items-center gap-1 mt-1 text-xs text-gray-400 flex-wrap">
-              {metaFields.map((key, i) => {
-                const el = renderCardField(key, p)
-                if (!el) return null
-                return <span key={key} className="flex items-center gap-1">{i > 0 && <span className="text-gray-600 mx-1">·</span>}{el}</span>
-              })}
-            </div>
-          )}
-
-          {/* Blocker */}
-          {p.blocker && (
-            <div className="mt-2 text-xs text-red-400 bg-red-950 rounded-lg px-3 py-1.5">
-              {p.blocker}
-            </div>
-          )}
-
-          {/* Stuck tasks */}
-          {stuck.length > 0 && (
-            <div className="mt-2 flex flex-col gap-1.5">
-              {stuck.map(t => (
-                <div key={t.name} className={`flex items-baseline gap-1.5 text-xs rounded-lg px-2.5 py-1 ${
-                  t.status === 'Pending Resolution'
-                    ? 'bg-red-950 text-red-300'
-                    : 'bg-amber-950 text-amber-300'
-                }`}>
-                  <span>{t.status === 'Pending Resolution' ? '⏸' : '↩'}</span>
-                  <span className="font-medium">{t.name}</span>
-                  {t.reason && (
-                    <>
-                      <span className="opacity-50">--</span>
-                      <span className="opacity-75">{t.reason}</span>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Next task */}
-          {!p.blocker && stuck.length === 0 && nextTask && (
-            <div className="mt-2 text-xs text-gray-400">
-              Next: <span className="text-white">{nextTask}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Right side — SLA + cycle */}
-        <div className="text-right flex-shrink-0">
-          <div className={`text-sm font-bold font-mono ${
-            p.blocker ? 'text-red-400' :
-            sla.status === 'crit' ? 'text-red-400' :
-            sla.status === 'risk' ? 'text-amber-400' :
-            sla.status === 'warn' ? 'text-yellow-400' :
-            'text-gray-400'
-          }`}>{sla.days}d</div>
-          <div className="text-xs text-gray-600 mt-0.5">{cycle}d total</div>
+          {/* Right side — SLA + cycle + last activity + quick actions */}
+          <div className="text-right flex-shrink-0 flex flex-col items-end gap-1">
+            <div className={`text-sm font-bold font-mono ${
+              p.blocker ? 'text-red-400' :
+              sla.status === 'crit' ? 'text-red-400' :
+              sla.status === 'risk' ? 'text-amber-400' :
+              sla.status === 'warn' ? 'text-yellow-400' :
+              'text-gray-400'
+            }`}>{sla.days}d</div>
+            <div className="text-xs text-gray-600">{cycle}d total</div>
+            <LastActivity p={p} />
+            {/* Quick action icons */}
+            {!selectMode && (
+              <div className="flex items-center gap-1.5 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowDatePicker(!showDatePicker) }}
+                  className="text-gray-500 hover:text-green-400 transition-colors p-0.5"
+                  title="Set follow-up date"
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowQuickNote(!showQuickNote) }}
+                  className="text-gray-500 hover:text-blue-400 transition-colors p-0.5"
+                  title="Quick note"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Inline follow-up date picker */}
+      {showDatePicker && !selectMode && (
+        <div className="mt-1 ml-5 flex items-center gap-2 bg-gray-850 rounded-lg px-3 py-2 border border-gray-700" onClick={e => e.stopPropagation()}>
+          <Calendar className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+          <input
+            type="date"
+            value={followUpDate}
+            onChange={e => setFollowUpDate(e.target.value)}
+            min={todayStr}
+            className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-2 py-1 focus:outline-none focus:border-green-500"
+            autoFocus
+          />
+          <button
+            onClick={() => handleSetFollowUp(followUpDate)}
+            disabled={!followUpDate}
+            className="text-xs px-2 py-1 rounded bg-green-700 text-white hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Set
+          </button>
+          <button
+            onClick={() => { setShowDatePicker(false); setFollowUpDate('') }}
+            className="text-xs text-gray-500 hover:text-white"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Inline quick note */}
+      {showQuickNote && !selectMode && (
+        <div className="mt-1 ml-5 flex items-center gap-2 bg-gray-850 rounded-lg px-3 py-2 border border-gray-700" onClick={e => e.stopPropagation()}>
+          <MessageSquare className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+          <input
+            value={quickNote}
+            onChange={e => setQuickNote(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleQuickNote() }}
+            placeholder="Add a note..."
+            className="flex-1 text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-2 py-1 focus:outline-none focus:border-green-500 placeholder-gray-500"
+            autoFocus
+          />
+          <button
+            onClick={handleQuickNote}
+            disabled={!quickNote.trim() || quickNoteSubmitting}
+            className="text-xs px-2 py-1 rounded bg-green-700 text-white hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {quickNoteSubmitting ? '...' : 'Add'}
+          </button>
+          <button
+            onClick={() => { setShowQuickNote(false); setQuickNote('') }}
+            className="text-xs text-gray-500 hover:text-white"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
     </div>
   )
 }
+
+// ── Card Fields Modal ────────────────────────────────────────────────────────
 
 function CardFieldsModal({ selected, onSave, onClose }: {
   selected: string[]
