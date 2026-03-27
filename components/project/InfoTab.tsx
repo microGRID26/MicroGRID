@@ -8,6 +8,8 @@ import { X, Plus } from 'lucide-react'
 import type { Project } from '@/types/database'
 import { EquipmentAutocomplete } from '@/components/EquipmentAutocomplete'
 import type { Equipment } from '@/lib/api/equipment'
+import { loadFieldDefinitions, loadProjectCustomFields, saveProjectCustomField } from '@/lib/api'
+import type { CustomFieldDefinition, CustomFieldValue } from '@/lib/api'
 
 // ── HELPER COMPONENTS ────────────────────────────────────────────────────────
 
@@ -537,6 +539,42 @@ export function InfoTab({ project, editMode, editDraft, setEditDraft, ahjInfo, u
   const { user: currentUserInfo } = useCurrentUser()
   const [moduleWatts, setModuleWatts] = useState<number | null>(null)
 
+  // ── Custom Fields ───────────────────────────────────────────────────────
+  const [customFieldDefs, setCustomFieldDefs] = useState<CustomFieldDefinition[]>([])
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string | null>>({})
+  const [customFieldDraft, setCustomFieldDraft] = useState<Record<string, string | null>>({})
+
+  useEffect(() => {
+    loadFieldDefinitions(true).then(setCustomFieldDefs)
+  }, [])
+
+  useEffect(() => {
+    if (!project.id) return
+    loadProjectCustomFields(project.id).then(vals => {
+      const map: Record<string, string | null> = {}
+      vals.forEach(v => { map[v.field_id] = v.value })
+      setCustomFieldValues(map)
+      setCustomFieldDraft(map)
+    })
+  }, [project.id])
+
+  // Save custom fields when parent saves (editMode goes from true to false)
+  const prevEditMode = useRef(editMode)
+  useEffect(() => {
+    if (prevEditMode.current && !editMode) {
+      // editMode just turned off — save custom fields
+      for (const def of customFieldDefs) {
+        const newVal = customFieldDraft[def.id] ?? null
+        const oldVal = customFieldValues[def.id] ?? null
+        if (newVal !== oldVal) {
+          saveProjectCustomField(project.id, def.id, newVal)
+        }
+      }
+      setCustomFieldValues({ ...customFieldDraft })
+    }
+    prevEditMode.current = editMode
+  }, [editMode])
+
   // Parse watts from module name (e.g. "Q.PEAK DUO BLK ML-G10+ 405W" -> 405)
   const parseWattsFromName = useCallback((name: string): number | null => {
     const match = name.match(/(\d{2,4})\s*[Ww]/)
@@ -722,6 +760,93 @@ export function InfoTab({ project, editMode, editDraft, setEditDraft, ahjInfo, u
             <EditRow label="In service" field="in_service_date" value={project.in_service_date} draft={editDraft} editing={editMode} onChange={setEditDraft} type="date" />
           </Section>
           <AddersSection adders={adders} editing={editMode} onAdd={onAddAdder} onDelete={onDeleteAdder} />
+          {customFieldDefs.length > 0 && (
+            <Section title="Custom Fields">
+              {customFieldDefs.map(def => {
+                const savedValue = customFieldValues[def.id] ?? def.default_value ?? null
+                const draftValue = customFieldDraft[def.id] ?? def.default_value ?? null
+                if (!editMode) {
+                  // View mode
+                  if (def.field_type === 'boolean') {
+                    return (
+                      <div key={def.id} className="flex gap-2 py-0.5">
+                        <span className="text-gray-500 text-xs w-28 flex-shrink-0">{def.label}</span>
+                        <span className="text-gray-200 text-xs">{savedValue === 'true' ? 'Yes' : savedValue === 'false' ? 'No' : '\u2014'}</span>
+                      </div>
+                    )
+                  }
+                  if (def.field_type === 'url' && savedValue) {
+                    return (
+                      <div key={def.id} className="flex gap-2 py-0.5">
+                        <span className="text-gray-500 text-xs w-28 flex-shrink-0">{def.label}</span>
+                        <a href={savedValue.startsWith('http') ? savedValue : `https://${savedValue}`} target="_blank" rel="noopener noreferrer" className="text-green-400 text-xs hover:underline break-words">{savedValue} &#8599;</a>
+                      </div>
+                    )
+                  }
+                  if (def.field_type === 'date' && savedValue) {
+                    const display = new Date(savedValue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    return (
+                      <div key={def.id} className="flex gap-2 py-0.5">
+                        <span className="text-gray-500 text-xs w-28 flex-shrink-0">{def.label}</span>
+                        <span className="text-gray-200 text-xs">{display}</span>
+                      </div>
+                    )
+                  }
+                  if (!savedValue) return null
+                  return (
+                    <div key={def.id} className="flex gap-2 py-0.5">
+                      <span className="text-gray-500 text-xs w-28 flex-shrink-0">{def.label}</span>
+                      <span className="text-gray-200 text-xs break-words">{savedValue}</span>
+                    </div>
+                  )
+                }
+                // Edit mode
+                if (def.field_type === 'boolean') {
+                  return (
+                    <div key={def.id} className="flex gap-2 py-0.5 items-center">
+                      <span className="text-gray-500 text-xs w-28 flex-shrink-0">{def.label}</span>
+                      <button
+                        type="button"
+                        onClick={() => setCustomFieldDraft(d => ({ ...d, [def.id]: draftValue === 'true' ? 'false' : 'true' }))}
+                        className={`w-9 h-5 rounded-full relative transition-colors ${draftValue === 'true' ? 'bg-green-600' : 'bg-gray-600'}`}
+                      >
+                        <div className={`w-3.5 h-3.5 bg-white rounded-full absolute top-[3px] transition-all ${draftValue === 'true' ? 'right-[3px]' : 'left-[3px]'}`} />
+                      </button>
+                      <span className="text-xs text-gray-400">{draftValue === 'true' ? 'Yes' : 'No'}</span>
+                    </div>
+                  )
+                }
+                if (def.field_type === 'select') {
+                  return (
+                    <div key={def.id} className="flex gap-2 py-0.5 items-center">
+                      <span className="text-gray-500 text-xs w-28 flex-shrink-0">{def.label}{def.required && <span className="text-red-400 ml-0.5">*</span>}</span>
+                      <select
+                        value={draftValue ?? ''}
+                        onChange={e => setCustomFieldDraft(d => ({ ...d, [def.id]: e.target.value || null }))}
+                        className="flex-1 bg-gray-700 text-white text-xs rounded px-2 py-1 border border-gray-600 focus:border-green-500 focus:outline-none"
+                      >
+                        <option value="">Select...</option>
+                        {(def.options ?? []).map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </div>
+                  )
+                }
+                const inputType = def.field_type === 'number' ? 'number' : def.field_type === 'date' ? 'date' : 'text'
+                return (
+                  <div key={def.id} className="flex gap-2 py-0.5 items-center">
+                    <span className="text-gray-500 text-xs w-28 flex-shrink-0">{def.label}{def.required && <span className="text-red-400 ml-0.5">*</span>}</span>
+                    <input
+                      type={inputType}
+                      value={draftValue ?? ''}
+                      onChange={e => setCustomFieldDraft(d => ({ ...d, [def.id]: e.target.value || null }))}
+                      className="flex-1 bg-gray-700 text-white text-xs rounded px-2 py-1 border border-gray-600 focus:border-green-500 focus:outline-none"
+                      placeholder={def.field_type === 'url' ? 'https://...' : ''}
+                    />
+                  </div>
+                )
+              })}
+            </Section>
+          )}
           {stageHistory.length > 0 && (
             <Section title="Stage History">
               {stageHistory.map((h: any, i: number) => (

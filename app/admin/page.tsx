@@ -24,6 +24,7 @@ import { EquipmentManager } from '@/components/admin/EquipmentManager'
 import { EdgeIntegrationManager } from '@/components/admin/EdgeIntegrationManager'
 import { VendorManager } from '@/components/admin/VendorManager'
 import { EmailManager } from '@/components/admin/EmailManager'
+import { CustomFieldsManager } from '@/components/admin/CustomFieldsManager'
 
 export default function AdminPage() {
   const { user: authUser, loading } = useCurrentUser()
@@ -141,6 +142,7 @@ export default function AdminPage() {
             {activeModule === 'doc_requirements' && <DocumentRequirementsManager isSuperAdmin={isSuperAdmin} />}
             {activeModule === 'edge_integration' && <EdgeIntegrationManager />}
             {activeModule === 'email_onboarding' && <EmailManager isSuperAdmin={isSuperAdmin} currentUserEmail={authUser?.email ?? undefined} currentUserName={authUser?.name ?? undefined} />}
+            {activeModule === 'custom_fields' && <CustomFieldsManager isSuperAdmin={isSuperAdmin} />}
           </div>
         </main>
       </div>
