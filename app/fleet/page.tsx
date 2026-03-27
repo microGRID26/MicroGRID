@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Nav } from '@/components/Nav'
 import { useCurrentUser } from '@/lib/useCurrentUser'
-import { cn, fmtDate, fmt$, daysAgo } from '@/lib/utils'
+import { cn, fmtDate, fmt$ } from '@/lib/utils'
 import {
   loadVehicles,
   addVehicle,

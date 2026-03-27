@@ -7,7 +7,7 @@ import { useCurrentUser } from './useCurrentUser'
 
 export interface Notification {
   id: string
-  type: 'blocked' | 'revision' | 'milestone'
+  type: 'blocked' | 'revision' | 'milestone' | 'mention'
   title: string
   message: string
   projectId: string
@@ -125,7 +125,7 @@ export function useNotifications() {
         const projName = m.project?.name ?? m.project_id
         notifs.push({
           id: `mention-${m.id}`,
-          type: 'milestone' as const,
+          type: 'mention' as const,
           title: `@Mentioned by ${m.mentioned_by}`,
           message: `${projName} (${m.project_id}): ${m.message?.slice(0, 80) ?? ''}`,
           projectId: m.project_id,

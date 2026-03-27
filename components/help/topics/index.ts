@@ -27,6 +27,8 @@ export const CATEGORIES = [
 ]
 
 export const WHATS_NEW = [
+  { date: 'Mar 2026', title: 'Fleet Management', topicId: 'fleet-management' },
+  { date: 'Mar 2026', title: 'Custom Fields', topicId: 'custom-fields' },
   { date: 'Mar 2026', title: 'Warranty Tracking', topicId: 'warranty-tracking' },
   { date: 'Mar 2026', title: 'Barcode Scanning', topicId: 'barcode-scanning' },
   { date: 'Mar 2026', title: 'Inventory Management', topicId: 'materials-tab' },

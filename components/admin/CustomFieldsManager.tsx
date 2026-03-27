@@ -45,7 +45,7 @@ const emptyDraft: FieldDraft = {
   active: true,
 }
 
-export function CustomFieldsManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
+export function CustomFieldsManager({ isSuperAdmin: _isSuperAdmin }: { isSuperAdmin: boolean }) {
   const [fields, setFields] = useState<CustomFieldDefinition[]>([])
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<CustomFieldDefinition | null>(null)

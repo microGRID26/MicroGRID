@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Bell, AlertTriangle, OctagonX, CheckCheck } from 'lucide-react'
+import { Bell, AlertTriangle, OctagonX, CheckCheck, AtSign } from 'lucide-react'
 import { useNotifications, type Notification } from '@/lib/useNotifications'
 
 function timeAgo(ts: string): string {
@@ -109,6 +109,8 @@ function NotificationRow({ notification: n, onRead, onClose }: { notification: N
       <div className="mt-0.5 flex-shrink-0">
         {n.type === 'blocked' ? (
           <OctagonX className="w-4 h-4 text-red-400" />
+        ) : n.type === 'mention' ? (
+          <AtSign className="w-4 h-4 text-green-400" />
         ) : (
           <AlertTriangle className="w-4 h-4 text-amber-400" />
         )}
@@ -117,7 +119,7 @@ function NotificationRow({ notification: n, onRead, onClose }: { notification: N
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className={`text-xs font-medium ${n.type === 'blocked' ? 'text-red-400' : 'text-amber-400'}`}>
+          <span className={`text-xs font-medium ${n.type === 'blocked' ? 'text-red-400' : n.type === 'mention' ? 'text-green-400' : 'text-amber-400'}`}>
             {n.title}
           </span>
           {!n.read && (

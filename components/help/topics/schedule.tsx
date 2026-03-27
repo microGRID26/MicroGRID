@@ -135,6 +135,47 @@ function WorkOrdersPage() {
   )
 }
 
+function FleetManagement() {
+  return (
+    <div>
+      <p className="text-xs text-gray-400 mb-2">Track company vehicles at <span className="text-green-400 font-mono">/fleet</span>. Manage vehicle details, assign to crews/drivers, and track maintenance schedules.</p>
+      <div className="space-y-2 text-xs">
+        <div>
+          <span className="text-gray-300 font-medium block mb-1">Vehicle Status</span>
+          <div className="flex items-center gap-1.5 text-gray-400">
+            <span className="bg-green-900 text-green-300 px-1.5 py-0.5 rounded text-[10px]">Active</span>
+            <span className="bg-amber-900 text-amber-300 px-1.5 py-0.5 rounded text-[10px]">Maintenance</span>
+            <span className="bg-red-900 text-red-300 px-1.5 py-0.5 rounded text-[10px]">Out of Service</span>
+            <span className="bg-gray-700 text-gray-300 px-1.5 py-0.5 rounded text-[10px]">Retired</span>
+          </div>
+        </div>
+        <div>
+          <span className="text-gray-300 font-medium block mb-1">Features</span>
+          {[
+            'Vehicle details: VIN, year, make, model, license plate, color',
+            'Assign vehicles to crews and drivers',
+            'Insurance and registration expiry tracking with alerts',
+            'Odometer tracking -- auto-updates from maintenance records',
+            'Maintenance history with 6 service types (oil change, tires, brakes, inspection, repair, other)',
+            'Upcoming maintenance alerts (within 30 days)',
+            'Next due date and odometer scheduling',
+            'Cost tracking per maintenance record',
+            'CSV export of fleet data',
+            'Search by vehicle #, make, model, plate, VIN, or driver',
+            'Filter by status and crew assignment',
+            'Delete restricted to super admin',
+          ].map((item, i) => (
+            <div key={i} className="flex items-start gap-2 text-gray-400">
+              <span className="text-gray-600 mt-0.5">&bull;</span>
+              <span>{item}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export const scheduleTopics: HelpTopicData[] = [
   {
     id: 'schedule-page',
@@ -185,5 +226,15 @@ export const scheduleTopics: HelpTopicData[] = [
     tryItLink: '/work-orders',
     relatedTopics: ['schedule-page', 'crew-view', 'field-operator-view'],
     content: WorkOrdersPage,
+  },
+  {
+    id: 'fleet-management',
+    title: 'Fleet Management',
+    description: 'Track company vehicles, maintenance history, and expiry alerts',
+    category: 'Schedule & Crews',
+    keywords: ['fleet', 'vehicle', 'truck', 'maintenance', 'oil change', 'inspection', 'insurance', 'registration', 'odometer', 'driver', 'crew'],
+    tryItLink: '/fleet',
+    relatedTopics: ['schedule-page', 'crew-view', 'work-orders'],
+    content: FleetManagement,
   },
 ]

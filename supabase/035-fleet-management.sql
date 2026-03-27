@@ -69,3 +69,4 @@ ALTER TABLE vehicle_maintenance ENABLE ROW LEVEL SECURITY;
 CREATE POLICY vm_select ON vehicle_maintenance FOR SELECT TO authenticated USING (true);
 CREATE POLICY vm_insert ON vehicle_maintenance FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY vm_update ON vehicle_maintenance FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY vm_delete ON vehicle_maintenance FOR DELETE TO authenticated USING (auth_is_admin());

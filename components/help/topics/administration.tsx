@@ -18,6 +18,7 @@ function AdminPortal() {
           'Feedback -- User-submitted bugs/features',
           'Audit Trail -- Session + change tracking',
           'Email Onboarding -- 30-day training series',
+          'Custom Fields -- Define dynamic project fields',
         ].map((item, i) => (
           <div key={i} className="bg-gray-800 rounded-md px-3 py-2 text-gray-400">{item}</div>
         ))}
@@ -200,6 +201,48 @@ function QueueConfig() {
   )
 }
 
+function CustomFieldsHelp() {
+  return (
+    <div>
+      <p className="text-xs text-gray-400 mb-2">Define custom fields in the Admin portal that appear on every project&apos;s Info tab under a &quot;Custom Fields&quot; section. Useful for tracking data specific to your workflow without code changes.</p>
+      <div className="space-y-2 text-xs">
+        <div>
+          <span className="text-gray-300 font-medium block mb-1">Supported Field Types</span>
+          <div className="flex items-center gap-1.5 text-gray-400 flex-wrap">
+            <span className="bg-blue-900/40 text-blue-400 border border-blue-800 px-1.5 py-0.5 rounded text-[10px]">Text</span>
+            <span className="bg-purple-900/40 text-purple-400 border border-purple-800 px-1.5 py-0.5 rounded text-[10px]">Number</span>
+            <span className="bg-amber-900/40 text-amber-400 border border-amber-800 px-1.5 py-0.5 rounded text-[10px]">Date</span>
+            <span className="bg-green-900/40 text-green-400 border border-green-800 px-1.5 py-0.5 rounded text-[10px]">Dropdown</span>
+            <span className="bg-cyan-900/40 text-cyan-400 border border-cyan-800 px-1.5 py-0.5 rounded text-[10px]">Yes/No</span>
+            <span className="bg-pink-900/40 text-pink-400 border border-pink-800 px-1.5 py-0.5 rounded text-[10px]">URL</span>
+          </div>
+        </div>
+        <div>
+          <span className="text-gray-300 font-medium block mb-1">Features</span>
+          {[
+            'Admin-only field creation and management',
+            'Auto-generated machine-readable field names (slug)',
+            'Required/optional toggle per field',
+            'Default values for new projects',
+            'Dropdown options (add/remove dynamically)',
+            'Sort order control with drag up/down',
+            'Active/inactive toggle to hide without deleting',
+            'Section grouping for organizing fields',
+            'Live preview in the manager',
+            'Values saved per-project via the Info tab',
+            'Deleting a definition cascades to all saved values',
+          ].map((item, i) => (
+            <div key={i} className="flex items-start gap-2 text-gray-400">
+              <span className="text-gray-600 mt-0.5">&bull;</span>
+              <span>{item}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export const administrationTopics: HelpTopicData[] = [
   {
     id: 'admin-portal',
@@ -277,5 +320,15 @@ export const administrationTopics: HelpTopicData[] = [
     tryItLink: '/admin',
     relatedTopics: ['admin-portal', 'user-management'],
     content: EmailOnboarding,
+  },
+  {
+    id: 'custom-fields',
+    title: 'Custom Fields',
+    description: 'Admin-defined custom fields that appear on the project Info tab',
+    category: 'Administration',
+    keywords: ['custom', 'fields', 'field', 'definition', 'type', 'text', 'number', 'date', 'select', 'boolean', 'url', 'extensible', 'dynamic'],
+    tryItLink: '/admin',
+    relatedTopics: ['admin-portal', 'project-info-tab'],
+    content: CustomFieldsHelp,
   },
 ]

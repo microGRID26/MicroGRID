@@ -59,3 +59,6 @@ CREATE POLICY "custom_field_values_insert" ON custom_field_values
 
 CREATE POLICY "custom_field_values_update" ON custom_field_values
   FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+
+CREATE POLICY "custom_field_values_delete" ON custom_field_values
+  FOR DELETE TO authenticated USING (true);
