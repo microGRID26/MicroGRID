@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { loadProjectById } from '@/lib/api'
 import { Nav } from '@/components/Nav'
 import { Pagination } from '@/components/Pagination'
-import { fmtDate, daysAgo } from '@/lib/utils'
+import { cn, fmtDate, daysAgo } from '@/lib/utils'
 import { ProjectPanel } from '@/components/project/ProjectPanel'
 import { useSupabaseQuery } from '@/lib/hooks'
 import { useCurrentUser } from '@/lib/useCurrentUser'
@@ -93,24 +93,6 @@ function exportServiceCSV(calls: ServiceCall[]) {
 export default function ServicePage() {
   const { user: serviceUser, loading: serviceUserLoading } = useCurrentUser()
 
-  // Role gate: Manager+ only
-  if (!serviceUserLoading && serviceUser && !serviceUser.isManager) {
-    return (
-      <>
-        <Nav active="Service" />
-        <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-lg text-gray-400">Access Restricted</p>
-            <p className="text-sm text-gray-500 mt-2">Service is available to Managers and above.</p>
-            <a href="/command" className="inline-block mt-4 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-              &larr; Back to Command Center
-            </a>
-          </div>
-        </div>
-      </>
-    )
-  }
-
   const [selected, setSelected] = useState<Project | null>(null)
   const [loadingProject, setLoadingProject] = useState(false)
 
@@ -132,17 +114,16 @@ export default function ServicePage() {
     pageSize: 100,
   })
 
-  const openProject = async (projectId: string) => {
+  const openProject = useCallback(async (projectId: string) => {
     setLoadingProject(true)
     const data = await loadProjectById(projectId)
     if (!data) {
-      alert(`Failed to load project ${projectId}`)
       setLoadingProject(false)
       return
     }
     setSelected(data)
     setLoadingProject(false)
-  }
+  }, [])
 
   const typedCalls = calls as unknown as ServiceCall[]
 
@@ -226,6 +207,28 @@ export default function ServicePage() {
     refresh()
   }, [refresh])
 
+  const handleExport = useCallback(() => {
+    exportServiceCSV(filtered)
+  }, [filtered])
+
+  // Role gate: Manager+ only (after all hooks)
+  if (!serviceUserLoading && serviceUser && !serviceUser.isManager) {
+    return (
+      <>
+        <Nav active="Service" />
+        <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-lg text-gray-400">Access Restricted</p>
+            <p className="text-sm text-gray-500 mt-2">Service is available to Managers and above.</p>
+            <a href="/command" className="inline-block mt-4 text-xs text-blue-400 hover:text-blue-300 transition-colors">
+              &larr; Back to Command Center
+            </a>
+          </div>
+        </div>
+      </>
+    )
+  }
+
   if (loading) return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
       <div className="text-green-400 text-sm animate-pulse">Loading service calls...</div>
@@ -237,7 +240,7 @@ export default function ServicePage() {
       <Nav active="Service" />
 
       {/* Stats bar */}
-      <div className="bg-gray-950 border-b border-gray-800 px-4 py-2 flex items-center gap-4 flex-shrink-0">
+      <div className="bg-gray-950 border-b border-gray-800 px-4 py-2 flex items-center gap-4 flex-shrink-0" role="status" aria-label="Service call statistics">
         <div className="flex items-center gap-3">
           <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Cases:</span>
           {[
@@ -248,7 +251,7 @@ export default function ServicePage() {
             { label: 'Closed', count: counts['Closed'] ?? 0, color: 'text-green-400' },
           ].map(s => (
             <div key={s.label} className="flex items-center gap-1">
-              <span className={`text-sm font-semibold ${s.color}`}>{s.count}</span>
+              <span className={cn('text-sm font-semibold', s.color)}>{s.count}</span>
               <span className="text-xs text-gray-500">{s.label}</span>
             </div>
           ))}
@@ -260,7 +263,7 @@ export default function ServicePage() {
       </div>
 
       {/* Status tabs + filters */}
-      <div className="bg-gray-950 border-b border-gray-800 flex items-center gap-1 px-4 py-2 flex-shrink-0 flex-wrap">
+      <div className="bg-gray-950 border-b border-gray-800 flex items-center gap-1 px-4 py-2 flex-shrink-0 flex-wrap" role="toolbar" aria-label="Service call filters">
         {/* Status tabs */}
         {[
           { key: 'all', label: `All (${counts.all})` },
@@ -270,16 +273,18 @@ export default function ServicePage() {
           { key: 'Closed', label: `Closed (${counts['Closed'] ?? 0})` },
         ].map(t => (
           <button key={t.key} onClick={() => { setStatusFilter(t.key); setPage(1) }}
-            className={`text-xs px-3 py-1.5 rounded-md transition-colors ${statusFilter === t.key ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-white'}`}>
+            aria-pressed={statusFilter === t.key}
+            className={cn('text-xs px-3 py-1.5 rounded-md transition-colors', statusFilter === t.key ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-white')}>
             {t.label}
           </button>
         ))}
 
         {/* Divider */}
-        <div className="w-px h-5 bg-gray-700 mx-1" />
+        <div className="w-px h-5 bg-gray-700 mx-1" aria-hidden="true" />
 
         {/* Priority filter */}
         <select value={priorityFilter} onChange={e => { setPriorityFilter(e.target.value); setPage(1) }}
+          aria-label="Filter by priority"
           className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5 focus:outline-none focus:border-green-500">
           <option value="all">All Priorities</option>
           {priorityOptions.map(p => (
@@ -289,6 +294,7 @@ export default function ServicePage() {
 
         {/* PM filter */}
         <select value={pmFilter} onChange={e => { setPmFilter(e.target.value); setPage(1) }}
+          aria-label="Filter by project manager"
           className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5 focus:outline-none focus:border-green-500">
           <option value="all">All PMs</option>
           {pmOptions.map(p => (
@@ -298,6 +304,7 @@ export default function ServicePage() {
 
         {/* Date range filter */}
         <select value={dateRange} onChange={e => { setDateRange(e.target.value as DateRange); setPage(1) }}
+          aria-label="Filter by date range"
           className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5 focus:outline-none focus:border-green-500">
           <option value="all">All Dates</option>
           <option value="today">Today</option>
@@ -308,14 +315,15 @@ export default function ServicePage() {
         {/* Search */}
         <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
           placeholder="Search name, ID, issue, PM..."
+          aria-label="Search service calls"
           className="ml-auto text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-3 py-1.5 w-52 focus:outline-none focus:border-green-500 placeholder-gray-500" />
 
         {/* Action buttons */}
-        <button onClick={handleRefresh} title="Refresh"
+        <button onClick={handleRefresh} title="Refresh" aria-label="Refresh service calls"
           className="text-xs text-gray-400 hover:text-green-400 transition-colors p-1.5 rounded hover:bg-gray-800">
           <RefreshCw size={14} />
         </button>
-        <button onClick={() => exportServiceCSV(filtered)} title="Export CSV"
+        <button onClick={handleExport} title="Export CSV" aria-label="Export to CSV"
           className="text-xs text-gray-400 hover:text-green-400 transition-colors p-1.5 rounded hover:bg-gray-800">
           <Download size={14} />
         </button>
@@ -344,12 +352,14 @@ export default function ServicePage() {
             <div>{calls.length === 0 ? 'No service calls in database.' : 'No service calls match your filters.'}</div>
           </div>
         ) : (
-          <table className="w-full border-collapse text-xs">
+          <table className="w-full border-collapse text-xs" role="table">
             <thead className="bg-gray-950 sticky top-0">
               <tr>
                 {COLUMN_DEFS.map(col => (
                   <th key={col.key}
+                    scope="col"
                     onClick={() => handleSort(col.key)}
+                    aria-sort={sortCol === col.key ? (sortAsc ? 'ascending' : 'descending') : undefined}
                     className="text-left text-gray-400 font-medium px-3 py-2 border-b border-gray-800 cursor-pointer select-none hover:text-white transition-colors">
                     <span className="inline-flex items-center gap-1">
                       {col.label}
@@ -370,7 +380,7 @@ export default function ServicePage() {
                   <tr key={call.id}
                     className="border-b border-gray-800 cursor-pointer hover:bg-gray-800/60 transition-colors">
                     <td className="px-3 py-2" onClick={() => openProject(call.project_id)}>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLE[call.status] ?? 'bg-gray-800 text-gray-400'}`}>
+                      <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', STATUS_STYLE[call.status] ?? 'bg-gray-800 text-gray-400')}>
                         {call.status}
                       </span>
                     </td>
@@ -381,7 +391,7 @@ export default function ServicePage() {
                     <td className="px-3 py-2 max-w-md" onClick={() => setExpandedIssue(isExpanded ? null : call.id)}>
                       {call.type && call.type !== 'NetSuite Import' && <div className="text-gray-300 font-medium">{call.type}</div>}
                       {call.issue && (
-                        <div className={`text-gray-400 ${isExpanded ? 'whitespace-pre-wrap' : 'line-clamp-2'}`} title={isExpanded ? undefined : call.issue}>
+                        <div className={cn('text-gray-400', isExpanded ? 'whitespace-pre-wrap' : 'line-clamp-2')} title={isExpanded ? undefined : call.issue}>
                           {call.issue}
                         </div>
                       )}
@@ -396,7 +406,7 @@ export default function ServicePage() {
                     <td className="px-3 py-2 text-gray-400" onClick={() => openProject(call.project_id)}>{fmtDate(call.date)}</td>
                     <td className="px-3 py-2" onClick={() => openProject(call.project_id)}>
                       {call.priority ? (
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PRIORITY_STYLE[call.priority] ?? 'bg-gray-800 text-gray-400'}`}>
+                        <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', PRIORITY_STYLE[call.priority] ?? 'bg-gray-800 text-gray-400')}>
                           {call.priority.charAt(0).toUpperCase() + call.priority.slice(1)}
                         </span>
                       ) : (
@@ -413,7 +423,7 @@ export default function ServicePage() {
 
       {/* Loading overlay for project panel */}
       {loadingProject && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" role="status" aria-label="Loading project">
           <div className="text-green-400 text-sm animate-pulse">Loading project...</div>
         </div>
       )}

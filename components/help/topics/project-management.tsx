@@ -134,6 +134,43 @@ function DispositionWorkflow() {
   )
 }
 
+function ServiceCases() {
+  return (
+    <div>
+      <p className="text-xs text-gray-400 mb-3">Track 922 imported service cases from NetSuite at <span className="text-green-400 font-mono">/service</span>. Manager+ access required.</p>
+      <div className="space-y-2 text-xs">
+        <div>
+          <span className="text-gray-300 font-medium block mb-1">Status Types</span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="bg-red-900/60 text-red-300 px-1.5 py-0.5 rounded text-[10px]">Open</span>
+            <span className="bg-blue-900/60 text-blue-300 px-1.5 py-0.5 rounded text-[10px]">Scheduled</span>
+            <span className="bg-amber-900/60 text-amber-300 px-1.5 py-0.5 rounded text-[10px]">In Progress</span>
+            <span className="bg-red-900/80 text-red-200 px-1.5 py-0.5 rounded text-[10px] font-semibold">Escalated</span>
+            <span className="bg-green-900/60 text-green-300 px-1.5 py-0.5 rounded text-[10px]">Closed</span>
+          </div>
+        </div>
+        <div>
+          <span className="text-gray-300 font-medium block mb-1">Features</span>
+          {[
+            'Sortable columns -- click any header to sort ascending/descending',
+            'Filter by status tabs, priority, PM, and date range (Today/7d/30d)',
+            'Search by project name, ID, issue text, or PM name',
+            'Expandable issue text -- click to see full details and resolution',
+            'CSV export of filtered results',
+            'Stats bar showing counts by status',
+            'Click any row to open the project panel',
+          ].map((item, i) => (
+            <div key={i} className="flex items-start gap-2 text-gray-400">
+              <span className="text-gray-600 mt-0.5">&bull;</span>
+              <span>{item}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function StageAdvancement() {
   return (
     <div>
@@ -310,5 +347,15 @@ export const projectManagementTopics: HelpTopicData[] = [
     keywords: ['stage', 'advance', 'next', 'pipeline', 'progression', 'auto'],
     relatedTopics: ['task-prerequisites', 'automations'],
     content: StageAdvancement,
+  },
+  {
+    id: 'service-cases',
+    title: 'Service Cases',
+    description: 'Track and manage service calls with filters, sorting, and CSV export',
+    category: 'Project Management',
+    keywords: ['service', 'case', 'call', 'issue', 'repair', 'warranty', 'escalated', 'priority', 'csv', 'export'],
+    tryItLink: '/service',
+    relatedTopics: ['work-orders', 'opening-project'],
+    content: ServiceCases,
   },
 ]

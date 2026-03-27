@@ -38,9 +38,10 @@ interface StatusSelectProps {
   onSave: (val: string | null) => Promise<void>
   compact?: boolean
   disabled?: boolean
+  ariaLabel?: string
 }
 
-export function StatusSelect({ value, onSave, compact, disabled = false }: StatusSelectProps) {
+export function StatusSelect({ value, onSave, compact, disabled = false, ariaLabel }: StatusSelectProps) {
   const [saving, setSaving] = useState(false)
 
   const handleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -59,6 +60,7 @@ export function StatusSelect({ value, onSave, compact, disabled = false }: Statu
       onChange={handleChange}
       onClick={e => e.stopPropagation()}
       disabled={saving || disabled}
+      aria-label={ariaLabel ?? 'Funding status'}
       className={`bg-transparent border-0 text-[10px] focus:outline-none w-full ${color} ${saving ? 'opacity-50' : ''} ${disabled ? 'cursor-default' : 'cursor-pointer'}`}
     >
       <option value="">{'\u2014'}</option>

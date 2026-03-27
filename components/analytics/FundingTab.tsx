@@ -33,11 +33,14 @@ export function FundingTab({ data }: { data: AnalyticsData }) {
     const m2UnfundedIds = new Set(allFunding.filter(f => !f.m2_funded_date).map(f => f.project_id))
     const m3UnfundedIds = new Set(allFunding.filter(f => !f.m3_funded_date).map(f => f.project_id))
 
+    // Build project lookup map to avoid O(n*m) find() calls
+    const projectMap = new Map(projects.map(p => [p.id, p]))
+
     // Avg days install complete -> M2 funded
     const m2Days: number[] = []
     allFunding.forEach(f => {
       if (!f.m2_funded_date) return
-      const proj = projects.find(p => p.id === f.project_id)
+      const proj = projectMap.get(f.project_id)
       if (!proj?.install_complete_date) return
       const d1 = new Date(proj.install_complete_date + 'T00:00:00')
       const d2 = new Date(f.m2_funded_date + 'T00:00:00')
@@ -52,7 +55,7 @@ export function FundingTab({ data }: { data: AnalyticsData }) {
     const m3Days: number[] = []
     allFunding.forEach(f => {
       if (!f.m3_funded_date) return
-      const proj = projects.find(p => p.id === f.project_id)
+      const proj = projectMap.get(f.project_id)
       if (!proj?.pto_date) return
       const d1 = new Date(proj.pto_date + 'T00:00:00')
       const d2 = new Date(f.m3_funded_date + 'T00:00:00')
@@ -66,7 +69,7 @@ export function FundingTab({ data }: { data: AnalyticsData }) {
     // Funding by financier
     const finFunding = new Map<string, number>()
     allFunding.forEach(f => {
-      const proj = projects.find(p => p.id === f.project_id)
+      const proj = projectMap.get(f.project_id)
       const fin = proj?.financier || 'Unknown'
       const amt = (Number(f.m2_amount) || 0) + (Number(f.m3_amount) || 0)
       finFunding.set(fin, (finFunding.get(fin) || 0) + amt)

@@ -11,13 +11,16 @@ export function PipelineHealth({ data }: { data: AnalyticsData }) {
   const { projects, active } = data
   const [drillDown, setDrillDown] = useState<{ title: string; projects: typeof projects } | null>(null)
 
-  // Stage distribution
-  const stageDist = useMemo(() => STAGE_ORDER.filter(s => s !== 'complete').map(s => ({
-    stage: s,
-    label: STAGE_LABELS[s],
-    count: active.filter(p => p.stage === s).length,
-    value: active.filter(p => p.stage === s).reduce((sum, p) => sum + (Number(p.contract) || 0), 0),
-  })), [active])
+  // Stage distribution — single filter pass per stage
+  const stageDist = useMemo(() => STAGE_ORDER.filter(s => s !== 'complete').map(s => {
+    const stageProjects = active.filter(p => p.stage === s)
+    return {
+      stage: s,
+      label: STAGE_LABELS[s],
+      count: stageProjects.length,
+      value: stageProjects.reduce((sum, p) => sum + (Number(p.contract) || 0), 0),
+    }
+  }), [active])
   const maxStageCount = useMemo(() => Math.max(...stageDist.map(s => s.count), 1), [stageDist])
 
   // Forecast buckets

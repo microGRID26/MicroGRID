@@ -57,6 +57,8 @@ export function NfCodePicker({ value, onSave, codes, slot, disabled = false }: N
       {open && (
         <div className="absolute z-50 top-full left-0 mt-1 w-80 bg-gray-800 border border-gray-600 rounded-lg shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
           <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search codes..." autoFocus
+            aria-label="Search nonfunded codes"
+            onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); setQuery('') } }}
             className="w-full bg-gray-900 text-white text-xs px-3 py-2 border-b border-gray-700 focus:outline-none" />
           <div className="max-h-64 overflow-y-auto">
             {Object.entries(groups).map(([group, items]) => (

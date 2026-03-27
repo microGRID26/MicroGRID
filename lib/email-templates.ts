@@ -278,6 +278,7 @@ const templates: Record<number, TemplateFactory> = {
         </tr>
         </table>
       `)}
+      <p>Click any amount, date, or status cell to edit inline. Stale submissions (>30 days) are highlighted in amber and red. Export filtered results to CSV with one click.</p>
       <p>M2 and M3 eligibility are set automatically when Install Complete and PTO tasks are marked done.</p>
       ${ctaButton('View Funding Dashboard →', '/funding')}
     `),

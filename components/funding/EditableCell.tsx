@@ -10,9 +10,10 @@ interface EditableCellProps {
   placeholder?: string
   className?: string
   disabled?: boolean
+  ariaLabel?: string
 }
 
-export function EditableCell({ value, onSave, type = 'text', placeholder = '\u2014', className = '', disabled = false }: EditableCellProps) {
+export function EditableCell({ value, onSave, type = 'text', placeholder = '\u2014', className = '', disabled = false, ariaLabel }: EditableCellProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const [saving, setSaving] = useState(false)
@@ -31,7 +32,11 @@ export function EditableCell({ value, onSave, type = 'text', placeholder = '\u20
     const oldVal = value != null ? String(value) : null
     if (newVal === oldVal) { setEditing(false); return }
     setSaving(true)
-    await onSave(newVal)
+    try {
+      await onSave(newVal)
+    } catch (err) {
+      console.error('EditableCell save error:', err)
+    }
     setSaving(false)
     setEditing(false)
   }
@@ -50,6 +55,7 @@ export function EditableCell({ value, onSave, type = 'text', placeholder = '\u20
           onChange={e => setDraft(e.target.value)}
           onBlur={save}
           onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel() }}
+          aria-label={ariaLabel ?? `Edit ${type} value`}
           className={`bg-gray-700 text-white text-xs rounded px-2 py-1 border border-green-500 focus:outline-none w-full ${type === 'currency' ? 'pl-5' : ''} ${className}`}
           onClick={e => e.stopPropagation()}
         />
@@ -63,7 +69,11 @@ export function EditableCell({ value, onSave, type = 'text', placeholder = '\u20
 
   return (
     <div
+      role={disabled ? undefined : 'button'}
+      tabIndex={disabled ? undefined : 0}
       onClick={startEdit}
+      onKeyDown={e => { if (!disabled && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); startEdit(e as unknown as React.MouseEvent) } }}
+      aria-label={ariaLabel ?? (disabled ? undefined : `Edit ${type} value`)}
       className={`rounded px-1 py-0.5 -mx-1 -my-1 min-h-[24px] flex items-center transition-colors w-full text-gray-300 ${saving ? 'opacity-50' : ''} ${disabled ? '' : 'cursor-pointer hover:bg-gray-700 hover:text-white'} ${className}`}
       title={disabled ? undefined : 'Click to edit'}
     >

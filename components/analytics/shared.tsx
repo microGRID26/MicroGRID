@@ -91,15 +91,21 @@ export function ProjectListModal({ title, projects, onClose }: {
   projects: Project[]
   onClose: () => void
 }) {
+  // Close on Escape key
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') onClose()
+  }, [onClose])
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}
+      role="dialog" aria-modal="true" aria-label={title} onKeyDown={handleKeyDown}>
       <div className="bg-gray-900 rounded-xl border border-gray-700 w-full max-w-2xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-gray-800">
           <div>
             <div className="text-sm font-semibold text-white">{title}</div>
             <div className="text-xs text-gray-500">{projects.length} project{projects.length !== 1 ? 's' : ''}</div>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white"><X size={16} /></button>
+          <button onClick={onClose} className="text-gray-400 hover:text-white" aria-label="Close dialog"><X size={16} /></button>
         </div>
         <div className="overflow-auto flex-1 p-4">
           {projects.length === 0 ? (
@@ -187,6 +193,8 @@ export function SortHeader<T>({ label, field, sortKey, sortDir, onSort }: {
     <th
       className="text-left text-gray-400 font-medium px-3 py-2 cursor-pointer hover:text-white select-none"
       onClick={() => onSort(field)}
+      aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+      role="columnheader"
     >
       {label} {active ? (sortDir === 'asc' ? '\u25B2' : '\u25BC') : ''}
     </th>
@@ -199,6 +207,7 @@ export function ExportButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
+      aria-label="Export data as CSV"
       className="text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md px-3 py-1.5 transition-colors"
     >
       Export CSV

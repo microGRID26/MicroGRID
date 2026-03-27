@@ -90,6 +90,7 @@ export default function AnalyticsPage() {
             <span className="hidden sm:inline">Refresh</span>
           </button>
           <select value={period} onChange={e => setPeriod(e.target.value as Period)}
+            aria-label="Time period"
             className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">
             {(Object.entries(PERIOD_LABELS) as [Period, string][]).map(([k, v]) => (
               <option key={k} value={k}>{v}</option>
@@ -99,16 +100,17 @@ export default function AnalyticsPage() {
       } />
 
       {/* Sub-tabs — wraps on mobile */}
-      <div className="bg-gray-950 border-b border-gray-800 flex flex-wrap px-4 flex-shrink-0">
+      <div className="bg-gray-950 border-b border-gray-800 flex flex-wrap px-4 flex-shrink-0" role="tablist" aria-label="Analytics tabs">
         {(Object.keys(TAB_LABELS) as Tab[]).map(t => (
           <button key={t} onClick={() => setTab(t)}
+            role="tab" aria-selected={tab === t} aria-controls={`panel-${t}`}
             className={`text-xs px-4 py-3 font-medium transition-colors border-b-2 whitespace-nowrap ${tab === t ? 'border-green-400 text-green-400' : 'border-transparent text-gray-400 hover:text-white'}`}>
             {TAB_LABELS[t]}
           </button>
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-6" role="tabpanel" id={`panel-${tab}`} aria-label={TAB_LABELS[tab]}>
         {tab === 'leadership' && <Leadership data={analyticsData} />}
         {tab === 'pipeline' && <PipelineHealth data={analyticsData} />}
         {tab === 'pm' && <ByPM data={analyticsData} />}

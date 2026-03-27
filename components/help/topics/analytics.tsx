@@ -3,15 +3,15 @@ import type { HelpTopicData } from './index'
 function AnalyticsOverview() {
   return (
     <div>
-      <p className="text-xs text-gray-400 mb-3">6 tabs of analytics and reporting:</p>
+      <p className="text-xs text-gray-400 mb-3">6 tabs of analytics and reporting. Each tab has CSV export and clickable drill-down to project lists. Manager+ access required.</p>
       <div className="space-y-2 text-xs">
         {[
-          { tab: 'Leadership', desc: 'Executive metrics: sales, installs, M2/M3 funded, 90-day forecast' },
-          { tab: 'Pipeline Health', desc: 'Stage distribution, SLA health summary, blocked/aging counts' },
-          { tab: 'By PM', desc: 'Per-PM performance: active count, blocked, portfolio, installs' },
-          { tab: 'Funding', desc: 'Outstanding amounts, funded percentages, avg days to fund, NF codes' },
-          { tab: 'Cycle Times', desc: 'Avg days per stage, median cycle times, top 10 longest projects' },
-          { tab: 'Dealers', desc: 'Projects by dealer, consultant, advisor with bar charts' },
+          { tab: 'Leadership', desc: 'Executive metrics: sales, installs, M2/M3 funded, 90-day forecast, monthly trend chart' },
+          { tab: 'Pipeline Health', desc: 'Stage distribution, SLA health summary, blocked/aging counts with drill-down' },
+          { tab: 'By PM', desc: 'Sortable per-PM table: active count, blocked, portfolio, installs in period' },
+          { tab: 'Funding', desc: 'Outstanding amounts, funded percentages, avg days to fund, NF code frequency' },
+          { tab: 'Cycle Times', desc: 'Avg days per stage, median cycle times, cycle buckets, top 10 longest, stuck analysis' },
+          { tab: 'Dealers', desc: 'Sortable dealer table with avg kW, consultant/advisor bar charts' },
         ].map(t => (
           <div key={t.tab} className="bg-gray-800 rounded-md px-3 py-2">
             <span className="text-white font-medium">{t.tab}</span>
@@ -56,7 +56,7 @@ function AtlasReports() {
 function LeadershipDashboard() {
   return (
     <div>
-      <p className="text-xs text-gray-400 mb-2">Period selector at top: Week to Date, This Month, This Quarter, etc. Shows revenue recognized, M2/M3 funded, pending funding, 90-day forecast, monthly install trend (6-month bar chart), PM breakdown, and revenue by dealer.</p>
+      <p className="text-xs text-gray-400 mb-2">Period selector at top: Week to Date, This Month, This Quarter, Year to Date, Last 7/30/90 Days. Shows sales count and value, installs, M2/M3 funded with drill-down, portfolio overview with 30/60-day forecast, monthly install trend (6-month bar chart), and active projects by financier. Click any metric card to see the project list.</p>
     </div>
   )
 }

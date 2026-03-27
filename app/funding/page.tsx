@@ -21,24 +21,6 @@ export default function FundingPage() {
   const { user: currentUser, loading: userLoading } = useCurrentUser()
   const canEditFunding = currentUser?.isFinance ?? false
 
-  // Role gate: Finance+ only
-  if (!userLoading && currentUser && !currentUser.isFinance) {
-    return (
-      <>
-        <Nav active="Funding" />
-        <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-lg text-gray-400">Access Restricted</p>
-            <p className="text-sm text-gray-500 mt-2">Funding is available to Finance and above.</p>
-            <a href="/command" className="inline-block mt-4 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-              &larr; Back to Command Center
-            </a>
-          </div>
-        </div>
-      </>
-    )
-  }
-
   const [projects, setProjects] = useState<Project[]>([])
   const [funding, setFunding] = useState<Record<string, ProjectFunding>>({})
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
@@ -136,12 +118,12 @@ export default function FundingPage() {
 
   const saveFundingField = async (projectId: string, field: string, value: string | number | null) => {
     if (!canEditFunding) return
-    const update: Record<string, any> = { [field]: value }
+    const update: Record<string, string | number | null> = { [field]: value }
     const { error } = await db().from('project_funding').upsert(
       { project_id: projectId, ...update },
       { onConflict: 'project_id' }
     )
-    if (error) { showToast('Save failed: ' + error.message); return }
+    if (error) { console.error('Funding save error:', error); showToast('Save failed — please try again'); return }
     setFunding(prev => {
       const existing = prev[projectId] ?? { project_id: projectId } as ProjectFunding
       return { ...prev, [projectId]: { ...existing, ...update } }
@@ -314,6 +296,24 @@ export default function FundingPage() {
     return items
   }, [rows])
 
+  // Role gate: Finance+ only (placed after all hooks to respect Rules of Hooks)
+  if (!userLoading && currentUser && !currentUser.isFinance) {
+    return (
+      <>
+        <Nav active="Funding" />
+        <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-lg text-gray-400">Access Restricted</p>
+            <p className="text-sm text-gray-500 mt-2">Funding is available to Finance and above.</p>
+            <a href="/command" className="inline-block mt-4 text-xs text-blue-400 hover:text-blue-300 transition-colors">
+              &larr; Back to Command Center
+            </a>
+          </div>
+        </div>
+      </>
+    )
+  }
+
   if (loading) return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
       <div className="text-green-400 text-sm animate-pulse">Loading funding...</div>
@@ -416,6 +416,7 @@ export default function FundingPage() {
               </div>
             </div>
             <button onClick={() => { setShowGuide(false); localStorage.setItem('mg_funding_guide_v3', 'dismissed') }}
+              aria-label="Dismiss guide"
               className="text-indigo-400 hover:text-white text-lg flex-shrink-0 leading-none">x</button>
           </div>
         </div>
@@ -424,6 +425,7 @@ export default function FundingPage() {
       {/* Filters */}
       <div className="bg-gray-950 border-b border-gray-800 flex items-center gap-2 px-4 py-2 flex-shrink-0 flex-wrap">
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as FundingFilter)}
+          aria-label="Filter by funding status"
           className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">
           <option value="all">All Statuses</option>
           <option value="ready">Ready to Submit</option>
@@ -434,11 +436,13 @@ export default function FundingPage() {
           <option value="nonfunded">Has NF Code</option>
         </select>
         <select value={financierFilter} onChange={e => setFinancierFilter(e.target.value)}
+          aria-label="Filter by financier"
           className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">
           <option value="all">All Financiers ({projects.length})</option>
           {financiers.map(f => <option key={f} value={f}>{f} ({financierCounts[f]})</option>)}
         </select>
         <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, ID, city, financier, AHJ..."
+          aria-label="Search funding projects"
           className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5 w-64" />
         <span className="ml-auto text-xs text-gray-500 flex items-center gap-3">
           {rows.length} projects

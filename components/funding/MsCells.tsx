@@ -14,12 +14,6 @@ interface MsCellsProps {
   disabled?: boolean
 }
 
-/** Highlight stale submissions: >30 days amber, >60 days red */
-function staleClass(status: string | null, fundedDate: string | null): string {
-  if (status !== 'Submitted' || fundedDate) return ''
-  return ''
-}
-
 /** Get stale submission indicator for the badge cell */
 export function getSubmissionAge(status: string | null, submittedDate: string | null): { days: number; color: string } | null {
   if (status !== 'Submitted' || !submittedDate) return null

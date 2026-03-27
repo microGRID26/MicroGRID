@@ -25,23 +25,23 @@ function FundingOverview() {
 function FundingPage() {
   return (
     <div>
-      <p className="text-xs text-gray-400 mb-3">Table showing all active projects with milestone amounts, statuses, and days waiting. Click column headers to sort. Use Financier dropdown and search to filter.</p>
-      <div className="border border-gray-700 rounded-lg overflow-hidden text-xs">
-        <div className="grid grid-cols-7 gap-0 px-3 py-2 bg-gray-800/50 border-b border-gray-700">
-          <span className="col-span-2 text-gray-500 font-medium">Project</span>
-          <span className="text-gray-500 font-medium text-center">M1</span>
-          <span className="text-gray-500 font-medium text-center">M1 Amt</span>
-          <span className="text-gray-500 font-medium text-center">M2</span>
-          <span className="text-gray-500 font-medium text-center">M3</span>
-          <span className="text-gray-500 font-medium text-center">Days</span>
+      <p className="text-xs text-gray-400 mb-3">The Funding page provides a full-featured dashboard for managing M1/M2/M3 milestones across all active projects.</p>
+      <div className="space-y-2 text-xs">
+        <div className="bg-gray-800 rounded-lg px-4 py-3 border-l-2 border-green-500">
+          <span className="text-green-400 font-bold">Inline Editing</span>
+          <p className="text-gray-400 mt-1">Click any amount, date, or notes cell to edit directly. Press Enter to save, Escape to cancel. Status dropdowns update instantly.</p>
         </div>
-        <div className="grid grid-cols-7 gap-0 px-3 py-2 border-b border-gray-800/50 items-center">
-          <span className="col-span-2 text-gray-200">Johnson Residence</span>
-          <span className="text-center"><span className="bg-green-900 text-green-300 px-1.5 py-0.5 rounded text-[10px]">Fun</span></span>
-          <span className="text-gray-300 text-center">$9,700</span>
-          <span className="text-center"><span className="bg-blue-900 text-blue-300 px-1.5 py-0.5 rounded text-[10px]">RTS</span></span>
-          <span className="text-center"><span className="bg-gray-700 text-gray-400 px-1.5 py-0.5 rounded text-[10px]">--</span></span>
-          <span className="text-amber-400 text-center">12d</span>
+        <div className="bg-gray-800 rounded-lg px-4 py-3 border-l-2 border-blue-500">
+          <span className="text-blue-400 font-bold">Task-Based Sections</span>
+          <p className="text-gray-400 mt-1">Three collapsible sections above the table: Ready to Submit, Awaiting Payment (with stale submission highlighting), and Needs Attention (pending/revision).</p>
+        </div>
+        <div className="bg-gray-800 rounded-lg px-4 py-3 border-l-2 border-amber-500">
+          <span className="text-amber-400 font-bold">Filters, Sorting & Export</span>
+          <p className="text-gray-400 mt-1">Filter by status, financier, and search (name, ID, city, AHJ). Click any column header to sort. Export filtered results to CSV.</p>
+        </div>
+        <div className="bg-gray-800 rounded-lg px-4 py-3 border-l-2 border-red-500">
+          <span className="text-red-400 font-bold">NF Codes</span>
+          <p className="text-gray-400 mt-1">Click + in the NF Codes column to search and assign nonfunded codes. Click x to remove. Up to 3 codes per project.</p>
         </div>
       </div>
     </div>
@@ -94,11 +94,11 @@ export const financialTopics: HelpTopicData[] = [
   {
     id: 'funding-page',
     title: 'Funding Page',
-    description: 'Table, stats bar, sortable columns',
+    description: 'Inline editing, task sections, stale alerts, CSV export',
     category: 'Financial',
-    keywords: ['funding', 'page', 'table', 'sort', 'filter', 'financier'],
+    keywords: ['funding', 'page', 'table', 'sort', 'filter', 'financier', 'inline', 'edit', 'csv', 'export', 'stale', 'nf', 'nonfunded'],
     tryItLink: '/funding',
-    relatedTopics: ['funding-statuses'],
+    relatedTopics: ['funding-statuses', 'funding-triggers'],
     content: FundingPage,
   },
   {
