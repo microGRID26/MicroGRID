@@ -6,6 +6,7 @@ import { useCurrentUser } from '@/lib/useCurrentUser'
 import { ConstructionBanner } from '@/components/ConstructionBanner'
 import { Menu, X, ChevronDown } from 'lucide-react'
 import { NotificationBell } from '@/components/NotificationBell'
+import { useFeatureFlags, isFeatureEnabled } from '@/lib/useFeatureFlags'
 
 // ── Shared nav for all pages ──────────────────────────────────────────────────
 // Primary links are always visible. Secondary links live in "More" dropdown.
@@ -27,7 +28,7 @@ const SALES_LINKS = [
   { label: 'Schedule', href: '/schedule' },
 ]
 
-const MORE_LINKS = [
+const MORE_LINKS: { label: string; href: string; flagKey?: string }[] = [
   { label: 'Service',       href: '/service'  },
   { label: 'Change Orders', href: '/change-orders' },
   { label: 'Work Orders',   href: '/work-orders' },
@@ -36,7 +37,7 @@ const MORE_LINKS = [
   { label: 'Atlas',          href: '/reports'  },
   { label: 'Permits',       href: '/permits'   },
   { label: 'Documents',     href: '/documents' },
-  { label: 'Fleet',         href: '/fleet'    },
+  { label: 'Fleet',         href: '/fleet',    flagKey: 'fleet_management' },
   { label: 'Redesign',      href: '/redesign' },
   { label: 'Legacy',        href: '/legacy'   },
 ]
@@ -59,10 +60,16 @@ const HELP_ICON = (
 )
 
 /** "More" dropdown for secondary nav links */
-function MoreDropdown({ active, isAdmin }: { active: string; isAdmin: boolean }) {
+function MoreDropdown({ active, isAdmin, userId, userRole }: { active: string; isAdmin: boolean; userId?: string; userRole?: string }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const { flags } = useFeatureFlags()
   const isMoreActive = MORE_LINKS.some(l => l.label === active) || active === 'Audit Trail'
+
+  // Filter links by feature flags — links without flagKey are always shown
+  const visibleLinks = MORE_LINKS.filter(link =>
+    !link.flagKey || isFeatureEnabled(flags, link.flagKey, userId, userRole)
+  )
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -86,7 +93,7 @@ function MoreDropdown({ active, isAdmin }: { active: string; isAdmin: boolean })
       </button>
       {open && (
         <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 min-w-[180px] py-1">
-          {MORE_LINKS.map(v => (
+          {visibleLinks.map(v => (
             <a key={v.label} href={v.href} onClick={() => setOpen(false)}
               className={`block px-4 py-2 text-xs transition-colors ${
                 v.label === active
@@ -152,7 +159,7 @@ export function Nav({ active, right, onNewProject }: NavProps) {
           ))}
 
           {/* More dropdown — hidden for sales users */}
-          {!isSales && <MoreDropdown active={active} isAdmin={!loading && !!currentUser?.isAdmin} />}
+          {!isSales && <MoreDropdown active={active} isAdmin={!loading && !!currentUser?.isAdmin} userId={currentUser?.id} userRole={currentUser?.role} />}
 
           {/* Notification bell — hidden for sales users */}
           {!isSales && !loading && currentUser && <NotificationBell />}

@@ -101,7 +101,7 @@ export interface CRMStats {
   serviceCalls: number
 }
 
-export type Module = 'ahj' | 'utility' | 'hoa' | 'financier' | 'equipment' | 'vendors' | 'users' | 'crews' | 'sla' | 'info' | 'releases' | 'feedback' | 'audit' | 'permissions' | 'notifications' | 'queue_config' | 'reasons' | 'doc_requirements' | 'edge_integration' | 'email_onboarding' | 'custom_fields' | 'calendar_sync'
+export type Module = 'ahj' | 'utility' | 'hoa' | 'financier' | 'equipment' | 'vendors' | 'users' | 'crews' | 'sla' | 'info' | 'releases' | 'feedback' | 'audit' | 'permissions' | 'notifications' | 'queue_config' | 'reasons' | 'doc_requirements' | 'edge_integration' | 'email_onboarding' | 'custom_fields' | 'calendar_sync' | 'feature_flags'
 
 export const DEPARTMENTS = [
   'Inside Operations', 'Sales', 'Executive', 'Field Operations',
@@ -391,5 +391,9 @@ export const SIDEBAR_ITEMS: { id: Module; label: string; icon: React.ReactNode; 
   {
     id: 'calendar_sync' as Module, label: 'Calendar Sync', desc: 'Google Calendar integration',
     icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>,
+  },
+  {
+    id: 'feature_flags' as Module, label: 'Feature Flags', desc: 'Toggle features on/off',
+    icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" /></svg>,
   },
 ]
