@@ -164,6 +164,8 @@ const { data, loading, totalCount, hasMore, nextPage, prevPage, currentPage } =
 - Provides `searchProps` to spread on input elements
 - `resetFilters()` to clear all state
 
+**`useOrg()`** — Multi-tenant organization context hook. Wraps the entire app via `OrgProvider` in `components/Providers.tsx`. Returns: `orgId`, `orgName`, `orgSlug`, `orgType`, `userOrgs`, `switchOrg`, `loading`. On mount, loads the current user's `org_memberships` and resolves org details from the `organizations` table. Org selection priority: localStorage (`mg_org_id`) > `is_default` membership flag > first membership > hardcoded default (`a0000000-0000-0000-0000-000000000001` = MicroGRID Energy). `switchOrg(orgId)` validates the org exists in `userOrgs`, updates localStorage, and calls `clearQueryCache()` to trigger refetch of all cached data. Inactive orgs are filtered out. Exports types: `UserOrg`, `OrgContextValue`.
+
 ### Bulk Operations
 
 `components/BulkActionBar.tsx` provides multi-project update capability. Used on Pipeline and Queue pages.
@@ -230,6 +232,8 @@ Standalone page at `/audit-trail` (admin-only, guarded by `useCurrentUser().isAd
 - **custom_field_values** — per-project custom field values. Fields: `id` (UUID PK), `project_id` (TEXT), `field_id` (UUID FK -> custom_field_definitions ON DELETE CASCADE), `value` (TEXT), `updated_at`. UNIQUE on `(project_id, field_id)`. RLS: SELECT/INSERT/UPDATE/DELETE for all authenticated. Migration: `supabase/036-custom-fields.sql`.
 - **calendar_settings** — per-crew Google Calendar config. Fields: `id` (UUID PK), `crew_id` (TEXT UNIQUE NOT NULL), `calendar_id` (TEXT — Google Calendar ID), `enabled` (BOOLEAN), `auto_sync` (BOOLEAN), `last_full_sync` (TIMESTAMPTZ), `created_at`. RLS: read all, write admin only.
 - **calendar_sync** — per-schedule-entry sync tracking. Fields: `id` (UUID PK), `schedule_id` (UUID NOT NULL), `calendar_id` (TEXT NOT NULL), `event_id` (TEXT NOT NULL), `crew_id` (TEXT), `last_synced_at` (TIMESTAMPTZ), `sync_status` (synced/pending/error), `error_message` (TEXT), `created_at`. UNIQUE on (schedule_id, calendar_id). Indexes on schedule_id, crew_id, sync_status. RLS: read/write all authenticated.
+- **organizations** — multi-tenant orgs. Fields: `id` (UUID PK), `name`, `slug` (UNIQUE), `org_type` (platform/epc/sales/engineering/supply/customer), `allowed_domains` (TEXT[]), `logo_url`, `settings` (JSONB), `active`, `created_at`, `updated_at`. Default org: MicroGRID Energy (`a0000000-0000-0000-0000-000000000001`). RLS: read-all, write-super_admin. Migration: `supabase/039-organizations.sql`.
+- **org_memberships** — user-org mapping. Fields: `id` (UUID PK), `user_id`, `org_id` (FK -> organizations CASCADE), `org_role` (owner/admin/member/viewer), `is_default`, `created_at`. UNIQUE on (user_id, org_id). RLS: read-all, write-admin. Migration: `supabase/039-organizations.sql`.
 - **ahjs**, **utilities** — reference data for permit authorities and utility companies
 - **feature_flags** — admin-toggleable feature flags. Fields: `id` (UUID PK), `flag_key` (TEXT UNIQUE), `label`, `description`, `enabled` (BOOLEAN), `rollout_percentage` (INTEGER 0-100), `allowed_roles` (TEXT[]), `allowed_org_ids` (TEXT[]), `created_at`, `updated_at`. 7 default flags seeded. Migration: `supabase/038-feature-flags.sql`.
 - **project_adders** — project adders/extras (e.g., EV charger, critter guard, ground mount). Fields: `id`, `project_id`, `name`, `price`, `quantity`, `created_at`. RLS open to all authenticated users. Migration: `supabase/013-adders.sql`. Contains 4,185 records imported from NetSuite.
@@ -459,7 +463,7 @@ The Info tab now includes `permit_fee` and `reinspection_fee` fields in the Perm
 
 ### TypeScript Pattern
 
-`types/database.ts` covers core tables (`projects`, `task_state`, `notes`, `crews`, `schedule`, `stage_history`, `project_folders`) plus types added during refactoring: `ServiceCall`, `HOA`, `MentionNotification`, `ProjectAdder`, `ProjectBom`. The `Schedule` interface was expanded with 11 new fields plus `end_date` for multi-day job support. Several tables used in the app — `project_funding`, `service_calls`, `ahjs`, `utilities`, `users`, `sla_thresholds` — are **not** in the generated types but are accessed through the `lib/api/` layer or `db()` helper which handle casting internally.
+`types/database.ts` covers core tables (`projects`, `task_state`, `notes`, `crews`, `schedule`, `stage_history`, `project_folders`) plus types added during refactoring: `ServiceCall`, `HOA`, `MentionNotification`, `ProjectAdder`, `ProjectBom`. Multi-tenant types added: `Organization`, `OrgMembership`, `OrgType`, `OrgRole`. The `Schedule` interface was expanded with 11 new fields plus `end_date` for multi-day job support. Several tables used in the app — `project_funding`, `service_calls`, `ahjs`, `utilities`, `users`, `sla_thresholds` — are **not** in the generated types but are accessed through the `lib/api/` layer or `db()` helper which handle casting internally.
 
 **Type safety improved**: `as any` casts reduced from ~198 to 3 across the codebase (82 removed in Session 17 via full type safety pass — 19 files updated, 16 new interfaces added). Remaining 3 casts are in test mocks and Supabase RPC calls where typing is impractical. New code should use the API layer (`@/lib/api`) or `db()` helper rather than adding new `as any` casts.
 
@@ -680,6 +684,10 @@ All in `supabase/`:
 - `036-custom-fields.sql` — Custom field system: `custom_field_definitions` table (admin-managed field definitions with 6 field types, options, defaults, sections, sort order) and `custom_field_values` table (per-project field values with upsert on project_id+field_id). Indexes on active+sort_order, project_id, field_id. RLS: definitions read-all/write-admin, values read-write-all.
 - `037-calendar-sync.sql` — Google Calendar sync: `calendar_settings` table (per-crew calendar config with enabled/auto_sync toggles) and `calendar_sync` table (per-schedule-entry sync tracking with event_id, status, error). Indexes on schedule_id, crew_id, sync_status. RLS: settings read-all/write-admin, sync read-write-all.
 - `038-feature-flags.sql` — Feature flags system: `feature_flags` table (admin-toggleable flags with rollout percentage, role restrictions, enabled state). Indexes on flag_key, enabled. RLS: SELECT for all authenticated, INSERT/UPDATE/DELETE for admin. 7 default flags seeded (atlas_reports, calendar_sync, warranty_tracking, fleet_management, custom_fields, permit_portal, barcode_scanning).
+- `039-organizations.sql` — Multi-tenant foundation: `organizations` table (name, slug, org_type, allowed_domains, settings) and `org_memberships` table (user-org mapping with org_role). RLS: orgs read-all/write-super_admin, memberships read-all/write-admin. Indexes on slug, org_type, active, user_id, org_id.
+- `040-org-id-on-tables.sql` — Adds nullable `org_id UUID REFERENCES organizations(id)` to 8 tables: projects, crews, warehouse_stock, vendors, task_reasons, notification_rules, queue_sections, document_requirements. Composite indexes for org-scoped queries. Phase 1: no RLS changes.
+- `041-org-backfill.sql` — Creates default MicroGRID Energy org (fixed UUID `a0000000-0000-0000-0000-000000000001`), backfills all existing data, creates org_memberships for all active users (role-mapped: super_admin->owner, admin->admin, else->member).
+- `042-org-rls-helpers.sql` — RLS helper functions: `auth_user_org_ids()` (returns user's org UUID array), `auth_is_org_member(org_id)`, `auth_is_org_admin(org_id)` (includes super_admin fallback), `auth_is_platform_user()` (checks platform org type). All SECURITY DEFINER with search_path pinned.
 - `seed-document-requirements.sql` — Seeds 23 document requirements across all 7 pipeline stages
 
 ### Legacy Projects
@@ -754,6 +762,32 @@ All three planned consolidation targets from Session 15 have been completed in S
 ### Code Quality
 
 **Current rating: 9.5/10** (up from 9/10 after Session 16). Session 17 improvements (~63 commits): three comprehensive audits fixed 100+ total issues across security, performance, and scale (40 + 39 + 30 issues across dozens of files). Type safety: 82 `as any` casts removed (down from ~43 to 3 remaining). Cache upgraded to LRU eviction (50 entries max) with 5-min TTL for scale readiness to 5K projects. Auth gates added to batch, planset, crew, vendors, and inventory pages. Dead `loyalty` column dropped, permission matrix updated to reflect actual RLS, Cancel/Reactivate gated to Admin+, legacy projects page and import pipeline (14,705 projects + 150K notes), API layer expanded (6 new functions, 4 pages migrated), document management system (3 tables, file browser, missing docs report, Admin management), 127K NetSuite action comments imported, nav redesigned to two-tier, pipeline utility filter + multi-select AHJ/Utility, construction banner removed, security headers added, equipment catalog (2,517 items with autocomplete and auto-kW calculation), Atlas AI Reports (Manager+, 25/day session-based rate limiting), inventory management (3 phases: materials, POs, warehouse), vendor management (CRUD + admin portal), mobile views (leadership dashboard + field operator), EDGE bidirectional webhook integration, help page overhaul (62 topics across 12 categories), email domain whitelist on auth. **1388 tests total (1380 passed, 8 skipped)** (SLA tests remain skipped while thresholds are paused). **E2E tests:** Playwright installed with 20+ E2E test specs in `e2e/`. Remaining debt: 3 `as any` casts in test mocks.
+
+## Multi-Tenant Organizations (Phase 1)
+
+Foundation for multi-org support. Phase 1 is invisible to end users -- single-org operation is preserved with the default MicroGRID Energy org.
+
+### Architecture
+
+- **`organizations`** table — defines each tenant org with name, slug, type, allowed email domains, and JSONB settings
+- **`org_memberships`** table — maps users to orgs with role (owner/admin/member/viewer) and default flag
+- **`org_id`** column added (nullable) to 8 tables: `projects`, `crews`, `warehouse_stock`, `vendors`, `task_reasons`, `notification_rules`, `queue_sections`, `document_requirements`
+- **Backfill** — all existing data assigned to MicroGRID Energy org (`a0000000-0000-0000-0000-000000000001`), all active users enrolled as members
+- **RLS helpers** — 4 Postgres functions: `auth_user_org_ids()`, `auth_is_org_member(org_id)`, `auth_is_org_admin(org_id)`, `auth_is_platform_user()`. Phase 1 installs functions only; no RLS policy changes yet.
+
+### Client-Side
+
+- **`useOrg()`** hook in `lib/hooks/useOrg.tsx` — provides org context via `OrgProvider` (wraps entire app in `components/Providers.tsx`)
+- **Org selection priority**: localStorage (`mg_org_id`) > `is_default` membership > first membership > hardcoded default
+- **`switchOrg(orgId)`** — validates orgId is in user's memberships, updates localStorage, clears all query caches
+- **Fallback behavior** — no memberships or auth errors fall back to MicroGRID Energy default with `member` role
+
+### Phase 2 Roadmap (not yet implemented)
+
+- Org-scoped RLS policies (filter data by `org_id`)
+- Org switcher UI component in nav
+- Per-org settings and branding
+- Cross-org visibility rules for platform users
 
 ## Known Bugs
 
