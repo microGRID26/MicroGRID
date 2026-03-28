@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Nav } from '@/components/Nav'
 import { useCurrentUser } from '@/lib/useCurrentUser'
-import { Module, SIDEBAR_ITEMS } from '@/components/admin/shared'
+import { Module, ADMIN_SIDEBAR_ITEMS } from '@/components/admin/shared'
 import { AHJManager } from '@/components/admin/AHJManager'
 import { UtilityManager } from '@/components/admin/UtilityManager'
 import { HOAManager } from '@/components/admin/HOAManager'
@@ -11,22 +11,13 @@ import { FinancierManager } from '@/components/admin/FinancierManager'
 import { UsersManager } from '@/components/admin/UsersManager'
 import { CrewsManager } from '@/components/admin/CrewsManager'
 import { SLAManager } from '@/components/admin/SLAManager'
-import { CRMInfo } from '@/components/admin/CRMInfo'
-import { ReleaseNotes } from '@/components/admin/ReleaseNotes'
-import { FeedbackManager } from '@/components/admin/FeedbackManager'
 import { PermissionMatrix } from '@/components/admin/PermissionMatrix'
-import { NotificationRulesManager } from '@/components/admin/NotificationRulesManager'
 import { QueueConfigManager } from '@/components/admin/QueueConfigManager'
-import { AuditTrailManager } from '@/components/admin/AuditTrailManager'
-import { ReasonsManager } from '@/components/admin/ReasonsManager'
 import { DocumentRequirementsManager } from '@/components/admin/DocumentRequirementsManager'
 import { EquipmentManager } from '@/components/admin/EquipmentManager'
-import { EdgeIntegrationManager } from '@/components/admin/EdgeIntegrationManager'
 import { VendorManager } from '@/components/admin/VendorManager'
 import { EmailManager } from '@/components/admin/EmailManager'
 import { CustomFieldsManager } from '@/components/admin/CustomFieldsManager'
-import { CalendarSyncManager } from '@/components/admin/CalendarSyncManager'
-import { FeatureFlagManager } from '@/components/admin/FeatureFlagManager'
 
 export default function AdminPage() {
   const { user: authUser, loading } = useCurrentUser()
@@ -64,7 +55,7 @@ export default function AdminPage() {
     )
   }
 
-  const activeItem = SIDEBAR_ITEMS.find(s => s.id === activeModule)
+  const activeItem = ADMIN_SIDEBAR_ITEMS.find(s => s.id === activeModule)
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -90,7 +81,7 @@ export default function AdminPage() {
           </div>
 
           <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
-            {SIDEBAR_ITEMS.map(item => (
+            {ADMIN_SIDEBAR_ITEMS.map(item => (
               <button key={item.id} onClick={() => setActiveModule(item.id)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
                   activeModule === item.id
@@ -107,6 +98,12 @@ export default function AdminPage() {
           </nav>
 
           <div className="p-2 border-t border-gray-800 space-y-0.5">
+            {isSuperAdmin && (
+              <a href="/system" className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                <div><p className="text-xs font-medium">System</p><p className="text-[10px] text-gray-500">Super admin</p></div>
+              </a>
+            )}
             <a href="/crew" className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">
               <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
               <div><p className="text-xs font-medium">Crew App</p><p className="text-[10px] text-gray-500">Mobile view</p></div>
@@ -133,20 +130,11 @@ export default function AdminPage() {
             {activeModule === 'users'   && <UsersManager currentUserRole={authUser?.role ?? 'user'} />}
             {activeModule === 'crews'   && <CrewsManager />}
             {activeModule === 'sla'     && <SLAManager />}
-            {activeModule === 'info'    && <CRMInfo />}
-            {activeModule === 'releases' && <ReleaseNotes />}
-            {activeModule === 'feedback' && <FeedbackManager isSuperAdmin={isSuperAdmin} />}
             {activeModule === 'permissions' && <PermissionMatrix />}
-            {activeModule === 'notifications' && <NotificationRulesManager />}
             {activeModule === 'queue_config' && <QueueConfigManager />}
-            {activeModule === 'audit'    && <AuditTrailManager />}
-            {activeModule === 'reasons'  && <ReasonsManager isSuperAdmin={isSuperAdmin} />}
             {activeModule === 'doc_requirements' && <DocumentRequirementsManager isSuperAdmin={isSuperAdmin} />}
-            {activeModule === 'edge_integration' && <EdgeIntegrationManager />}
             {activeModule === 'email_onboarding' && <EmailManager isSuperAdmin={isSuperAdmin} currentUserEmail={authUser?.email ?? undefined} currentUserName={authUser?.name ?? undefined} />}
             {activeModule === 'custom_fields' && <CustomFieldsManager isSuperAdmin={isSuperAdmin} />}
-            {activeModule === 'calendar_sync' && <CalendarSyncManager />}
-            {activeModule === 'feature_flags' && <FeatureFlagManager isSuperAdmin={isSuperAdmin} />}
           </div>
         </main>
       </div>

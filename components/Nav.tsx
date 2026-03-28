@@ -52,6 +52,14 @@ const GEAR_ICON = (
   </svg>
 )
 
+const WRENCH_ICON = (
+  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+  </svg>
+)
+
 const HELP_ICON = (
   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -177,6 +185,18 @@ export function Nav({ active, right, onNewProject }: NavProps) {
             </a>
           )}
 
+          {(!loading && currentUser?.isSuperAdmin) && (
+            <a href="/system"
+              className={`text-xs px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 ${
+                active === 'System'
+                  ? 'bg-gray-800 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`}>
+              {WRENCH_ICON}
+              System
+            </a>
+          )}
+
           <a href="/help"
             className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
               active === 'Help'
@@ -285,6 +305,19 @@ export function Nav({ active, right, onNewProject }: NavProps) {
                   }`}>
                   {GEAR_ICON}
                   Admin
+                </a>
+              )}
+
+              {(!loading && currentUser?.isSuperAdmin) && (
+                <a href="/system"
+                  onClick={() => setDrawerOpen(false)}
+                  className={`flex items-center gap-2 py-3 px-4 text-base font-medium transition-colors ${
+                    active === 'System'
+                      ? 'text-green-400 bg-gray-900'
+                      : 'text-gray-300 active:bg-gray-800'
+                  }`}>
+                  {WRENCH_ICON}
+                  System
                 </a>
               )}
 
