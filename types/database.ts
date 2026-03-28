@@ -702,6 +702,31 @@ export interface CalendarSyncRow {
   created_at: string
 }
 
+export type OrgType = 'platform' | 'epc' | 'sales' | 'engineering' | 'supply' | 'customer'
+export type OrgRole = 'owner' | 'admin' | 'member' | 'viewer'
+
+export interface Organization {
+  id: string
+  name: string
+  slug: string
+  org_type: OrgType
+  allowed_domains: string[]
+  logo_url: string | null
+  settings: Record<string, unknown>
+  active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface OrgMembership {
+  id: string
+  user_id: string
+  org_id: string
+  org_role: OrgRole
+  is_default: boolean
+  created_at: string
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -979,6 +1004,18 @@ export type Database = {
         Row: CalendarSyncRow
         Insert: Omit<CalendarSyncRow, 'id' | 'sync_status' | 'created_at'> & { id?: string; sync_status?: string; created_at?: string }
         Update: Partial<CalendarSyncRow>
+
+      }
+      organizations: {
+        Row: Organization
+        Insert: Omit<Organization, 'id' | 'active' | 'created_at' | 'updated_at'> & { id?: string; active?: boolean; created_at?: string; updated_at?: string }
+        Update: Partial<Organization>
+
+      }
+      org_memberships: {
+        Row: OrgMembership
+        Insert: Omit<OrgMembership, 'id' | 'is_default' | 'created_at'> & { id?: string; is_default?: boolean; created_at?: string }
+        Update: Partial<OrgMembership>
 
       }
     }

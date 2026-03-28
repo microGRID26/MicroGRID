@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { FeedbackButton } from '@/components/FeedbackButton'
 import { SessionTracker } from '@/components/SessionTracker'
+import { Providers } from '@/components/Providers'
 
 const inter = Inter({ subsets: ['latin'], preload: false })
 
@@ -30,7 +31,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="bg-gray-950">
       <body className={`${inter.className} bg-gray-950`}>
-        {children}
+        <Providers>
+          {children}
+        </Providers>
         <FeedbackButton />
         <SessionTracker />
       </body>
