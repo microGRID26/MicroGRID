@@ -710,6 +710,27 @@ export interface CalendarSyncRow {
   created_at: string
 }
 
+export type NTPStatusType = 'pending' | 'under_review' | 'approved' | 'rejected' | 'revision_required'
+
+export interface NTPRequest {
+  id: string
+  project_id: string
+  requesting_org: string
+  status: NTPStatusType
+  submitted_by: string | null
+  submitted_by_id: string | null
+  reviewed_by: string | null
+  reviewed_by_id: string | null
+  submitted_at: string
+  reviewed_at: string | null
+  rejection_reason: string | null
+  revision_notes: string | null
+  evidence: Record<string, unknown>
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type OrgType = 'platform' | 'epc' | 'sales' | 'engineering' | 'supply' | 'customer'
 export type OrgRole = 'owner' | 'admin' | 'member' | 'viewer'
 
@@ -1012,6 +1033,12 @@ export type Database = {
         Row: CalendarSyncRow
         Insert: Omit<CalendarSyncRow, 'id' | 'sync_status' | 'created_at'> & { id?: string; sync_status?: string; created_at?: string }
         Update: Partial<CalendarSyncRow>
+
+      }
+      ntp_requests: {
+        Row: NTPRequest
+        Insert: Omit<NTPRequest, 'id' | 'status' | 'created_at' | 'updated_at'> & { id?: string; status?: NTPStatusType; created_at?: string; updated_at?: string }
+        Update: Partial<NTPRequest>
 
       }
       organizations: {

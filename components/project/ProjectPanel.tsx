@@ -13,6 +13,7 @@ import { NotesTab } from './NotesTab'
 import { InfoTab } from './InfoTab'
 import { FilesTab } from './FilesTab'
 import { MaterialsTab } from './MaterialsTab'
+import { NTPTab } from './NTPTab'
 import { WarrantyTab } from './WarrantyTab'
 import { ScheduleAssignModal } from './ScheduleAssignModal'
 import { createWorkOrderFromProject } from '@/lib/api/work-orders'
@@ -29,7 +30,7 @@ interface ProjectPanelProps {
   project: Project
   onClose: () => void
   onProjectUpdated: () => void
-  initialTab?: 'tasks' | 'notes' | 'info' | 'bom' | 'files' | 'materials' | 'warranty'
+  initialTab?: 'tasks' | 'notes' | 'info' | 'bom' | 'files' | 'materials' | 'warranty' | 'ntp'
 }
 
 export function ProjectPanel({ project: initialProject, onClose, onProjectUpdated, initialTab }: ProjectPanelProps) {
@@ -37,7 +38,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   const { user: currentUser } = useCurrentUser()
   const edgeSync = useEdgeSync()
   const [project, setProject] = useState<Project>(initialProject)
-  const [tab, setTab] = useState<'tasks' | 'notes' | 'info' | 'bom' | 'files' | 'materials' | 'warranty'>(initialTab ?? 'tasks')
+  const [tab, setTab] = useState<'tasks' | 'notes' | 'info' | 'bom' | 'files' | 'materials' | 'warranty' | 'ntp'>(initialTab ?? 'tasks')
   useEffect(() => { if (initialTab) setTab(initialTab) }, [initialTab])
   const [taskStates, setTaskStates] = useState<Record<string, string>>({})
   const [taskReasons, setTaskReasons] = useState<Record<string, string>>({})
@@ -1085,6 +1086,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
         <div className="flex border-b border-gray-800 flex-shrink-0 bg-gray-950">
           {([
             { id: 'tasks', label: `Tasks${stuckCount ? ` (${stuckCount} stuck)` : ''}`, stuck: stuckCount > 0 },
+            { id: 'ntp', label: 'NTP', stuck: false },
             { id: 'notes', label: `Notes${notes.length ? ` (${notes.length})` : ''}`, stuck: false },
             { id: 'info',  label: 'Info', stuck: false },
             { id: 'bom',   label: 'BOM', stuck: false },
@@ -1127,6 +1129,11 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
             />
           )}
 
+
+          {/* NTP */}
+          {tab === 'ntp' && (
+            <NTPTab project={project} />
+          )}
 
           {/* NOTES */}
           {tab === 'notes' && (
