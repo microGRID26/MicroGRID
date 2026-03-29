@@ -167,6 +167,8 @@ const { data: projects } = useSupabaseQuery('projects', {
 
 **`useEdgeSync()`** — Fire-and-forget EDGE webhook triggers used by ProjectPanel automation chain. Returns: `notifyInstallComplete`, `notifyPTOReceived`, `notifyStageChanged`, `notifyFundingMilestone`, `notifyInService`, `send`. All calls are async but non-blocking — failures are logged to `edge_sync_log`, never thrown.
 
+**`usePmFilter(users, mode)`** — Shared PM filter hook used by Command and Queue pages. Reads/writes localStorage key `mg_pm`. Auto-selects current user on first mount if no saved value. Returns: `pmFilter` (selected PM ID or empty/`'all'`), `setPmFilter`, `pmOptions` (sorted dropdown options from `users`), `isMyProjects` (boolean). `mode` param: `'queue'` uses `''` for all, `'command'` uses `'all'` for all. Clicking the Blocked stat card on Command navigates to `/queue?blockedOnly=true`; clicking Follow-ups navigates to `/queue?section=followups`. Queue reads these URL params on mount via `useSearchParams()`.
+
 **`useServerFilter<T>(data, options)`** — Filter/search state management that produces query parameters for `useSupabaseQuery`. Features:
 - Auto-extracts dropdown options from loaded data (single field or id|label pairs)
 - Builds Supabase-compatible filter objects and `.or()` search expressions

@@ -13,12 +13,13 @@ import { useFeatureFlags, isFeatureEnabled } from '@/lib/useFeatureFlags'
 // Primary links are always visible. Secondary links live in "More" dropdown.
 
 const PRIMARY_LINKS = [
-  { label: 'Command',  href: '/command'  },
-  { label: 'Queue',    href: '/queue'    },
-  { label: 'NTP',      href: '/ntp'      },
-  { label: 'Pipeline', href: '/pipeline' },
-  { label: 'Schedule', href: '/schedule' },
-  { label: 'Funding',  href: '/funding'  },
+  { label: 'Command',   href: '/command'   },
+  { label: 'Dashboard', href: '/dashboard' },
+  { label: 'Queue',     href: '/queue'     },
+  { label: 'NTP',       href: '/ntp'       },
+  { label: 'Pipeline',  href: '/pipeline'  },
+  { label: 'Schedule',  href: '/schedule'  },
+  { label: 'Funding',   href: '/funding'   },
   { label: 'Analytics', href: '/analytics' },
   { label: 'Inventory', href: '/inventory' },
 ]
@@ -40,6 +41,7 @@ const MORE_SECTIONS: LinkSection[] = [
       { label: 'Service',       href: '/service'  },
       { label: 'Work Orders',   href: '/work-orders' },
       { label: 'Change Orders', href: '/change-orders' },
+      { label: 'Audit',         href: '/audit'    },
     ],
   },
   {

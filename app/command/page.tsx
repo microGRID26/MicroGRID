@@ -14,7 +14,8 @@ import { Nav } from '@/components/Nav'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import { usePreferences } from '@/lib/usePreferences'
 import type { ExportPreset } from '@/lib/usePreferences'
-import { useSupabaseQuery } from '@/lib/hooks'
+import { useSupabaseQuery, usePmFilter } from '@/lib/hooks'
+import { useRouter } from 'next/navigation'
 import type { Project, Schedule } from '@/types/database'
 
 /** Schedule entry enriched with project/crew names for today's schedule display */
@@ -336,6 +337,7 @@ type SortDir = 'asc' | 'desc'
 // ── MAIN PAGE ─────────────────────────────────────────────────────────────────
 export default function CommandPage() {
   const supabase = createClient()
+  const router = useRouter()
   const { user: currentUser } = useCurrentUser()
 
   // ── Data queries via useSupabaseQuery ────────────────────────────────────
@@ -426,7 +428,6 @@ export default function CommandPage() {
   }, [supabase])
 
   // ── UI state ─────────────────────────────────────────────────────────────
-  const [pmFilter, setPmFilter] = useState<string>('all')
   const [search, setSearch] = useState<string>('')
   const [showNewProject, setShowNewProject] = useState(false)
   const [displayName, setDisplayName] = useState(() =>
@@ -441,30 +442,28 @@ export default function CommandPage() {
   const [stageFilter, setStageFilter] = useState<string | null>(null)
 
   // Action sections open/closed state
-  const [followUpsOpen, setFollowUpsOpen] = useState(true)
-  const [blockedOpen, setBlockedOpen] = useState(true)
   const [stuckOpen, setStuckOpen] = useState(true)
 
   // Table sort
   const [sortCol, setSortCol] = useState<SortCol>('days')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
 
-  // Auto-select logged-in user as PM (once currentUser loads)
-  const pmAutoSet = useRef(false)
-  useEffect(() => {
-    if (currentUser?.id && !pmAutoSet.current) {
-      pmAutoSet.current = true
-      setPmFilter(currentUser.id)
-    }
-  }, [currentUser])
+  // ── PM filter (shared hook) ─────────────────────────────────────────────
+  const pmUsers = useMemo(() => {
+    const pmMap = new Map<string, string>()
+    projects.forEach(p => { if (p.pm_id && p.pm) pmMap.set(p.pm_id, p.pm) })
+    return [...pmMap.entries()].map(([id, name]) => ({ id, name }))
+  }, [projects])
+
+  const { pmFilter, setPmFilter, pmOptions: pms, isMyProjects } = usePmFilter(pmUsers, 'command')
 
   // Fallback: if user has no PM entries, switch to 'all'
   useEffect(() => {
-    if (pmFilter !== 'all' && projects.length > 0) {
+    if (pmFilter !== 'all' && pmFilter !== '' && projects.length > 0) {
       const hasProjects = projects.some(p => p.pm_id === pmFilter)
       if (!hasProjects) setPmFilter('all')
     }
-  }, [pmFilter, projects])
+  }, [pmFilter, setPmFilter, projects])
 
   // Track last refresh timestamp when data finishes loading
   const prevLoading = useRef(true)
@@ -613,12 +612,6 @@ export default function CommandPage() {
   }, [activeProjects, taskMapAll])
 
   // ── Stats ───────────────────────────────────────────────────────────────
-  const pms = useMemo(() => {
-    const pmMap = new Map<string, string>()
-    projects.forEach(p => { if (p.pm_id && p.pm) pmMap.set(p.pm_id, p.pm) })
-    return [...pmMap.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
-  }, [projects])
-
   const totalContract = useMemo(() =>
     activeProjects.reduce((s, p) => s + (Number(p.contract) || 0), 0),
     [activeProjects]
@@ -740,7 +733,6 @@ export default function CommandPage() {
     setSelectedTab(tab)
   }
 
-  const isMyProjects = pmFilter !== 'all'
   const userLoading = !currentUser
 
   if (loading) {
@@ -829,13 +821,13 @@ export default function CommandPage() {
             label="Blocked"
             value={blockedProjects.length}
             accent={blockedProjects.length > 0 ? 'border-red-500' : 'border-gray-700'}
-            onClick={() => setBlockedOpen(true)}
+            onClick={() => router.push('/queue?blockedOnly=true')}
           />
           <MetricCard
             label="Follow-ups Due"
             value={followUpsDue.length}
             accent={followUpsDue.length > 0 ? 'border-amber-500' : 'border-gray-700'}
-            onClick={() => setFollowUpsOpen(true)}
+            onClick={() => router.push('/queue?section=followups')}
           />
           <MetricCard
             label="Installs This Month"
@@ -856,51 +848,6 @@ export default function CommandPage() {
 
           {/* ── ACTION ITEMS ──────────────────────────────────────────── */}
           <div className="space-y-3">
-
-            {/* Follow-ups Due Today */}
-            <ActionSection
-              title="Follow-ups Due"
-              count={followUpsDue.length}
-              color="text-amber-400"
-              open={followUpsOpen}
-              onToggle={() => setFollowUpsOpen(!followUpsOpen)}
-            >
-              {followUpsDue.map((item, i) => (
-                <ActionRow key={`${item.project.id}-${item.taskName}-${i}`} onClick={() => openProject(item.project, 'tasks')}>
-                  <div className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm text-white truncate">{item.project.name}</span>
-                    <span className="text-xs text-gray-500 ml-2">{item.project.id}</span>
-                  </div>
-                  <span className="text-xs text-gray-400">{item.taskName}</span>
-                  <span className={`text-xs font-mono ${item.daysOverdue > 0 ? 'text-red-400' : 'text-amber-400'}`}>
-                    {item.daysOverdue === 0 ? 'Due today' : `${item.daysOverdue}d overdue`}
-                  </span>
-                </ActionRow>
-              ))}
-            </ActionSection>
-
-            {/* Blocked Projects */}
-            <ActionSection
-              title="Blocked Projects"
-              count={blockedProjects.length}
-              color="text-red-400"
-              open={blockedOpen}
-              onToggle={() => setBlockedOpen(!blockedOpen)}
-            >
-              {blockedProjects.map(p => (
-                <ActionRow key={p.id} onClick={() => openProject(p)}>
-                  <div className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm text-white truncate">{p.name}</span>
-                    <span className="text-xs text-gray-500 ml-2">{p.id}</span>
-                  </div>
-                  <span className="text-xs text-gray-400">{STAGE_LABELS[p.stage] ?? p.stage}</span>
-                  <span className="text-xs text-red-400 max-w-[200px] truncate">{p.blocker}</span>
-                  <span className="text-xs text-gray-500 font-mono">{daysAgo(p.stage_date)}d</span>
-                </ActionRow>
-              ))}
-            </ActionSection>
 
             {/* Stuck Tasks */}
             <ActionSection

@@ -1,14 +1,15 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef, Suspense } from 'react'
 import { Nav } from '@/components/Nav'
 import { daysAgo, fmt$, fmtDate, STAGE_LABELS, STAGE_ORDER, SLA_THRESHOLDS, STAGE_TASKS } from '@/lib/utils'
 import { ALL_TASKS_MAP } from '@/lib/tasks'
 import { ProjectPanel } from '@/components/project/ProjectPanel'
 import { NewProjectModal } from '@/components/project/NewProjectModal'
 import { usePreferences } from '@/lib/usePreferences'
-import { useSupabaseQuery } from '@/lib/hooks'
+import { useSupabaseQuery, usePmFilter } from '@/lib/hooks'
 import { useCurrentUser } from '@/lib/useCurrentUser'
+import { useSearchParams } from 'next/navigation'
 import { BulkActionBar, useBulkSelect, SelectCheckbox } from '@/components/BulkActionBar'
 import { updateProject, addNote } from '@/lib/api'
 import { db } from '@/lib/db'
@@ -156,21 +157,39 @@ const HARDCODED_SECTIONS: QueueSectionConfig[] = [
   { id: 'hc-5', label: 'Utility Inspection — Submitted, Pending Approval', task_id: 'util_insp', match_status: 'In Progress,Scheduled,Pending Resolution,Revision Required', color: 'cyan', icon: '⚡', sort_order: 5 },
 ]
 
-export default function QueuePage() {
+export default function QueuePageWrapper() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-green-400 text-sm animate-pulse">Loading your queue...</div>
+      </div>
+    }>
+      <QueuePage />
+    </Suspense>
+  )
+}
+
+function QueuePage() {
   const { user: currentUser, loading: userLoading } = useCurrentUser()
+  const searchParams = useSearchParams()
+  // PM filter state managed by shared hook — value available immediately from localStorage
+  const [pmUsersState, setPmUsersState] = useState<{ id: string; name: string }[]>([])
+  const { pmFilter: userPm, setPmFilter: selectPm, pmOptions, isMyProjects: _isPmFiltered } = usePmFilter(pmUsersState, 'queue')
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [showNewProject, setShowNewProject] = useState(false)
-  const [userPm, setUserPm] = useState<string>(() => {
-    if (typeof window !== 'undefined') return localStorage.getItem('mg_pm') ?? ''
-    return ''
-  })
   const [search, setSearch] = useState('')
   const [showCardConfig, setShowCardConfig] = useState(false)
   const { prefs, updatePref } = usePreferences()
   const cardFields = prefs.queue_card_fields
 
-  // ── Smart Filters ───────────────────────────────────────────────────────
-  const [filters, setFilters] = useState<QueueFilters>(EMPTY_FILTERS)
+  // ── Smart Filters (read URL params for pre-applied filters) ────────────
+  const [filters, setFilters] = useState<QueueFilters>(() => {
+    const blockedParam = searchParams.get('blockedOnly')
+    return {
+      ...EMPTY_FILTERS,
+      blockedOnly: blockedParam === 'true',
+    }
+  })
 
   const hasActiveFilters = useMemo(() =>
     filters.stages.size > 0 || filters.financier !== '' || filters.ahj !== '' || filters.blockedOnly || filters.daysRange !== '',
@@ -332,12 +351,14 @@ export default function QueuePage() {
     return allTasks
   }, [taskDataRaw, followUpDataRaw, projectIdSet])
 
-  // ── Extract PM dropdown from loaded projects ───────────────────────────
-  const availablePms = useMemo(() => {
+  // ── Feed PM dropdown data into the shared hook ─────────────────────────
+  const pmUsersFromProjects = useMemo(() => {
     const pmMap = new Map<string, string>()
     projects.forEach(p => { if (p.pm_id && p.pm) pmMap.set(p.pm_id, p.pm) })
-    return [...pmMap.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
+    return [...pmMap.entries()].map(([id, name]) => ({ id, name }))
   }, [projects])
+  useEffect(() => { setPmUsersState(pmUsersFromProjects) }, [pmUsersFromProjects])
+  const availablePms = pmOptions
 
   // ── Extract unique financiers and AHJs for filter dropdowns ────────────
   const distinctFinanciers = useMemo(() => {
@@ -370,15 +391,11 @@ export default function QueuePage() {
     refreshAll()
   }, [exitSelectMode, refreshAll])
 
-  function selectPm(pm: string) {
-    setUserPm(pm)
-    localStorage.setItem('mg_pm', pm)
-  }
-
   const loading = projectsLoading || tasksLoading
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => ({
-    followups: false, blocked: true, active: true, loyalty: true, complete: true,
+    followups: searchParams.get('section') === 'followups' ? false : false,
+    blocked: true, active: true, loyalty: true, complete: true,
   }))
   const toggleBucket = (key: string) => setCollapsed(prev => ({ ...prev, [key]: !prev[key] }))
 
@@ -506,6 +523,20 @@ export default function QueuePage() {
 
   // Ref for scrolling to follow-ups section
   const followUpsRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to follow-ups when linked from Command (?section=followups)
+  const scrolledToSection = useRef(false)
+  useEffect(() => {
+    if (scrolledToSection.current || loading) return
+    if (searchParams.get('section') === 'followups' && followUpsRef.current) {
+      scrolledToSection.current = true
+      setCollapsed(prev => ({ ...prev, followups: false }))
+      // Slight delay to ensure DOM is painted before scrolling
+      setTimeout(() => {
+        followUpsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 100)
+    }
+  }, [loading, searchParams])
 
   if (!userLoading && currentUser && !currentUser.isManager) {
     return (
