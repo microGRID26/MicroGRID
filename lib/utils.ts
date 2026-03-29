@@ -13,7 +13,10 @@ export function fmt$(n: number | null | undefined): string {
 export function fmtDate(d: string | null | undefined): string {
   if (!d) return '—'
   try {
-    return new Date(d + 'T00:00:00').toLocaleDateString('en-US', {
+    // Handle both bare dates (2026-03-28) and timestamps (2026-03-28T23:50:55+00:00)
+    const date = d.includes('T') ? new Date(d) : new Date(d + 'T00:00:00')
+    if (isNaN(date.getTime())) return '—'
+    return date.toLocaleDateString('en-US', {
       month: 'short', day: 'numeric', year: 'numeric'
     })
   } catch { return '—' }
@@ -25,7 +28,7 @@ export function escapeIlike(s: string): string {
 
 export function daysAgo(d: string | null | undefined): number {
   if (!d) return 0
-  const n = new Date(d + 'T00:00:00')
+  const n = d.includes('T') ? new Date(d) : new Date(d + 'T00:00:00')
   if (isNaN(n.getTime())) return 0
   return Math.max(0, Math.floor((Date.now() - n.getTime()) / 86400000))
 }
