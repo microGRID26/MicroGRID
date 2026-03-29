@@ -81,24 +81,23 @@ export default function AnalyticsPage() {
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
-      <Nav active="Analytics" right={
-        <div className="flex items-center gap-2">
-          <button onClick={handleRefresh} disabled={refreshing}
-            className="text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md px-2 py-1.5 transition-colors disabled:opacity-50 flex items-center gap-1"
-            title="Refresh data"
-            aria-label="Refresh analytics data">
-            <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
-          <select value={period} onChange={e => setPeriod(e.target.value as Period)}
-            aria-label="Time period"
-            className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">
-            {(Object.entries(PERIOD_LABELS) as [Period, string][]).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
-          </select>
-        </div>
-      } />
+      <Nav active="Analytics" />
+      <div className="bg-gray-950 border-b border-gray-800 px-4 py-2 flex flex-wrap items-center gap-2">
+        <button onClick={handleRefresh} disabled={refreshing}
+          className="text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md px-2 py-1.5 transition-colors disabled:opacity-50 flex items-center gap-1"
+          title="Refresh data"
+          aria-label="Refresh analytics data">
+          <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} />
+          <span className="hidden sm:inline">Refresh</span>
+        </button>
+        <select value={period} onChange={e => setPeriod(e.target.value as Period)}
+          aria-label="Time period"
+          className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">
+          {(Object.entries(PERIOD_LABELS) as [Period, string][]).map(([k, v]) => (
+            <option key={k} value={k}>{v}</option>
+          ))}
+        </select>
+      </div>
 
       {/* Sub-tabs — wraps on mobile */}
       <div className="bg-gray-950 border-b border-gray-800 flex flex-wrap px-4 flex-shrink-0" role="tablist" aria-label="Analytics tabs">

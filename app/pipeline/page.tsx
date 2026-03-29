@@ -608,20 +608,17 @@ export default function PipelinePage() {
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
-      <Nav active="Pipeline" onNewProject={() => setShowNewProject(true)} right={<>
-        <input
-          value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Search projects..."
-          className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-3 py-1.5 w-44 focus:outline-none focus:border-green-500 placeholder-gray-500"
-        />
-        <span className="text-xs text-gray-500">
-          {projects.length} projects {'\u00B7'} {fmt$(totalContract)}
-        </span>
-      </>} />
+      <Nav active="Pipeline" onNewProject={() => setShowNewProject(true)} />
 
       {/* ── Smart Filters Toolbar ──────────────────────────────────────────── */}
       <div className="bg-gray-950 border-b border-gray-800 px-4 py-2 flex-shrink-0">
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Search */}
+          <input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search projects..."
+            className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-3 py-1.5 w-44 focus:outline-none focus:border-green-500 placeholder-gray-500"
+          />
           {/* PM */}
           <select value={filterValues.pm ?? 'all'} onChange={e => setFilter('pm', e.target.value === 'all' ? '' : e.target.value)}
             className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">
@@ -667,8 +664,12 @@ export default function PipelinePage() {
             </button>
           )}
 
-          {/* Right side: view toggle, select, sort */}
+          {/* Right side: stats, view toggle, select, sort */}
           <div className="ml-auto flex items-center gap-2">
+            <span className="text-xs text-gray-500">
+              {projects.length} projects {'\u00B7'} {fmt$(totalContract)}
+            </span>
+            <div className="h-4 w-px bg-gray-700" />
             {/* Compact / Detailed toggle */}
             <div className="flex items-center bg-gray-800 border border-gray-700 rounded-md overflow-hidden">
               <button

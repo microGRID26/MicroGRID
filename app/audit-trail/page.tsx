@@ -159,65 +159,61 @@ export default function AuditTrailPage() {
     )
   }
 
-  const filterBar = (
-    <div className="flex items-center gap-2">
-      <Pagination
-        currentPage={currentPage}
-        totalCount={totalCount ?? 0}
-        pageSize={PAGE_SIZE}
-        hasMore={hasMore}
-        onPrevPage={prevPage}
-        onNextPage={nextPage}
-      />
-      <span className="text-xs text-gray-500 tabular-nums">
-        {totalCount !== null ? `${totalCount.toLocaleString()} records` : ''}
-      </span>
-    </div>
-  )
-
   return (
     <>
-      <Nav active="Audit Trail" right={filterBar} />
-      <main className="min-h-screen bg-gray-900 p-4">
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          <input
-            value={projectSearch}
-            onChange={e => setProjectSearch(e.target.value)}
-            placeholder="Search project ID..."
-            className="w-44 px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-xs text-white
-                       placeholder-gray-500 focus:outline-none focus:border-green-600 transition-colors"
+      <Nav active="Audit Trail" />
+      <div className="bg-gray-950 border-b border-gray-800 px-4 py-2 flex flex-wrap items-center gap-2">
+        <input
+          value={projectSearch}
+          onChange={e => setProjectSearch(e.target.value)}
+          placeholder="Search project ID..."
+          className="w-44 px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-xs text-white
+                     placeholder-gray-500 focus:outline-none focus:border-green-600 transition-colors"
+        />
+        <select
+          value={fieldFilter}
+          onChange={e => setFieldFilter(e.target.value)}
+          className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1.5 text-xs text-white
+                     focus:outline-none focus:border-green-600 transition-colors"
+        >
+          <option value="">All Fields</option>
+          {fieldNames.map(f => <option key={f} value={f}>{f}</option>)}
+        </select>
+        <select
+          value={userFilter}
+          onChange={e => setUserFilter(e.target.value)}
+          className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1.5 text-xs text-white
+                     focus:outline-none focus:border-green-600 transition-colors"
+        >
+          <option value="">All Users</option>
+          {userNames.map(n => <option key={n} value={n}>{n}</option>)}
+        </select>
+        <select
+          value={dateRange}
+          onChange={e => setDateRange(e.target.value as DateRange)}
+          className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1.5 text-xs text-white
+                     focus:outline-none focus:border-green-600 transition-colors"
+        >
+          <option value="today">Today</option>
+          <option value="7days">Last 7 Days</option>
+          <option value="30days">Last 30 Days</option>
+          <option value="all">All Time</option>
+        </select>
+        <div className="ml-auto flex items-center gap-2">
+          <Pagination
+            currentPage={currentPage}
+            totalCount={totalCount ?? 0}
+            pageSize={PAGE_SIZE}
+            hasMore={hasMore}
+            onPrevPage={prevPage}
+            onNextPage={nextPage}
           />
-          <select
-            value={fieldFilter}
-            onChange={e => setFieldFilter(e.target.value)}
-            className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1.5 text-xs text-white
-                       focus:outline-none focus:border-green-600 transition-colors"
-          >
-            <option value="">All Fields</option>
-            {fieldNames.map(f => <option key={f} value={f}>{f}</option>)}
-          </select>
-          <select
-            value={userFilter}
-            onChange={e => setUserFilter(e.target.value)}
-            className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1.5 text-xs text-white
-                       focus:outline-none focus:border-green-600 transition-colors"
-          >
-            <option value="">All Users</option>
-            {userNames.map(n => <option key={n} value={n}>{n}</option>)}
-          </select>
-          <select
-            value={dateRange}
-            onChange={e => setDateRange(e.target.value as DateRange)}
-            className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1.5 text-xs text-white
-                       focus:outline-none focus:border-green-600 transition-colors"
-          >
-            <option value="today">Today</option>
-            <option value="7days">Last 7 Days</option>
-            <option value="30days">Last 30 Days</option>
-            <option value="all">All Time</option>
-          </select>
+          <span className="text-xs text-gray-500 tabular-nums">
+            {totalCount !== null ? `${totalCount.toLocaleString()} records` : ''}
+          </span>
         </div>
+      </div>
+      <main className="min-h-screen bg-gray-900 p-4">
 
         {/* Table */}
         <div className="overflow-auto rounded-lg border border-gray-800 bg-gray-800/30">

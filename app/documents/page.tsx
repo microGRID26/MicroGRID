@@ -129,34 +129,30 @@ export default function DocumentsPage() {
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
-      <Nav
-        active="Documents"
-        right={
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500" />
-              <input
-                type="text"
-                placeholder="Search files by name..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="bg-gray-800 border border-gray-700 rounded-md pl-8 pr-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500 w-64"
-              />
-            </div>
-            <span className="text-xs text-gray-500">
-              {totalCount.toLocaleString()} file{totalCount !== 1 ? 's' : ''}
-            </span>
-            <Pagination
-              currentPage={page}
-              totalCount={totalCount}
-              pageSize={PAGE_SIZE}
-              hasMore={hasMore}
-              onPrevPage={() => setPage(p => Math.max(1, p - 1))}
-              onNextPage={() => setPage(p => p + 1)}
-            />
-          </div>
-        }
-      />
+      <Nav active="Documents" />
+      <div className="bg-gray-950 border-b border-gray-800 px-4 py-2 flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500" />
+          <input
+            type="text"
+            placeholder="Search files by name..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="bg-gray-800 border border-gray-700 rounded-md pl-8 pr-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500 w-64"
+          />
+        </div>
+        <span className="text-xs text-gray-500">
+          {totalCount.toLocaleString()} file{totalCount !== 1 ? 's' : ''}
+        </span>
+        <Pagination
+          currentPage={page}
+          totalCount={totalCount}
+          pageSize={PAGE_SIZE}
+          hasMore={hasMore}
+          onPrevPage={() => setPage(p => Math.max(1, p - 1))}
+          onNextPage={() => setPage(p => p + 1)}
+        />
+      </div>
 
       <div className="flex-1 overflow-auto p-4">
         {/* Header */}

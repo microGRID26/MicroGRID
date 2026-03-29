@@ -556,7 +556,12 @@ function QueuePage() {
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
-      <Nav active="Queue" onNewProject={() => setShowNewProject(true)} right={<>
+      <Nav active="Queue" onNewProject={() => setShowNewProject(true)} />
+
+      {/* ── Smart Filters Toolbar ─────────────────────────────────────── */}
+      <div className="bg-gray-950 border-b border-gray-800 px-4 py-2 space-y-2">
+        {/* Search, PM, count + stage chips */}
+        <div className="flex items-center gap-2 flex-wrap">
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -572,32 +577,7 @@ function QueuePage() {
             {availablePms.map(pm => <option key={pm.id} value={pm.id}>{pm.name}</option>)}
           </select>
           <span className="text-xs text-gray-500">{projects.length} projects</span>
-          {!currentUser?.isSales && (
-            <>
-              <button
-                onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
-                className={`text-xs px-3 py-1.5 rounded-md transition-colors font-medium ${
-                  selectMode
-                    ? 'bg-green-700 text-white hover:bg-green-600'
-                    : 'bg-gray-800 text-gray-400 hover:text-white border border-gray-700'
-                }`}
-              >
-                {selectMode ? 'Exit Select' : 'Select'}
-              </button>
-              {selectMode && selectedIds.size > 0 && (
-                <span className="text-xs text-green-400 font-medium">{selectedIds.size} selected</span>
-              )}
-            </>
-          )}
-          <button onClick={() => setShowCardConfig(true)} className="text-gray-400 hover:text-white transition-colors p-1" title="Card fields">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-          </button>
-        </>} />
-
-      {/* ── Smart Filters Toolbar ─────────────────────────────────────── */}
-      <div className="bg-gray-900 border-b border-gray-800 px-3 sm:px-6 py-3 space-y-2">
-        {/* Stage chips */}
-        <div className="flex items-center gap-2 flex-wrap">
+          <div className="h-4 w-px bg-gray-700 mx-1" />
           {FILTER_STAGES.map(stage => (
             <button
               key={stage}
@@ -642,7 +622,7 @@ function QueuePage() {
             Blocked Only
           </button>
         </div>
-        {/* Days range chips + Clear All */}
+        {/* Days range chips + Clear All + Select/Gear */}
         <div className="flex items-center gap-2 flex-wrap">
           {(['<7', '7-30', '30-90', '90+'] as const).map(range => (
             <button
@@ -665,6 +645,28 @@ function QueuePage() {
               Clear All
             </button>
           )}
+          <div className="ml-auto flex items-center gap-2">
+            {!currentUser?.isSales && (
+              <>
+                <button
+                  onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
+                  className={`text-xs px-3 py-1.5 rounded-md transition-colors font-medium ${
+                    selectMode
+                      ? 'bg-green-700 text-white hover:bg-green-600'
+                      : 'bg-gray-800 text-gray-400 hover:text-white border border-gray-700'
+                  }`}
+                >
+                  {selectMode ? 'Exit Select' : 'Select'}
+                </button>
+                {selectMode && selectedIds.size > 0 && (
+                  <span className="text-xs text-green-400 font-medium">{selectedIds.size} selected</span>
+                )}
+              </>
+            )}
+            <button onClick={() => setShowCardConfig(true)} className="text-gray-400 hover:text-white transition-colors p-1" title="Card fields">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
         </div>
       </div>
 
