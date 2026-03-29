@@ -14,7 +14,6 @@ import { useFeatureFlags, isFeatureEnabled } from '@/lib/useFeatureFlags'
 
 const PRIMARY_LINKS = [
   { label: 'Command',   href: '/command'   },
-  { label: 'Dashboard', href: '/dashboard' },
   { label: 'Queue',     href: '/queue'     },
   { label: 'NTP',       href: '/ntp'       },
   { label: 'Pipeline',  href: '/pipeline'  },
