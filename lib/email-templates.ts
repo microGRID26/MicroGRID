@@ -280,6 +280,7 @@ const templates: Record<number, TemplateFactory> = {
       `)}
       <p>Click any amount, date, or status cell to edit inline. Stale submissions (>30 days) are highlighted in amber and red. Export filtered results to CSV with one click.</p>
       <p>M2 and M3 eligibility are set automatically when Install Complete and PTO tasks are marked done.</p>
+      <p><strong>Invoices:</strong> The <span style="color:#1D9E75;font-weight:600;">Invoices</span> page handles billing between organizations. Create invoices with line items, tag them to project milestones, send to partner orgs, and track payment -- all with auto-generated invoice numbers and status validation.</p>
       ${ctaButton('View Funding Dashboard →', '/funding')}
     `),
   }),
@@ -397,9 +398,10 @@ const templates: Record<number, TemplateFactory> = {
         <div style="margin-bottom:6px;"><span style="color:#1D9E75;">&#10004;</span> <span style="color:#e5e7eb;font-size:13px;">Equipment Catalog — standardized selections</span></div>
         <div style="margin-bottom:6px;"><span style="color:#1D9E75;">&#10004;</span> <span style="color:#e5e7eb;font-size:13px;">Inventory — per-project material tracking</span></div>
         <div style="margin-bottom:6px;"><span style="color:#1D9E75;">&#10004;</span> <span style="color:#e5e7eb;font-size:13px;">Purchase Orders — order lifecycle management</span></div>
-        <div><span style="color:#1D9E75;">&#10004;</span> <span style="color:#e5e7eb;font-size:13px;">Warehouse — BOS stock and reorder management</span></div>
+        <div style="margin-bottom:6px;"><span style="color:#1D9E75;">&#10004;</span> <span style="color:#e5e7eb;font-size:13px;">Warehouse — BOS stock and reorder management</span></div>
+        <div><span style="color:#1D9E75;">&#10004;</span> <span style="color:#e5e7eb;font-size:13px;">Invoices — inter-org billing and payment tracking</span></div>
       `)}
-      <p>Next week: Work Orders, Vendors, Change Orders, Documents, Atlas AI, and Analytics. The power features are coming.</p>
+      <p>Next week: Work Orders, Engineering Assignments, Vendors, Change Orders, Documents, Atlas AI, and Analytics. The power features are coming.</p>
       ${ctaButton('Keep Exploring →', '/command')}
     `),
   }),
@@ -419,6 +421,7 @@ const templates: Record<number, TemplateFactory> = {
         <div><span style="color:#6b7280;">&#9744;</span> <span style="color:#e5e7eb;font-size:13px;">Final electrical connections</span></div>
       `)}
       <p>Each checklist item can include notes and photos. Work orders track priority, crew assignment, and scheduling.</p>
+      <p><strong>Engineering Assignments:</strong> Need a design or stamp from your engineering partner? Submit an assignment from the <span style="color:#1D9E75;font-weight:600;">Engineering</span> page. Track status, upload deliverables, and manage revisions -- all cross-org.</p>
       ${ctaButton('View Work Orders →', '/work-orders')}
     `),
   }),
@@ -525,6 +528,7 @@ const templates: Record<number, TemplateFactory> = {
       <p>You now know the advanced features that make MicroGRID a complete platform:</p>
       ${visualBox(`
         <div style="margin-bottom:6px;"><span style="color:#1D9E75;">&#10004;</span> <span style="color:#e5e7eb;font-size:13px;">Work Orders — structured field checklists</span></div>
+        <div style="margin-bottom:6px;"><span style="color:#1D9E75;">&#10004;</span> <span style="color:#e5e7eb;font-size:13px;">Engineering Assignments — cross-org design work</span></div>
         <div style="margin-bottom:6px;"><span style="color:#1D9E75;">&#10004;</span> <span style="color:#e5e7eb;font-size:13px;">Vendors — supplier network management</span></div>
         <div style="margin-bottom:6px;"><span style="color:#1D9E75;">&#10004;</span> <span style="color:#e5e7eb;font-size:13px;">Change Orders — design revision tracking</span></div>
         <div style="margin-bottom:6px;"><span style="color:#1D9E75;">&#10004;</span> <span style="color:#e5e7eb;font-size:13px;">Documents — file requirement compliance</span></div>
@@ -691,10 +695,10 @@ const templates: Record<number, TemplateFactory> = {
   }),
 
   29: (name) => ({
-    subject: 'Help Center — 67+ Visual Guides',
+    subject: 'Help Center — 74+ Visual Guides',
     html: layout(29, `
       <h2 style="color:#ffffff;font-size:18px;margin:0 0 12px;">Stuck? The Help Center has you covered.</h2>
-      <p>67+ searchable help topics organized by category: Getting Started, Daily Workflow, Project Management, Financial, Inventory, and more. Each topic includes step-by-step instructions.</p>
+      <p>74+ searchable help topics organized by category: Getting Started, Daily Workflow, Project Management, Financial, Inventory, and more. Each topic includes step-by-step instructions.</p>
       ${visualBox(`
         <div style="color:#9ca3af;font-size:12px;margin-bottom:10px;">HELP CATEGORIES</div>
         <div style="margin-bottom:4px;">${sectionBadge('Getting Started', '#1D9E75')} <span style="color:#6b7280;font-size:11px;">First login, navigation, basics</span></div>

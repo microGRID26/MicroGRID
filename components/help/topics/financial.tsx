@@ -81,6 +81,41 @@ function FundingTriggers() {
   )
 }
 
+function InvoiceManagement() {
+  return (
+    <div>
+      <p className="text-xs text-gray-400 mb-3">The Invoice system handles billing between organizations. One org creates an invoice with line items, sends it to another org, and tracks payment.</p>
+      <div className="space-y-2 text-xs">
+        <div className="bg-gray-800 rounded-lg px-4 py-3 border-l-2 border-green-500">
+          <span className="text-green-400 font-bold">Creating an Invoice</span>
+          <p className="text-gray-400 mt-1">Click New Invoice, select a recipient org, optionally link a project and milestone, add line items (description, quantity, unit price), set a due date, and create. Invoice numbers are auto-generated as INV-YYYYMMDD-NNN.</p>
+        </div>
+        <div className="bg-gray-800 rounded-lg px-4 py-3 border-l-2 border-blue-500">
+          <span className="text-blue-400 font-bold">Sending and Tracking</span>
+          <p className="text-gray-400 mt-1">Send the invoice to mark it as Sent. The recipient org sees it in their queue. Status progresses through Sent, Viewed, and Paid. Overdue and Disputed statuses handle exceptions.</p>
+        </div>
+        <div className="bg-gray-800 rounded-lg px-4 py-3 border-l-2 border-amber-500">
+          <span className="text-amber-400 font-bold">Payment</span>
+          <p className="text-gray-400 mt-1">The receiving org marks an invoice as Paid, recording the amount, payment method, and reference number. Paid and Cancelled are terminal statuses.</p>
+        </div>
+        <div className="bg-gray-800 rounded-lg px-4 py-3 border-l-2 border-purple-500">
+          <span className="text-purple-400 font-bold">Milestone Triggers</span>
+          <p className="text-gray-400 mt-1">Invoices can be tagged with milestones (NTP Approved, Install Complete, PTO Received) for tracking which project events triggered billing. Invoice rules can be configured by admins to define standard line items per milestone.</p>
+        </div>
+      </div>
+      <div className="mt-3 space-y-1 text-xs">
+        <div className="flex items-center gap-2"><span className="bg-gray-700 text-gray-300 px-2 py-0.5 rounded">Draft</span><span className="text-gray-400">-- Created, not yet sent</span></div>
+        <div className="flex items-center gap-2"><span className="bg-blue-900 text-blue-300 px-2 py-0.5 rounded">Sent</span><span className="text-gray-400">-- Delivered to recipient org</span></div>
+        <div className="flex items-center gap-2"><span className="bg-cyan-900 text-cyan-300 px-2 py-0.5 rounded">Viewed</span><span className="text-gray-400">-- Opened by recipient</span></div>
+        <div className="flex items-center gap-2"><span className="bg-green-900 text-green-300 px-2 py-0.5 rounded">Paid</span><span className="text-gray-400">-- Payment received (terminal)</span></div>
+        <div className="flex items-center gap-2"><span className="bg-red-900 text-red-300 px-2 py-0.5 rounded">Overdue</span><span className="text-gray-400">-- Past due date, unpaid</span></div>
+        <div className="flex items-center gap-2"><span className="bg-orange-900 text-orange-300 px-2 py-0.5 rounded">Disputed</span><span className="text-gray-400">-- Contested by recipient</span></div>
+        <div className="flex items-center gap-2"><span className="bg-gray-800 text-gray-400 px-2 py-0.5 rounded">Cancelled</span><span className="text-gray-400">-- Voided (terminal)</span></div>
+      </div>
+    </div>
+  )
+}
+
 export const financialTopics: HelpTopicData[] = [
   {
     id: 'funding-overview',
@@ -118,5 +153,15 @@ export const financialTopics: HelpTopicData[] = [
     keywords: ['trigger', 'auto', 'install', 'pto', 'eligible', 'automatic'],
     relatedTopics: ['funding-overview', 'automations'],
     content: FundingTriggers,
+  },
+  {
+    id: 'invoice-management',
+    title: 'Invoices',
+    description: 'Create, send, and track inter-org invoices with milestone triggers',
+    category: 'Financial',
+    keywords: ['invoice', 'billing', 'payment', 'paid', 'overdue', 'disputed', 'line item', 'milestone', 'inter-org', 'send'],
+    tryItLink: '/invoices',
+    relatedTopics: ['funding-overview', 'funding-triggers', 'engineering-assignments'],
+    content: InvoiceManagement,
   },
 ]

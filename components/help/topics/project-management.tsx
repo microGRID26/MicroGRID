@@ -343,6 +343,37 @@ function NTPWorkflow() {
   )
 }
 
+function EngineeringAssignments() {
+  return (
+    <div>
+      <p className="text-xs text-gray-400 mb-3">Engineering Assignments manage design work between organizations. EPCs submit projects for design, and engineering partners complete the work and deliver files.</p>
+      <div className="space-y-2 text-xs">
+        <div className="bg-gray-800 rounded-lg px-4 py-3 border-l-2 border-amber-500">
+          <span className="text-amber-400 font-bold">1. Submit Assignment (EPC)</span>
+          <p className="text-gray-400 mt-1">From the Engineering page, click New Assignment. Search for a project, select the engineering partner org, choose the type (New Design, Redesign, Review, or Stamp), set priority and due date, and submit.</p>
+        </div>
+        <div className="bg-gray-800 rounded-lg px-4 py-3 border-l-2 border-blue-500">
+          <span className="text-blue-400 font-bold">2. Work the Assignment (Engineering)</span>
+          <p className="text-gray-400 mt-1">Engineering users see incoming assignments in their queue. Accept the assignment, mark it In Progress, upload deliverables (plan sets, SLDs, stamps), and submit for review.</p>
+        </div>
+        <div className="bg-gray-800 rounded-lg px-4 py-3 border-l-2 border-green-500">
+          <span className="text-green-400 font-bold">3. Review and Complete</span>
+          <p className="text-gray-400 mt-1">The requesting org reviews deliverables. They can approve (Complete) or request revisions. Revision count tracks how many rounds of rework occurred.</p>
+        </div>
+      </div>
+      <div className="mt-3 space-y-1 text-xs">
+        <div className="flex items-center gap-2"><span className="bg-amber-900 text-amber-300 px-2 py-0.5 rounded">Pending</span><span className="text-gray-400">-- Submitted, awaiting acceptance</span></div>
+        <div className="flex items-center gap-2"><span className="bg-blue-900 text-blue-300 px-2 py-0.5 rounded">Assigned</span><span className="text-gray-400">-- Accepted by engineering</span></div>
+        <div className="flex items-center gap-2"><span className="bg-cyan-900 text-cyan-300 px-2 py-0.5 rounded">In Progress</span><span className="text-gray-400">-- Design work underway</span></div>
+        <div className="flex items-center gap-2"><span className="bg-purple-900 text-purple-300 px-2 py-0.5 rounded">Under Review</span><span className="text-gray-400">-- Submitted for review</span></div>
+        <div className="flex items-center gap-2"><span className="bg-orange-900 text-orange-300 px-2 py-0.5 rounded">Revision Needed</span><span className="text-gray-400">-- Rework requested</span></div>
+        <div className="flex items-center gap-2"><span className="bg-green-900 text-green-300 px-2 py-0.5 rounded">Complete</span><span className="text-gray-400">-- Deliverables accepted</span></div>
+        <div className="flex items-center gap-2"><span className="bg-gray-800 text-gray-400 px-2 py-0.5 rounded">Cancelled</span><span className="text-gray-400">-- Assignment withdrawn</span></div>
+      </div>
+    </div>
+  )
+}
+
 export const projectManagementTopics: HelpTopicData[] = [
   {
     id: 'task-statuses',
@@ -452,5 +483,15 @@ export const projectManagementTopics: HelpTopicData[] = [
     tryItLink: '/ntp',
     relatedTopics: ['task-statuses', 'stage-advancement', 'funding-overview'],
     content: NTPWorkflow,
+  },
+  {
+    id: 'engineering-assignments',
+    title: 'Engineering Assignments',
+    description: 'Cross-org design work submission, tracking, and deliverables',
+    category: 'Project Management',
+    keywords: ['engineering', 'assignment', 'design', 'redesign', 'stamp', 'review', 'deliverable', 'rush', 'cross-org', 'partner'],
+    tryItLink: '/engineering',
+    relatedTopics: ['ntp-workflow', 'task-statuses', 'stage-advancement'],
+    content: EngineeringAssignments,
   },
 ]
