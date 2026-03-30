@@ -40,7 +40,14 @@ const MORE_SECTIONS: LinkSection[] = [
       { label: 'Service',       href: '/service'  },
       { label: 'Work Orders',   href: '/work-orders' },
       { label: 'Change Orders', href: '/change-orders' },
+      { label: 'Engineering',   href: '/engineering' },
       { label: 'Audit',         href: '/audit'    },
+    ],
+  },
+  {
+    section: 'Finance',
+    links: [
+      { label: 'Invoices',      href: '/invoices' },
     ],
   },
   {

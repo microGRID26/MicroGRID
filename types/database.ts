@@ -710,6 +710,31 @@ export interface CalendarSyncRow {
   created_at: string
 }
 
+export type AssignmentType = 'new_design' | 'redesign' | 'review' | 'stamp'
+export type AssignmentStatus = 'pending' | 'assigned' | 'in_progress' | 'review' | 'revision_needed' | 'complete' | 'cancelled'
+
+export interface EngineeringAssignment {
+  id: string
+  project_id: string
+  assigned_org: string
+  requesting_org: string
+  assignment_type: AssignmentType
+  status: AssignmentStatus
+  priority: string
+  assigned_to: string | null
+  assigned_at: string | null
+  started_at: string | null
+  completed_at: string | null
+  due_date: string | null
+  notes: string | null
+  deliverables: Record<string, unknown>[]
+  revision_count: number
+  created_by: string | null
+  created_by_id: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type NTPStatusType = 'pending' | 'under_review' | 'approved' | 'rejected' | 'revision_required'
 
 export interface NTPRequest {
@@ -727,6 +752,56 @@ export interface NTPRequest {
   revision_notes: string | null
   evidence: Record<string, unknown>
   notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type InvoiceStatus = 'draft' | 'sent' | 'viewed' | 'paid' | 'overdue' | 'cancelled' | 'disputed'
+
+export interface Invoice {
+  id: string
+  invoice_number: string
+  project_id: string | null
+  from_org: string
+  to_org: string
+  status: InvoiceStatus
+  milestone: string | null
+  subtotal: number
+  tax: number
+  total: number
+  due_date: string | null
+  sent_at: string | null
+  paid_at: string | null
+  paid_amount: number | null
+  payment_method: string | null
+  payment_reference: string | null
+  notes: string | null
+  created_by: string | null
+  created_by_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface InvoiceLineItem {
+  id: string
+  invoice_id: string
+  description: string
+  quantity: number
+  unit_price: number
+  total: number
+  category: string | null
+  sort_order: number
+  created_at: string
+}
+
+export interface InvoiceRule {
+  id: string
+  name: string
+  milestone: string
+  from_org_type: string
+  to_org_type: string
+  line_items: Record<string, unknown>[]
+  active: boolean
   created_at: string
   updated_at: string
 }
@@ -1041,6 +1116,12 @@ export type Database = {
         Update: Partial<NTPRequest>
 
       }
+      engineering_assignments: {
+        Row: EngineeringAssignment
+        Insert: Omit<EngineeringAssignment, 'id' | 'status' | 'revision_count' | 'created_at' | 'updated_at'> & { id?: string; status?: AssignmentStatus; revision_count?: number; created_at?: string; updated_at?: string }
+        Update: Partial<EngineeringAssignment>
+
+      }
       organizations: {
         Row: Organization
         Insert: Omit<Organization, 'id' | 'active' | 'created_at' | 'updated_at'> & { id?: string; active?: boolean; created_at?: string; updated_at?: string }
@@ -1051,6 +1132,24 @@ export type Database = {
         Row: OrgMembership
         Insert: Omit<OrgMembership, 'id' | 'is_default' | 'created_at'> & { id?: string; is_default?: boolean; created_at?: string }
         Update: Partial<OrgMembership>
+
+      }
+      invoices: {
+        Row: Invoice
+        Insert: Omit<Invoice, 'id' | 'status' | 'subtotal' | 'tax' | 'total' | 'created_at' | 'updated_at'> & { id?: string; status?: InvoiceStatus; subtotal?: number; tax?: number; total?: number; created_at?: string; updated_at?: string }
+        Update: Partial<Invoice>
+
+      }
+      invoice_line_items: {
+        Row: InvoiceLineItem
+        Insert: Omit<InvoiceLineItem, 'id' | 'quantity' | 'unit_price' | 'total' | 'sort_order' | 'created_at'> & { id?: string; quantity?: number; unit_price?: number; total?: number; sort_order?: number; created_at?: string }
+        Update: Partial<InvoiceLineItem>
+
+      }
+      invoice_rules: {
+        Row: InvoiceRule
+        Insert: Omit<InvoiceRule, 'id' | 'active' | 'created_at' | 'updated_at'> & { id?: string; active?: boolean; created_at?: string; updated_at?: string }
+        Update: Partial<InvoiceRule>
 
       }
     }
