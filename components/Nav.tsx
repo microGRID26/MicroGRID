@@ -42,14 +42,19 @@ const MORE_SECTIONS: LinkSection[] = [
       { label: 'Work Orders',   href: '/work-orders' },
       { label: 'Change Orders', href: '/change-orders' },
       { label: 'Engineering',   href: '/engineering' },
-      { label: 'Sales Teams',   href: '/sales'    },
       { label: 'Audit',         href: '/audit'    },
+    ],
+  },
+  {
+    section: 'Sales',
+    links: [
+      { label: 'Sales Teams',   href: '/sales'    },
+      { label: 'Commissions',   href: '/commissions' },
     ],
   },
   {
     section: 'Finance',
     links: [
-      { label: 'Commissions',   href: '/commissions' },
       { label: 'Invoices',      href: '/invoices' },
     ],
   },
