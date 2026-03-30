@@ -126,6 +126,9 @@ export function MaterialsTab({ project }: MaterialsTabProps) {
       expected_date: null,
       delivered_date: null,
       notes: null,
+      sourcing: null,
+      raw_price: null,
+      sell_price: null,
     })
     if (result) {
       setMaterials(prev => [...prev, result])
@@ -536,13 +539,15 @@ export function MaterialsTab({ project }: MaterialsTabProps) {
       ) : (
         <div className="space-y-1">
           {/* Table header */}
-          <div className="grid grid-cols-[24px_1fr_80px_50px_80px_80px_80px_auto] gap-2 text-xs text-gray-500 font-medium px-3 py-1.5">
+          <div className="grid grid-cols-[24px_1fr_80px_50px_80px_80px_70px_70px_80px_auto] gap-2 text-xs text-gray-500 font-medium px-3 py-1.5">
             <span></span>
             <span>Item</span>
             <span>Category</span>
             <span>Qty</span>
             <span>Source</span>
             <span>Vendor</span>
+            <span>Sourcing</span>
+            <span>Price</span>
             <span>Status</span>
             <span></span>
           </div>
@@ -551,7 +556,7 @@ export function MaterialsTab({ project }: MaterialsTabProps) {
             <div key={m.id}>
               {/* Row */}
               <div
-                className={`grid grid-cols-[24px_1fr_80px_50px_80px_80px_80px_auto] gap-2 items-center text-sm px-3 py-2 rounded-lg transition-colors cursor-pointer ${
+                className={`grid grid-cols-[24px_1fr_80px_50px_80px_80px_70px_70px_80px_auto] gap-2 items-center text-sm px-3 py-2 rounded-lg transition-colors cursor-pointer ${
                   expandedId === m.id ? 'bg-gray-800 border border-gray-700' : 'hover:bg-gray-800/50'
                 }`}
                 onClick={() => {
@@ -588,6 +593,8 @@ export function MaterialsTab({ project }: MaterialsTabProps) {
                   {m.source === 'tbd' ? 'TBD' : m.source}
                 </span>
                 <span className="text-xs text-gray-400 truncate">{m.vendor || '\u2014'}</span>
+                <span className="text-xs text-gray-400 truncate">{m.sourcing || '\u2014'}</span>
+                <span className="text-xs text-gray-400 text-right">{m.sell_price != null ? `$${Number(m.sell_price).toFixed(2)}` : '\u2014'}</span>
                 <button
                   onClick={e => { e.stopPropagation(); cycleStatus(m) }}
                   className={`text-xs px-1.5 py-0.5 rounded text-center transition-colors ${STATUS_COLORS[m.status] || STATUS_COLORS.needed}`}

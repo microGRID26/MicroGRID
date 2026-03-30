@@ -267,7 +267,7 @@ export default function InventoryPage() {
 
   // ── CSV Export (materials tab) ──────────────────────────────────────────────
   function exportMaterialsCSV() {
-    const headers = ['Project ID', 'Item Name', 'Category', 'Quantity', 'Unit', 'Source', 'Vendor', 'Status', 'PO Number', 'Expected Date', 'Delivered Date']
+    const headers = ['Project ID', 'Item Name', 'Category', 'Quantity', 'Unit', 'Source', 'Vendor', 'Sourcing', 'Sell Price', 'Status', 'PO Number', 'Expected Date', 'Delivered Date']
     const rows = filtered.map(m => [
       m.project_id,
       m.name,
@@ -276,6 +276,8 @@ export default function InventoryPage() {
       m.unit ?? '',
       m.source ?? '',
       m.vendor ?? '',
+      m.sourcing ?? '',
+      m.sell_price != null ? m.sell_price.toString() : '',
       m.status ?? '',
       m.po_number ?? '',
       m.expected_date ?? '',
@@ -467,6 +469,8 @@ export default function InventoryPage() {
                           </th>
                           <th className="text-left px-3 py-2">Source</th>
                           <th className="text-left px-3 py-2">Vendor</th>
+                          <th className="text-left px-3 py-2">Sourcing</th>
+                          <th className="text-right px-3 py-2">Sell Price</th>
                           <th className="text-left px-3 py-2 cursor-pointer hover:text-white" role="button" tabIndex={0} onClick={() => toggleSort('status')} onKeyDown={e => e.key === 'Enter' && toggleSort('status')}>
                             Status{sortIcon('status')}
                           </th>
@@ -495,6 +499,8 @@ export default function InventoryPage() {
                               {m.source === 'tbd' ? 'TBD' : m.source}
                             </td>
                             <td className="px-3 py-2 text-xs text-gray-400 truncate max-w-[120px]">{m.vendor || '\u2014'}</td>
+                            <td className="px-3 py-2 text-xs text-gray-400 truncate max-w-[100px]">{m.sourcing || '\u2014'}</td>
+                            <td className="px-3 py-2 text-xs text-gray-400 text-right">{m.sell_price != null ? `$${Number(m.sell_price).toFixed(2)}` : '\u2014'}</td>
                             <td className="px-3 py-2">
                               <span className={`text-xs px-1.5 py-0.5 rounded ${STATUS_COLORS[m.status] || STATUS_COLORS.needed}`}>
                                 {m.status}

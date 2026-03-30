@@ -23,6 +23,9 @@ export interface ProjectMaterial {
   expected_date: string | null
   delivered_date: string | null
   notes: string | null
+  sourcing: string | null
+  raw_price: number | null
+  sell_price: number | null
   created_at: string
   updated_at: string
 }
@@ -38,7 +41,19 @@ export interface WarehouseStock {
   location: string | null
   barcode: string | null
   last_counted_at: string | null
+  sourcing: string | null
+  raw_price: number | null
+  sell_price: number | null
   updated_at: string
+}
+
+/**
+ * Strip raw_price from items unless the requesting user's org is 'supply' type.
+ * raw_price is confidential to NewCo Supply.
+ */
+function stripRawPrice<T extends { raw_price?: number | null }>(items: T[], orgType?: string | null): T[] {
+  if (orgType === 'supply') return items
+  return items.map(item => ({ ...item, raw_price: null }))
 }
 
 export const MATERIAL_STATUSES = ['needed', 'ordered', 'shipped', 'delivered', 'installed'] as const
@@ -52,8 +67,9 @@ export type MaterialCategory = typeof MATERIAL_CATEGORIES[number]
 
 /**
  * Load all materials for a project.
+ * Pass orgType to control raw_price visibility (only 'supply' sees it).
  */
-export async function loadProjectMaterials(projectId: string): Promise<ProjectMaterial[]> {
+export async function loadProjectMaterials(projectId: string, orgType?: string | null): Promise<ProjectMaterial[]> {
   const supabase = db()
   const { data, error } = await supabase
     .from('project_materials')
@@ -63,7 +79,7 @@ export async function loadProjectMaterials(projectId: string): Promise<ProjectMa
     .order('name')
     .limit(1000)
   if (error) console.error('[loadProjectMaterials]', error.message)
-  return (data ?? []) as ProjectMaterial[]
+  return stripRawPrice((data ?? []) as ProjectMaterial[], orgType)
 }
 
 /**
@@ -200,8 +216,9 @@ export async function autoGenerateMaterials(
 
 /**
  * Load warehouse stock, optionally filtered by category and/or location.
+ * Pass orgType to control raw_price visibility (only 'supply' sees it).
  */
-export async function loadWarehouseStock(category?: string, location?: string, orgId?: string | null): Promise<WarehouseStock[]> {
+export async function loadWarehouseStock(category?: string, location?: string, orgId?: string | null, orgType?: string | null): Promise<WarehouseStock[]> {
   const supabase = db()
   let q = supabase.from('warehouse_stock').select('*').order('category').order('name').limit(2000)
   if (category) q = q.eq('category', category)
@@ -209,7 +226,7 @@ export async function loadWarehouseStock(category?: string, location?: string, o
   if (orgId) q = q.eq('org_id', orgId)
   const { data, error } = await q
   if (error) console.error('[loadWarehouseStock]', error.message)
-  return (data ?? []) as WarehouseStock[]
+  return stripRawPrice((data ?? []) as WarehouseStock[], orgType)
 }
 
 /**
@@ -236,12 +253,13 @@ export async function lookupByBarcode(barcode: string): Promise<WarehouseStock |
 
 /**
  * Load all project materials across all projects (for inventory overview).
+ * Pass orgType to control raw_price visibility (only 'supply' sees it).
  */
 export async function loadAllProjectMaterials(filters?: {
   status?: string
   category?: string
   source?: string
-}): Promise<(ProjectMaterial & { project_name: string | null })[]> {
+}, orgType?: string | null): Promise<(ProjectMaterial & { project_name: string | null })[]> {
   const supabase = db()
   let q = supabase
     .from('project_materials')
@@ -265,15 +283,16 @@ export async function loadAllProjectMaterials(filters?: {
     if (filters?.source) q2 = q2.eq('source', filters.source)
     const { data: d2, error: e2 } = await q2
     if (e2) console.error('[loadAllProjectMaterials]', e2.message)
-    return (d2 ?? []).map((r: unknown) => ({ ...(r as ProjectMaterial), project_name: null as string | null }))
+    return stripRawPrice((d2 ?? []).map((r: unknown) => ({ ...(r as ProjectMaterial), project_name: null as string | null })), orgType)
   }
-  return (data ?? []).map((row: Record<string, unknown>) => {
+  const result = (data ?? []).map((row: Record<string, unknown>) => {
     const { projects: projectJoin, ...rest } = row
     return {
       ...rest,
       project_name: (projectJoin as { name?: string } | null)?.name ?? null,
     }
   }) as (ProjectMaterial & { project_name: string | null })[]
+  return stripRawPrice(result, orgType)
 }
 
 // ── Purchase Order constants ──────────────────────────────────────────────────

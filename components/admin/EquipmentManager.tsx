@@ -50,6 +50,8 @@ export function EquipmentManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       name: draft.name, manufacturer: draft.manufacturer, model: draft.model,
       category: draft.category, watts: draft.watts ? Number(draft.watts) : null,
       description: draft.description, active: draft.active, sort_order: draft.sort_order ? Number(draft.sort_order) : 0,
+      sourcing: draft.sourcing || null, raw_price: draft.raw_price ? Number(draft.raw_price) : null,
+      sell_price: draft.sell_price ? Number(draft.sell_price) : null,
     }).eq('id', editing.id)
     setSaving(false)
     if (error) { flash('Save failed'); return }
@@ -64,6 +66,8 @@ export function EquipmentManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       category: draft.category, watts: draft.watts ? Number(draft.watts) : null,
       description: draft.description || null, active: draft.active ?? true,
       sort_order: draft.sort_order ? Number(draft.sort_order) : 0,
+      sourcing: draft.sourcing || null, raw_price: draft.raw_price ? Number(draft.raw_price) : null,
+      sell_price: draft.sell_price ? Number(draft.sell_price) : null,
     })
     setSaving(false)
     if (error) { flash('Create failed'); return }
@@ -113,7 +117,7 @@ export function EquipmentManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         <table className="w-full text-xs">
           <thead className="sticky top-0 bg-gray-900 border-b border-gray-800">
             <tr>
-              {['Name', 'Category', 'Manufacturer', 'Watts', 'Status'].map(h => (
+              {['Name', 'Category', 'Manufacturer', 'Watts', 'Sourcing', 'Sell Price', 'Status'].map(h => (
                 <th key={h} className="text-left px-3 py-2.5 text-gray-400 font-medium">{h}</th>
               ))}
               <th className="px-3 py-2.5 w-10" />
@@ -132,6 +136,8 @@ export function EquipmentManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                 </td>
                 <td className="px-3 py-2 text-gray-400">{item.manufacturer || '--'}</td>
                 <td className="px-3 py-2 text-gray-400">{item.watts ? `${item.watts}W` : '--'}</td>
+                <td className="px-3 py-2 text-gray-400">{item.sourcing || '--'}</td>
+                <td className="px-3 py-2 text-gray-400">{item.sell_price != null ? `$${Number(item.sell_price).toFixed(2)}` : '--'}</td>
                 <td className="px-3 py-2">
                   <button
                     onClick={(e) => { e.stopPropagation(); toggleActive(item) }}
@@ -155,7 +161,7 @@ export function EquipmentManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                 </td>
               </tr>
             ))}
-            {equipment.length === 0 && <tr><td colSpan={6} className="px-3 py-8 text-center text-gray-600 text-sm">No equipment found</td></tr>}
+            {equipment.length === 0 && <tr><td colSpan={8} className="px-3 py-8 text-center text-gray-600 text-sm">No equipment found</td></tr>}
           </tbody>
         </table>
       </div>
@@ -182,6 +188,11 @@ export function EquipmentManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             <Input label="Model" value={draft.model ?? ''} onChange={v => setDraft(d => ({ ...d, model: v || null }))} />
           </div>
           <Input label="Sort Order" value={draft.sort_order?.toString() ?? '0'} onChange={v => setDraft(d => ({ ...d, sort_order: parseInt(v) || 0 }))} type="number" />
+          <Input label="Sourcing" value={draft.sourcing ?? ''} onChange={v => setDraft(d => ({ ...d, sourcing: v || null }))} />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Raw Price ($)" value={draft.raw_price?.toString() ?? ''} onChange={v => setDraft(d => ({ ...d, raw_price: v ? parseFloat(v) : null }))} type="number" />
+            <Input label="Sell Price ($)" value={draft.sell_price?.toString() ?? ''} onChange={v => setDraft(d => ({ ...d, sell_price: v ? parseFloat(v) : null }))} type="number" />
+          </div>
           <Textarea label="Description" value={draft.description ?? ''} onChange={v => setDraft(d => ({ ...d, description: v || null }))} />
           <div className="flex items-center gap-2">
             <input type="checkbox" checked={draft.active ?? true}

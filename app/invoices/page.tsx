@@ -9,8 +9,9 @@ import { useOrg, useRealtimeSubscription } from '@/lib/hooks'
 import {
   loadInvoices, createInvoice, updateInvoiceStatus, addLineItem, deleteLineItem,
   INVOICE_STATUS_LABELS, INVOICE_STATUS_BADGE, generateInvoiceNumber,
+  loadInvoiceRules, MILESTONE_LABELS,
 } from '@/lib/api/invoices'
-import type { Invoice, InvoiceLineItem, InvoiceStatus } from '@/lib/api/invoices'
+import type { Invoice, InvoiceLineItem, InvoiceStatus, InvoiceRule } from '@/lib/api/invoices'
 import type { Project } from '@/types/database'
 import { loadProjectById } from '@/lib/api'
 import { db } from '@/lib/db'
@@ -51,6 +52,30 @@ function CreateInvoiceModal({
   const [notes, setNotes] = useState('')
   const [lineItems, setLineItems] = useState<LineItemDraft[]>([{ description: '', quantity: 1, unit_price: 0, category: '' }])
   const [saving, setSaving] = useState(false)
+  const [invoiceRules, setInvoiceRules] = useState<InvoiceRule[]>([])
+  const [selectedRuleId, setSelectedRuleId] = useState('')
+
+  // Load active invoice rules
+  useEffect(() => {
+    loadInvoiceRules(true).then(setInvoiceRules)
+  }, [])
+
+  function applyRule(ruleId: string) {
+    setSelectedRuleId(ruleId)
+    if (!ruleId) return
+    const rule = invoiceRules.find(r => r.id === ruleId)
+    if (!rule) return
+    // Auto-populate milestone from the rule
+    setMilestone(rule.milestone)
+    // Convert rule line_items to draft format
+    const items: LineItemDraft[] = (rule.line_items as Record<string, unknown>[]).map(item => ({
+      description: (item.description as string) ?? '',
+      quantity: (item.quantity as number) ?? 1,
+      unit_price: (item.unit_price as number) ?? 0,
+      category: (item.category as string) ?? '',
+    }))
+    if (items.length > 0) setLineItems(items)
+  }
 
   // Escape key to close
   useEffect(() => {
@@ -182,6 +207,30 @@ function CreateInvoiceModal({
             )}
           </div>
 
+          {/* Apply Rule Template */}
+          {invoiceRules.length > 0 && (
+            <div>
+              <label className="text-xs text-gray-400 block mb-1">Apply Rule Template</label>
+              <select
+                value={selectedRuleId}
+                onChange={e => applyRule(e.target.value)}
+                className="w-full bg-gray-800 text-white border border-gray-700 rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="">-- Select a rule to auto-populate --</option>
+                {invoiceRules.map(r => (
+                  <option key={r.id} value={r.id}>
+                    {r.name} ({r.from_org_type} → {r.to_org_type} @ {MILESTONE_LABELS[r.milestone] ?? r.milestone})
+                  </option>
+                ))}
+              </select>
+              {selectedRuleId && (
+                <p className="text-[10px] text-gray-500 mt-1">
+                  Rule applied — line items and milestone populated. You can still modify them below.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* To Org + Milestone */}
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -203,11 +252,15 @@ function CreateInvoiceModal({
                 className="w-full bg-gray-800 text-white border border-gray-700 rounded-lg px-3 py-2 text-sm"
               >
                 <option value="">-- None --</option>
+                <option value="contract_signed">Contract Signed</option>
+                <option value="ntp">NTP Approved</option>
                 <option value="design_complete">Design Complete</option>
                 <option value="permit_approved">Permit Approved</option>
+                <option value="installation">Installation</option>
                 <option value="install_complete">Install Complete</option>
                 <option value="inspection_passed">Inspection Passed</option>
-                <option value="pto_received">PTO Received</option>
+                <option value="pto">PTO Received</option>
+                <option value="monthly">Monthly</option>
               </select>
             </div>
           </div>

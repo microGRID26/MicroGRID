@@ -19,6 +19,8 @@ import { VendorManager } from '@/components/admin/VendorManager'
 import { EmailManager } from '@/components/admin/EmailManager'
 import { CustomFieldsManager } from '@/components/admin/CustomFieldsManager'
 import { CommissionRatesManager } from '@/components/admin/CommissionRatesManager'
+import { EngineeringConfigManager } from '@/components/admin/EngineeringConfigManager'
+import { InvoiceRulesManager } from '@/components/admin/InvoiceRulesManager'
 
 export default function AdminPage() {
   const { user: authUser, loading } = useCurrentUser()
@@ -137,6 +139,8 @@ export default function AdminPage() {
             {activeModule === 'email_onboarding' && <EmailManager isSuperAdmin={isSuperAdmin} currentUserEmail={authUser?.email ?? undefined} currentUserName={authUser?.name ?? undefined} />}
             {activeModule === 'custom_fields' && <CustomFieldsManager isSuperAdmin={isSuperAdmin} />}
             {activeModule === 'commissions' && <CommissionRatesManager isSuperAdmin={isSuperAdmin} />}
+            {activeModule === 'engineering_config' && <EngineeringConfigManager />}
+            {activeModule === 'invoice_rules' && <InvoiceRulesManager isSuperAdmin={isSuperAdmin} />}
           </div>
         </main>
       </div>

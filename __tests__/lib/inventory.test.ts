@@ -39,8 +39,8 @@ beforeEach(() => {
 describe('loadProjectMaterials', () => {
   it('returns materials for a project', async () => {
     const materials = [
-      { id: 'm1', project_id: 'PROJ-001', name: 'Panel X', category: 'module', quantity: 20, status: 'needed' },
-      { id: 'm2', project_id: 'PROJ-001', name: 'Inverter Y', category: 'inverter', quantity: 1, status: 'ordered' },
+      { id: 'm1', project_id: 'PROJ-001', name: 'Panel X', category: 'module', quantity: 20, status: 'needed', raw_price: null },
+      { id: 'm2', project_id: 'PROJ-001', name: 'Inverter Y', category: 'inverter', quantity: 1, status: 'ordered', raw_price: null },
     ]
     const chain = mockChain({ data: materials, error: null })
     mockSupabase.from.mockReturnValue(chain)
@@ -481,8 +481,8 @@ describe('lookupByBarcode', () => {
 describe('loadWarehouseStock', () => {
   it('returns all stock when no category filter', async () => {
     const stock = [
-      { id: 'ws-1', name: 'MC4 Connectors', category: 'electrical', quantity_on_hand: 500 },
-      { id: 'ws-2', name: 'Rail Mount', category: 'racking', quantity_on_hand: 200 },
+      { id: 'ws-1', name: 'MC4 Connectors', category: 'electrical', quantity_on_hand: 500, raw_price: null },
+      { id: 'ws-2', name: 'Rail Mount', category: 'racking', quantity_on_hand: 200, raw_price: null },
     ]
     const chain = mockChain({ data: stock, error: null })
     mockSupabase.from.mockReturnValue(chain)
@@ -498,7 +498,7 @@ describe('loadWarehouseStock', () => {
   })
 
   it('filters by category when provided', async () => {
-    const stock = [{ id: 'ws-1', name: 'MC4 Connectors', category: 'electrical', quantity_on_hand: 500 }]
+    const stock = [{ id: 'ws-1', name: 'MC4 Connectors', category: 'electrical', quantity_on_hand: 500, raw_price: null }]
     const chain = mockChain({ data: stock, error: null })
     mockSupabase.from.mockReturnValue(chain)
 
@@ -510,7 +510,7 @@ describe('loadWarehouseStock', () => {
   })
 
   it('filters by location when provided', async () => {
-    const stock = [{ id: 'ws-1', name: 'MC4 Connectors', category: 'electrical', quantity_on_hand: 500, location: 'Truck-A' }]
+    const stock = [{ id: 'ws-1', name: 'MC4 Connectors', category: 'electrical', quantity_on_hand: 500, location: 'Truck-A', raw_price: null }]
     const chain = mockChain({ data: stock, error: null })
     mockSupabase.from.mockReturnValue(chain)
 

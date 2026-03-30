@@ -261,6 +261,9 @@ export function WarehouseTab({ projects }: WarehouseTabProps) {
       location: addLocation.trim() || null,
       barcode: addBarcode.trim() || null,
       last_counted_at: null,
+      sourcing: null,
+      raw_price: null,
+      sell_price: null,
     })
     if (result) {
       setStock(prev => [...prev, result])
@@ -543,6 +546,8 @@ body { font-family: Arial, sans-serif; width: 2in; height: 1in; padding: 4px 6px
                   <th className="text-center px-3 py-2">Reorder Pt</th>
                   <th className="text-center px-3 py-2">Unit</th>
                   <th className="text-left px-3 py-2">Location</th>
+                  <th className="text-left px-3 py-2">Sourcing</th>
+                  <th className="text-right px-3 py-2">Sell Price</th>
                   <th className="text-left px-3 py-2">Barcode</th>
                   <th className="text-left px-3 py-2">Last Counted</th>
                   <th className="text-right px-3 py-2">Actions</th>
@@ -566,6 +571,8 @@ body { font-family: Arial, sans-serif; width: 2in; height: 1in; padding: 4px 6px
                       <td className="px-3 py-2 text-center text-gray-400 font-mono">{item.reorder_point}</td>
                       <td className="px-3 py-2 text-center text-gray-400">{item.unit}</td>
                       <td className="px-3 py-2 text-gray-400 text-xs">{item.location || '\u2014'}</td>
+                      <td className="px-3 py-2 text-gray-400 text-xs">{item.sourcing || '\u2014'}</td>
+                      <td className="px-3 py-2 text-gray-400 text-xs text-right">{item.sell_price != null ? `$${Number(item.sell_price).toFixed(2)}` : '\u2014'}</td>
                       <td className="px-3 py-2 text-gray-400 text-xs font-mono">{item.barcode || '\u2014'}</td>
                       <td className="px-3 py-2 text-gray-400 text-xs">{item.last_counted_at ? fmtDate(item.last_counted_at) : '\u2014'}</td>
                       <td className="px-3 py-2">

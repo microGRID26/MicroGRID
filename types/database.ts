@@ -431,6 +431,9 @@ export interface Equipment {
   description: string | null
   active: boolean
   sort_order: number
+  sourcing: string | null
+  raw_price: number | null
+  sell_price: number | null
   created_at: string
 }
 
@@ -490,6 +493,9 @@ export interface ProjectMaterial {
   expected_date: string | null
   delivered_date: string | null
   notes: string | null
+  sourcing: string | null
+  raw_price: number | null
+  sell_price: number | null
   created_at: string
   updated_at: string
 }
@@ -506,6 +512,9 @@ export interface WarehouseStock {
   barcode: string | null
   last_counted_at: string | null
   org_id: string | null
+  sourcing: string | null
+  raw_price: number | null
+  sell_price: number | null
   updated_at: string
 }
 

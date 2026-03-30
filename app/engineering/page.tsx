@@ -10,6 +10,8 @@ import {
   loadAssignments, loadAssignmentQueue, submitAssignment, updateAssignmentStatus, addDeliverable,
   ASSIGNMENT_STATUS_LABELS, ASSIGNMENT_STATUS_BADGE, ASSIGNMENT_TYPE_LABELS, ASSIGNMENT_TYPES,
 } from '@/lib/api/engineering'
+import { loadEngineeringConfig, autoRouteAssignment } from '@/lib/api/engineering-config'
+import type { EngineeringConfig } from '@/lib/api/engineering-config'
 import type { EngineeringAssignment, AssignmentStatus, AssignmentType } from '@/lib/api/engineering'
 import type { Project } from '@/types/database'
 import { loadProjectById } from '@/lib/api'
@@ -37,13 +39,16 @@ function SubmitAssignmentModal({
   orgId,
   userId,
   userName,
+  engineeringConfig,
 }: {
   onClose: () => void
   onSubmitted: () => void
   orgId: string
   userId: string
   userName: string
+  engineeringConfig: EngineeringConfig | null
 }) {
+  const isAutoRoute = engineeringConfig?.auto_route_enabled === 'true'
   const [projectSearch, setProjectSearch] = useState('')
   const [searchResults, setSearchResults] = useState<{ id: string; name: string; stage: string }[]>([])
   const [selectedProject, setSelectedProject] = useState<{ id: string; name: string } | null>(null)
@@ -98,13 +103,20 @@ function SubmitAssignmentModal({
 
   async function handleSubmit() {
     const pid = selectedProject?.id
-    if (!pid || !assignedOrg) return
+    if (!pid) return
+    // When auto-routing is disabled, require a selected partner
+    if (!isAutoRoute && !assignedOrg) return
     setSaving(true)
-    const result = await submitAssignment(pid, assignedOrg, orgId, type, userId, userName, {
-      priority,
-      due_date: dueDate || undefined,
-      notes: notes || undefined,
-    })
+    let result: EngineeringAssignment | null = null
+    if (isAutoRoute) {
+      result = await autoRouteAssignment(pid, orgId, userId, userName, type, priority, notes || undefined)
+    } else {
+      result = await submitAssignment(pid, assignedOrg, orgId, type, userId, userName, {
+        priority,
+        due_date: dueDate || undefined,
+        notes: notes || undefined,
+      })
+    }
     setSaving(false)
     if (result) {
       onSubmitted()
@@ -156,14 +168,20 @@ function SubmitAssignmentModal({
           {/* Engineering Partner */}
           <div>
             <label className="text-xs text-gray-400 block mb-1">Engineering Partner *</label>
-            <select
-              value={assignedOrg}
-              onChange={e => setAssignedOrg(e.target.value)}
-              className="w-full bg-gray-800 text-white border border-gray-700 rounded-lg px-3 py-2 text-sm"
-            >
-              <option value="">-- Select Partner --</option>
-              {engineeringOrgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-            </select>
+            {isAutoRoute ? (
+              <div className="bg-green-900/20 border border-green-800 rounded-lg px-3 py-2 text-sm text-green-400">
+                All designs are automatically routed to Rush Engineering
+              </div>
+            ) : (
+              <select
+                value={assignedOrg}
+                onChange={e => setAssignedOrg(e.target.value)}
+                className="w-full bg-gray-800 text-white border border-gray-700 rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="">-- Select Partner --</option>
+                {engineeringOrgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+              </select>
+            )}
           </div>
 
           {/* Type + Priority */}
@@ -211,7 +229,7 @@ function SubmitAssignmentModal({
           <button onClick={onClose} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
           <button
             onClick={handleSubmit}
-            disabled={saving || !selectedProject || !assignedOrg}
+            disabled={saving || !selectedProject || (!isAutoRoute && !assignedOrg)}
             className="px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50"
           >
             {saving ? 'Submitting...' : 'Submit Assignment'}
@@ -459,6 +477,12 @@ export default function EngineeringPage() {
   const [sortAsc, setSortAsc] = useState(false)
   const [orgMap, setOrgMap] = useState<Record<string, string>>({})
   const [projectMap, setProjectMap] = useState<Record<string, { id: string; name: string; stage: string; pm: string | null; financier: string | null; systemkw: number | null; contract: number | null }>>({})
+  const [engConfig, setEngConfig] = useState<EngineeringConfig | null>(null)
+
+  // Load engineering config (for auto-routing)
+  useEffect(() => {
+    loadEngineeringConfig().then(setEngConfig)
+  }, [])
 
   // Load assignments
   const loadData = useCallback(async () => {
@@ -843,6 +867,7 @@ export default function EngineeringPage() {
           orgId={orgId}
           userId={currentUser.id}
           userName={currentUser.name}
+          engineeringConfig={engConfig}
         />
       )}
 

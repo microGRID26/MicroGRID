@@ -2,10 +2,10 @@
 // Orgs create invoices to bill other orgs for engineering, materials, etc.
 
 import { db } from '@/lib/db'
-import type { Invoice, InvoiceLineItem, InvoiceStatus } from '@/types/database'
+import type { Invoice, InvoiceLineItem, InvoiceStatus, InvoiceRule } from '@/types/database'
 
 // ── Re-exports ──────────────────────────────────────────────────────────────
-export type { Invoice, InvoiceLineItem, InvoiceStatus }
+export type { Invoice, InvoiceLineItem, InvoiceStatus, InvoiceRule }
 
 export const INVOICE_STATUSES = ['draft', 'sent', 'viewed', 'paid', 'overdue', 'cancelled', 'disputed'] as const
 
@@ -351,4 +351,103 @@ async function recalcInvoiceTotals(invoiceId: string): Promise<void> {
   const currentTax = (inv as { tax: number } | null)?.tax ?? 0
   const total = subtotal + currentTax
   await supabase.from('invoices').update({ subtotal, total }).eq('id', invoiceId)
+}
+
+// ── Invoice Rules ─────────────────────────────────────────────────────────
+
+export const MILESTONE_LABELS: Record<string, string> = {
+  contract_signed: 'Contract Signed',
+  ntp: 'NTP Approved',
+  design_complete: 'Design Complete',
+  permit_approved: 'Permit Approved',
+  installation: 'Installation',
+  install_complete: 'Install Complete',
+  inspection_passed: 'Inspection Passed',
+  pto: 'PTO Received',
+  pto_received: 'PTO Received',
+  monthly: 'Monthly',
+}
+
+/**
+ * Load invoice rules, optionally filtered by active status.
+ */
+export async function loadInvoiceRules(activeOnly?: boolean): Promise<InvoiceRule[]> {
+  const supabase = db()
+  let q = supabase
+    .from('invoice_rules')
+    .select('*')
+    .order('name', { ascending: true })
+    .limit(100)
+  if (activeOnly) q = q.eq('active', true)
+  const { data, error } = await q
+  if (error) console.error('[loadInvoiceRules]', error.message)
+  return (data ?? []) as InvoiceRule[]
+}
+
+/**
+ * Add a new invoice rule.
+ */
+export async function addInvoiceRule(rule: {
+  name: string
+  milestone: string
+  from_org_type: string
+  to_org_type: string
+  line_items: Record<string, unknown>[]
+  active?: boolean
+}): Promise<InvoiceRule | null> {
+  const supabase = db()
+  const { data, error } = await supabase
+    .from('invoice_rules')
+    .insert({
+      name: rule.name,
+      milestone: rule.milestone,
+      from_org_type: rule.from_org_type,
+      to_org_type: rule.to_org_type,
+      line_items: rule.line_items,
+      active: rule.active ?? true,
+    })
+    .select()
+    .single()
+  if (error) {
+    console.error('[addInvoiceRule]', error.message)
+    return null
+  }
+  return data as InvoiceRule
+}
+
+/**
+ * Update an existing invoice rule.
+ */
+export async function updateInvoiceRule(
+  id: string,
+  updates: Partial<Pick<InvoiceRule, 'name' | 'milestone' | 'from_org_type' | 'to_org_type' | 'line_items' | 'active'>>,
+): Promise<InvoiceRule | null> {
+  const supabase = db()
+  const { data, error } = await supabase
+    .from('invoice_rules')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) {
+    console.error('[updateInvoiceRule]', error.message)
+    return null
+  }
+  return data as InvoiceRule
+}
+
+/**
+ * Delete an invoice rule.
+ */
+export async function deleteInvoiceRule(id: string): Promise<boolean> {
+  const supabase = db()
+  const { error } = await supabase
+    .from('invoice_rules')
+    .delete()
+    .eq('id', id)
+  if (error) {
+    console.error('[deleteInvoiceRule]', error.message)
+    return false
+  }
+  return true
 }
