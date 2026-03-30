@@ -9,6 +9,7 @@ import type { Project } from '@/types/database'
 import { MessageSquare } from 'lucide-react'
 import React from 'react'
 import { PermitPortalCard, OpenPortalButton } from './PermitPortalCard'
+import { MentionNoteInput } from './MentionNoteInput'
 
 const FILE_PATTERN = /(\S+\.(?:pdf|png|jpg|jpeg|gif|dwg|xlsx|xls|csv|doc|docx|zip|heic|mp4|mov))/gi
 const INLINE_IMAGE = /^image_\d{4}-\d{2}-\d{2}T/i
@@ -80,6 +81,8 @@ interface TasksTabProps {
   updateTaskFollowUp: (taskId: string, date: string | null) => void
   onScheduleTask?: (jobType: string) => void
   folderUrl?: string | null
+  projectId?: string
+  currentUserName?: string
 }
 
 // Permit-related task IDs — show "Open Portal" button on these
@@ -93,14 +96,15 @@ const SCHEDULABLE_TASKS: Record<string, string> = {
   sched_util: 'inspection',
 }
 
-// ── Task note input (add new note) ──────────────────────────────────────────
-function TaskNoteInput({ taskId, onAdd }: { taskId: string; onAdd: (taskId: string, text: string) => void }) {
+
+// ── Fallback task note input (no @mention support) ─────────────────────────
+function TaskNoteInputFallback({ taskId, onAdd }: { taskId: string; onAdd: (taskId: string, text: string) => void }) {
   const [draft, setDraft] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   useEffect(() => { inputRef.current?.focus() }, [])
   const submit = () => { if (draft.trim()) { onAdd(taskId, draft.trim()); setDraft('') } }
   return (
-    <div className="px-3 py-1.5 pl-10 border-b border-gray-800/60 bg-gray-800/30 flex gap-2">
+    <div className="flex gap-2">
       <input
         ref={inputRef}
         value={draft}
@@ -138,6 +142,8 @@ export function TasksTab({
   updateTaskFollowUp,
   onScheduleTask,
   folderUrl,
+  projectId,
+  currentUserName,
 }: TasksTabProps) {
   const [viewStage, setViewStage] = useState<string>(project.stage)
   const [expandedTask, setExpandedTask] = useState<string | null>(null)
@@ -500,7 +506,19 @@ export function TasksTab({
                             <div className="px-3 py-1 pl-10 text-[10px] text-gray-600 italic">No notes yet</div>
                           )}
                           {/* Add new note */}
-                          <TaskNoteInput taskId={task.id} onAdd={addTaskNote} />
+                          <div className="px-3 py-1.5 pl-10 border-b border-gray-800/60 bg-gray-800/30">
+                            {projectId && currentUserName ? (
+                              <MentionNoteInput
+                                compact
+                                onSubmit={(text) => addTaskNote(task.id, text)}
+                                placeholder="Add a note for this task... Type @ to mention"
+                                projectId={projectId}
+                                currentUserName={currentUserName}
+                              />
+                            ) : (
+                              <TaskNoteInputFallback taskId={task.id} onAdd={addTaskNote} />
+                            )}
+                          </div>
                         </div>
                       )}
 

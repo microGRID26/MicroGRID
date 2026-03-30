@@ -694,6 +694,8 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                 setScheduleModal({ jobType, crews: data ?? [] })
               }}
               folderUrl={folderUrl}
+              projectId={pid}
+              currentUserName={currentUser?.name}
             />
           )}
 

@@ -1,10 +1,9 @@
 'use client'
 
 import type { Note } from '@/types/database'
-import React, { useState, useEffect, useRef } from 'react'
+import React from 'react'
 import { X } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
-import { db } from '@/lib/db'
+import { MentionNoteInput } from './MentionNoteInput'
 
 // Detect file references in note text and make them clickable
 // Links to Google Drive search scoped to the project folder
@@ -62,90 +61,6 @@ function NoteText({ text, folderUrl }: { text: string; folderUrl: string | null 
   )
 }
 
-// @mention autocomplete component
-function MentionTextarea({ value, onChange, onSubmit, placeholder }: {
-  value: string; onChange: (v: string) => void; onSubmit: () => void; placeholder: string
-}) {
-  const [users, setUsers] = useState<{ id: string; name: string }[]>([])
-  const [showMentions, setShowMentions] = useState(false)
-  const [mentionQuery, setMentionQuery] = useState('')
-  const [mentionIdx, setMentionIdx] = useState(0)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-
-  useEffect(() => {
-    db().from('users').select('id, name').eq('active', true).like('email', '%@gomicrogridenergy.com').order('name')
-      .then(({ data }: any) => { if (data) setUsers(data) })
-  }, [])
-
-  const filtered = mentionQuery
-    ? users.filter(u => u.name.toLowerCase().includes(mentionQuery.toLowerCase()))
-    : users
-
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const val = e.target.value
-    onChange(val)
-
-    // Check if we're typing a @mention
-    const cursor = e.target.selectionStart
-    const textBefore = val.slice(0, cursor)
-    const atMatch = textBefore.match(/@([\w\s]*)$/)
-
-    if (atMatch && !atMatch[1].includes('\n')) {
-      setShowMentions(true)
-      setMentionQuery(atMatch[1].trim())
-      setMentionIdx(0)
-    } else {
-      setShowMentions(false)
-    }
-  }
-
-  const insertMention = (userName: string) => {
-    const cursor = textareaRef.current?.selectionStart ?? value.length
-    const textBefore = value.slice(0, cursor)
-    const textAfter = value.slice(cursor)
-    const atPos = textBefore.lastIndexOf('@')
-    const newText = textBefore.slice(0, atPos) + `@${userName} ` + textAfter
-    onChange(newText)
-    setShowMentions(false)
-    setTimeout(() => textareaRef.current?.focus(), 0)
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (showMentions && filtered.length > 0) {
-      if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIdx(i => Math.min(i + 1, filtered.length - 1)) }
-      else if (e.key === 'ArrowUp') { e.preventDefault(); setMentionIdx(i => Math.max(i - 1, 0)) }
-      else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); insertMention(filtered[mentionIdx].name) }
-      else if (e.key === 'Escape') { setShowMentions(false) }
-    } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-      onSubmit()
-    }
-  }
-
-  return (
-    <div className="relative">
-      <textarea
-        ref={textareaRef}
-        value={value}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder}
-        rows={3}
-        className="w-full bg-gray-800 text-white text-sm rounded-lg p-3 border border-gray-700 focus:border-green-500 focus:outline-none resize-none placeholder-gray-500"
-      />
-      {showMentions && filtered.length > 0 && (
-        <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 max-h-40 overflow-y-auto w-56">
-          {filtered.map((u, i) => (
-            <button key={u.id}
-              onClick={() => insertMention(u.name)}
-              className={`w-full text-left px-3 py-2 text-xs transition-colors ${i === mentionIdx ? 'bg-green-900/50 text-green-300' : 'text-gray-300 hover:bg-gray-700'}`}>
-              @{u.name}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 
 interface NotesTabProps {
   notes: Note[]
@@ -160,42 +75,41 @@ interface NotesTabProps {
 }
 
 export function NotesTab({ notes, newNote, setNewNote, addNote, deleteNote, saving, folderUrl, projectId, currentUserName }: NotesTabProps) {
-  const handleAddNote = async () => {
-    // Extract @mentions and create notifications
-    const mentions = newNote.match(/@[A-Z][a-z]+ [A-Z][a-z]+/g)
-    if (mentions && projectId) {
-      const write = db()
-      const { data: users } = await write.from('users').select('id, name').eq('active', true)
-      if (users) {
-        for (const mention of mentions) {
-          const name = mention.slice(1).trim()
-          const user = users.find((u: any) => u.name.toLowerCase() === name.toLowerCase())
-          if (user) {
-            const { error: mentionErr } = await write.from('mention_notifications').insert({
-              project_id: projectId,
-              mentioned_user_id: user.id,
-              mentioned_by: currentUserName || 'Unknown',
-              message: newNote.slice(0, 200),
-            })
-            if (mentionErr) console.error('mention notification failed:', mentionErr)
-          }
-        }
-      }
-    }
-    addNote()
+  const handleSubmit = (text: string) => {
+    setNewNote(text)
+    // setTimeout ensures React has flushed the state update before addNote reads newNote
+    setTimeout(() => addNote(), 0)
   }
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <div className="p-4 border-b border-gray-800 flex-shrink-0">
-        <MentionTextarea value={newNote} onChange={setNewNote} onSubmit={handleAddNote}
-          placeholder="Add a note… Type @ to mention someone (⌘+Enter to save)" />
-        <div className="flex justify-end mt-2">
-          <button onClick={handleAddNote} disabled={saving || !newNote.trim()}
-            className="text-xs px-4 py-2 bg-green-700 hover:bg-green-600 disabled:opacity-40 text-white rounded-lg transition-colors">
-            {saving ? 'Saving...' : 'Add Note'}
-          </button>
-        </div>
+        {projectId && currentUserName ? (
+          <MentionNoteInput
+            onSubmit={handleSubmit}
+            placeholder="Add a note… Type @ to mention someone (⌘+Enter to save)"
+            projectId={projectId}
+            currentUserName={currentUserName}
+            saving={saving}
+          />
+        ) : (
+          <>
+            <textarea
+              value={newNote}
+              onChange={e => setNewNote(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) addNote() }}
+              placeholder="Add a note…"
+              rows={3}
+              className="w-full bg-gray-800 text-white text-sm rounded-lg p-3 border border-gray-700 focus:border-green-500 focus:outline-none resize-none placeholder-gray-500"
+            />
+            <div className="flex justify-end mt-2">
+              <button onClick={addNote} disabled={saving || !newNote.trim()}
+                className="text-xs px-4 py-2 bg-green-700 hover:bg-green-600 disabled:opacity-40 text-white rounded-lg transition-colors">
+                {saving ? 'Saving...' : 'Add Note'}
+              </button>
+            </div>
+          </>
+        )}
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {notes.map(n => (
