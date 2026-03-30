@@ -347,10 +347,14 @@ function EngineeringAssignments() {
   return (
     <div>
       <p className="text-xs text-gray-400 mb-3">Engineering Assignments manage design work between organizations. EPCs submit projects for design, and engineering partners complete the work and deliver files.</p>
+      <div className="bg-green-900/20 border border-green-800 rounded-lg px-4 py-3 mb-3 text-xs">
+        <span className="text-green-400 font-bold">Rush Auto-Routing</span>
+        <p className="text-gray-400 mt-1">When auto-routing is enabled (default), all new engineering assignments are automatically sent to Rush Engineering as the exclusive design partner. EPCs do not need to select a partner -- the system routes for them. Admins can configure the partner slug, design fee ($1,200 flat rate at installation), and toggle auto-routing in Admin &gt; Engineering Config.</p>
+      </div>
       <div className="space-y-2 text-xs">
         <div className="bg-gray-800 rounded-lg px-4 py-3 border-l-2 border-amber-500">
           <span className="text-amber-400 font-bold">1. Submit Assignment (EPC)</span>
-          <p className="text-gray-400 mt-1">From the Engineering page, click New Assignment. Search for a project, select the engineering partner org, choose the type (New Design, Redesign, Review, or Stamp), set priority and due date, and submit.</p>
+          <p className="text-gray-400 mt-1">From the Engineering page, click New Assignment. Search for a project, select the engineering partner org (or auto-routed if enabled), choose the type (New Design, Redesign, Review, or Stamp), set priority and due date, and submit.</p>
         </div>
         <div className="bg-gray-800 rounded-lg px-4 py-3 border-l-2 border-blue-500">
           <span className="text-blue-400 font-bold">2. Work the Assignment (Engineering)</span>
@@ -489,7 +493,7 @@ export const projectManagementTopics: HelpTopicData[] = [
     title: 'Engineering Assignments',
     description: 'Cross-org design work submission, tracking, and deliverables',
     category: 'Project Management',
-    keywords: ['engineering', 'assignment', 'design', 'redesign', 'stamp', 'review', 'deliverable', 'rush', 'cross-org', 'partner'],
+    keywords: ['engineering', 'assignment', 'design', 'redesign', 'stamp', 'review', 'deliverable', 'rush', 'cross-org', 'partner', 'auto-route', 'auto-routing', 'design fee', '$1200', 'exclusive'],
     tryItLink: '/engineering',
     relatedTopics: ['ntp-workflow', 'task-statuses', 'stage-advancement'],
     content: EngineeringAssignments,

@@ -99,8 +99,8 @@ function InvoiceManagement() {
           <p className="text-gray-400 mt-1">The receiving org marks an invoice as Paid, recording the amount, payment method, and reference number. Paid and Cancelled are terminal statuses.</p>
         </div>
         <div className="bg-gray-800 rounded-lg px-4 py-3 border-l-2 border-purple-500">
-          <span className="text-purple-400 font-bold">Milestone Triggers</span>
-          <p className="text-gray-400 mt-1">Invoices can be tagged with milestones (NTP Approved, Install Complete, PTO Received) for tracking which project events triggered billing. Invoice rules can be configured by admins to define standard line items per milestone.</p>
+          <span className="text-purple-400 font-bold">Invoice Rule Templates</span>
+          <p className="text-gray-400 mt-1">When creating an invoice, use the "Apply Rule Template" dropdown to pre-populate line items from a saved template. 8 default templates cover the full billing ecosystem: Sales &amp; Marketing to EPC, NewCo Supply to EPC, Rush Engineering to EPC ($1,200 flat fee), EPC to EDGE at NTP/Install/PTO milestones, and recurring energy/VPP flows. Admins manage templates in Admin &gt; Invoice Rules.</p>
         </div>
       </div>
       <div className="mt-3 space-y-1 text-xs">
@@ -217,7 +217,7 @@ export const financialTopics: HelpTopicData[] = [
     title: 'Invoices',
     description: 'Create, send, and track inter-org invoices with milestone triggers',
     category: 'Financial',
-    keywords: ['invoice', 'billing', 'payment', 'paid', 'overdue', 'disputed', 'line item', 'milestone', 'inter-org', 'send'],
+    keywords: ['invoice', 'billing', 'payment', 'paid', 'overdue', 'disputed', 'line item', 'milestone', 'inter-org', 'send', 'rule', 'template', 'apply rule', 'newco', 'supply'],
     tryItLink: '/invoices',
     relatedTopics: ['funding-overview', 'funding-triggers', 'engineering-assignments'],
     content: InvoiceManagement,

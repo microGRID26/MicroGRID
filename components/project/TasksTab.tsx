@@ -118,7 +118,7 @@ function TaskNoteInput({ taskId, onAdd }: { taskId: string; onAdd: (taskId: stri
 function fmtNoteTime(t: string) {
   const d = new Date(t)
   if (isNaN(d.getTime())) return t
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 }
 
 // ── COMPONENT ────────────────────────────────────────────────────────────────
@@ -433,7 +433,7 @@ export function TasksTab({
                             {(() => {
                               const raw = String(completedDate).slice(0, 10)
                               const d = new Date(raw + 'T00:00:00')
-                              return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                              return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                             })()}
                           </span>
                         )}
@@ -559,7 +559,7 @@ export function TasksTab({
                           <div className="space-y-1">
                             {history.map((entry: any, i: number) => {
                               const when = entry.changed_at
-                                ? new Date(entry.changed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                                ? new Date(entry.changed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                                 : ''
                               const time = entry.changed_at
                                 ? new Date(entry.changed_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })

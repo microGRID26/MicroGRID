@@ -258,7 +258,8 @@ Standalone page at `/audit-trail` (admin-only, guarded by `useCurrentUser().isAd
 - **commission_tiers** — volume-based rate increases. Fields: `id` (UUID PK), `rate_id` (UUID FK -> commission_rates ON DELETE CASCADE), `min_deals` (INTEGER), `max_deals` (INTEGER), `min_watts` (NUMERIC(12,2)), `max_watts` (NUMERIC(12,2)), `rate` (NUMERIC(10,4) NOT NULL), `label`, `sort_order` (INTEGER DEFAULT 0), `created_at`. Indexes on rate_id and (rate_id, sort_order). RLS: SELECT for all authenticated, write for admin. Migration: `supabase/049-commission-tiers.sql`.
 - **commission_geo_modifiers** — market-specific rate multipliers. Fields: `id` (UUID PK), `state`, `city`, `region`, `modifier` (NUMERIC(6,4) NOT NULL DEFAULT 1.0), `label`, `active` (BOOLEAN DEFAULT true), `org_id` (UUID FK -> organizations), `created_at`. Indexes on state, city, org_id, active. RLS: SELECT for all authenticated, write for admin. Migration: `supabase/049-commission-tiers.sql`.
 - **commission_hierarchy** — multi-level override chain. Fields: `id` (UUID PK), `user_id` (TEXT NOT NULL), `user_name`, `role_key` (TEXT NOT NULL), `parent_id` (UUID FK -> commission_hierarchy self-referencing), `team_name`, `active` (BOOLEAN DEFAULT true), `org_id` (UUID FK -> organizations), `created_at`, `updated_at`. Indexes on user_id, parent_id, org_id, role_key, active. RLS: SELECT for all authenticated, write for admin. Auto-updated_at trigger. Migration: `supabase/049-commission-tiers.sql`.
-- **invoice_rules** — configurable milestone-triggered invoice templates. Fields: `id` (UUID PK), `name`, `milestone`, `from_org_type`, `to_org_type`, `line_items` (JSONB), `active`, `created_at`, `updated_at`. Index on milestone. RLS: SELECT for all authenticated; write for admin. Migration: `supabase/047-invoices.sql`.
+- **invoice_rules** — configurable milestone-triggered invoice templates. Fields: `id` (UUID PK), `name` (TEXT NOT NULL, UNIQUE INDEX), `milestone`, `from_org_type`, `to_org_type`, `line_items` (JSONB), `active`, `created_at`, `updated_at`. Index on milestone. 8 default rules seeded in `051-invoice-rules-seed.sql`. RLS: SELECT for all authenticated; write for admin. Migration: `supabase/047-invoices.sql`.
+- **engineering_config** — Rush Engineering auto-routing configuration. Key/value store with fields: `id` (UUID PK), `config_key` (TEXT NOT NULL UNIQUE), `value` (TEXT NOT NULL), `description`, `updated_at`. Seeded with 3 defaults: `exclusive_partner_org_slug` ('rush'), `design_fee` ('1200'), `auto_route_enabled` ('true'). RLS: all authenticated can read, admin can write. Migration: `supabase/050-rush-newco-config.sql`.
 - **ahjs**, **utilities** — reference data for permit authorities and utility companies
 - **feature_flags** — admin-toggleable feature flags. Fields: `id` (UUID PK), `flag_key` (TEXT UNIQUE), `label`, `description`, `enabled` (BOOLEAN), `rollout_percentage` (INTEGER 0-100), `allowed_roles` (TEXT[]), `allowed_org_ids` (TEXT[]), `created_at`, `updated_at`. 7 default flags seeded. Migration: `supabase/038-feature-flags.sql`.
 - **project_adders** — project adders/extras (e.g., EV charger, critter guard, ground mount). Fields: `id`, `project_id`, `name`, `price`, `quantity`, `created_at`. RLS open to all authenticated users. Migration: `supabase/013-adders.sql`. Contains 4,185 records imported from NetSuite.
@@ -599,6 +600,30 @@ Cross-org approval workflow where EPCs submit projects for underwriting review a
 
 **On rejection:** Sets NTP task to Revision Required with the rejection reason, fires EDGE webhook with `event_detail: 'ntp.rejected'`.
 
+### Rush Engineering Auto-Routing
+
+Rush Engineering is the exclusive design partner for all EPCs. When auto-routing is enabled (default), all new engineering assignments are automatically sent to the configured partner org.
+
+**Configuration:** `engineering_config` table stores 3 key/value pairs:
+- `exclusive_partner_org_slug` — org slug of the exclusive partner (default: `rush`)
+- `design_fee` — flat fee per funded project at installation (default: `$1,200`)
+- `auto_route_enabled` — when `true`, EPCs cannot select a partner; all assignments auto-route
+
+**API:** `lib/api/engineering-config.ts` — `loadEngineeringConfig()` (returns Record from key/value rows, falls back to hardcoded defaults on error), `updateEngineeringConfig(key, value)` (admin-only via RLS), `autoRouteAssignment(projectId, requestingOrg, userId, userName, type?, priority?, notes?)` (reads config, looks up partner org by slug, creates assignment with `[Auto-routed to <name>]` prefix on notes).
+
+**Admin:** `components/admin/EngineeringConfigManager.tsx` — toggle auto-route on/off, set partner slug, set design fee. Rendered in the Admin page under `engineering_config` module.
+
+**Page integration:** `app/engineering/page.tsx` — the Submit Assignment modal checks `auto_route_enabled`. When enabled, shows a green banner "All designs are automatically routed to Rush Engineering" and calls `autoRouteAssignment()`. When disabled, shows a partner dropdown for manual selection.
+
+### NewCo Supply Pricing
+
+NewCo Supply needs cost visibility on equipment and materials. Three pricing columns added to `equipment`, `project_materials`, and `warehouse_stock` tables (migration `050-rush-newco-config.sql`):
+- `sourcing` (TEXT) — sourcing notes
+- `raw_price` (NUMERIC(12,2)) — NewCo's cost (confidential)
+- `sell_price` (NUMERIC(12,2)) — price to EPCs
+
+**Confidentiality:** `raw_price` is stripped from API responses unless the requesting user's org is type `supply`. The `stripRawPrice()` function in `lib/api/equipment.ts` (exported, also used by `lib/api/inventory.ts`) replaces `raw_price` with `null` for non-supply orgs. Applied to `loadEquipment`, `searchEquipment`, `loadAllEquipment`, `loadProjectMaterials`, `loadWarehouseStock`, and `loadAllProjectMaterials`.
+
 ### EDGE Integration (MicroGRID ↔ EDGE Portal)
 
 Bidirectional webhook integration between MicroGRID and EDGE Portal for project data and funding event synchronization.
@@ -744,6 +769,8 @@ All in `supabase/`:
 - `047-invoices.sql` — Invoice engine: `invoices` table (inter-org billing with milestone triggers, status lifecycle, payment tracking), `invoice_line_items` table (per-invoice line items with cascading delete), `invoice_rules` table (configurable milestone-triggered invoice templates). Org-scoped RLS: from/to org can read/update, from org can insert, platform/super_admin can delete. Line item RLS inherited via EXISTS subquery on parent invoice.
 - `048-commissions.sql` — Commission system: `commission_rates` table (admin-configurable per-watt/percentage/flat rates per role, 6 defaults seeded) and `commission_records` table (per-project per-role commission calculations with solar/adder/referral breakdown, status lifecycle pending/approved/paid/cancelled). Org-scoped RLS: rates globally readable/admin-writable, records org-scoped read/write with platform/super_admin delete.
 - `049-commission-tiers.sql` — Commission tiers, geo modifiers, and team hierarchy. `commission_tiers` table (volume-based rate increases by deal count or watts, linked to commission_rates via FK CASCADE). `commission_geo_modifiers` table (market-specific rate multipliers by state/city/region, org-scoped). `commission_hierarchy` table (multi-level override chain with self-referencing parent_id, soft-delete via active flag, org-scoped). RLS: all tables authenticated-read/admin-write. Indexes on rate_id, sort_order, state, city, org_id, user_id, parent_id, role_key, active. Auto-updated_at trigger on hierarchy.
+- `050-rush-newco-config.sql` — Rush Engineering auto-routing: `engineering_config` table (key/value config with exclusive partner slug, design fee, auto-route toggle). NewCo Supply pricing: adds `sourcing` (TEXT), `raw_price` (NUMERIC(12,2)), `sell_price` (NUMERIC(12,2)) columns to `equipment`, `project_materials`, and `warehouse_stock` tables. RLS: all authenticated can read, admin can write.
+- `051-invoice-rules-seed.sql` — Seeds 8 inter-org invoice rule templates: Sales & Marketing to EPC (contract_signed), NewCo Supply to EPC (installation), Rush Engineering to EPC ($1,200 flat, installation), EPC to EDGE at NTP/Install/PTO milestones (30%/50%/20%), EDGE to EPC (monthly energy/VPP), EPC to Light Energy customer (monthly, inactive). Unique index on `name` for idempotent re-runs.
 - `seed-document-requirements.sql` — Seeds 23 document requirements across all 7 pipeline stages
 
 ### Legacy Projects
@@ -822,14 +849,14 @@ All in `scripts/`:
 
 All three planned consolidation targets from Session 15 have been completed in Session 16:
 
-**Admin page** — `app/admin/page.tsx` split into 24 components in `components/admin/` (shared across Admin and System pages):
+**Admin page** — `app/admin/page.tsx` split into 26 components in `components/admin/` (shared across Admin and System pages):
 - `shared.tsx` — shared styles, types, and utility components (SectionShell, ModalShell, etc.)
 - `UsersManager.tsx`, `CrewsManager.tsx`, `AHJManager.tsx`, `UtilityManager.tsx`, `HOAManager.tsx`
 - `FinancierManager.tsx`, `ReasonsManager.tsx`, `NotificationRulesManager.tsx`, `QueueConfigManager.tsx`
 - `SLAManager.tsx`, `FeedbackManager.tsx`, `AuditTrailManager.tsx`, `PermissionMatrix.tsx`, `VendorManager.tsx`
 - `EmailManager.tsx`, `CustomFieldsManager.tsx`, `FeatureFlagManager.tsx`, `CalendarSyncManager.tsx`
 - `DocumentRequirementsManager.tsx`, `EquipmentManager.tsx`, `EdgeIntegrationManager.tsx`
-- `CommissionRatesManager.tsx`
+- `CommissionRatesManager.tsx`, `EngineeringConfigManager.tsx`, `InvoiceRulesManager.tsx`
 - `CRMInfo.tsx`, `ReleaseNotes.tsx`
 
 **ProjectPanel** — `components/project/FilesTab.tsx` extracted as standalone component.
@@ -838,7 +865,7 @@ All three planned consolidation targets from Session 15 have been completed in S
 
 ### Code Quality
 
-**Current rating: 9.5/10** (up from 9/10 after Session 16). Session 17-19 built the multi-tenant OS foundation, NTP workflow, and org-scoped RLS. Session 20 deep audit: extracted `useProjectTasks` hook from ProjectPanel (500+ lines of task automation logic), added server-side route protection via `proxy.ts` with role hierarchy, added client-side Manager+ gates to all operational pages, added explicit `.limit()` calls to all 55 API queries across 16 files, grouped nav More dropdown into 5 sections. Release 2: engineering assignments (cross-org design work with deliverables and revision tracking), invoices (inter-org billing with milestone triggers, status lifecycle, payment tracking, collision-safe number generation). **1,954 tests (1,946 passed, 8 skipped)** across 58 test files (SLA tests remain skipped while thresholds are paused). **E2E tests:** Playwright installed with 20+ E2E test specs in `e2e/`. Remaining debt: 5 `as any` casts in production code (see TypeScript Pattern), ~20 in test mocks.
+**Current rating: 9.5/10** (up from 9/10 after Session 16). Session 17-19 built the multi-tenant OS foundation, NTP workflow, and org-scoped RLS. Session 20 deep audit: extracted `useProjectTasks` hook from ProjectPanel (500+ lines of task automation logic), added server-side route protection via `proxy.ts` with role hierarchy, added client-side Manager+ gates to all operational pages, added explicit `.limit()` calls to all 55 API queries across 16 files, grouped nav More dropdown into 5 sections. Release 2: engineering assignments (cross-org design work with deliverables and revision tracking), invoices (inter-org billing with milestone triggers, status lifecycle, payment tracking, collision-safe number generation). **1,978 tests (1,970 passed, 8 skipped)** across 58 test files (SLA tests remain skipped while thresholds are paused). **E2E tests:** Playwright installed with 20+ E2E test specs in `e2e/`. Remaining debt: 5 `as any` casts in production code (see TypeScript Pattern), ~20 in test mocks.
 
 ## Multi-Tenant Organizations (Phase 1)
 

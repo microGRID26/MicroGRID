@@ -3,6 +3,9 @@
 -- All org_types are valid per the organizations CHECK constraint:
 --   platform, epc, sales, engineering, supply, customer
 
+-- Add unique constraint so ON CONFLICT works on re-run (idempotent seed)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_inv_rules_name_unique ON invoice_rules (name);
+
 INSERT INTO invoice_rules (name, milestone, from_org_type, to_org_type, line_items, active) VALUES
 
   -- 1. MicroGRID Sales & Marketing → EPC (Sales, Marketing, Tech services)
@@ -51,4 +54,4 @@ INSERT INTO invoice_rules (name, milestone, from_org_type, to_org_type, line_ite
    '[{"description": "Retail Energy & VPP Revenue (price under negotiation)", "category": "energy"}]'::jsonb,
    false)
 
-ON CONFLICT DO NOTHING;
+ON CONFLICT (name) DO NOTHING;

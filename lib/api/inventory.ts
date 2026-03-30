@@ -1,6 +1,7 @@
 // lib/api/inventory.ts — Project materials, warehouse stock, and purchase order data access
 import { db } from '@/lib/db'
 import { escapeIlike } from '@/lib/utils'
+import { stripRawPrice } from './equipment'
 import type { PurchaseOrder, POLineItem, WarehouseTransaction } from '@/types/database'
 
 export type { PurchaseOrder, POLineItem, WarehouseTransaction }
@@ -45,15 +46,6 @@ export interface WarehouseStock {
   raw_price: number | null
   sell_price: number | null
   updated_at: string
-}
-
-/**
- * Strip raw_price from items unless the requesting user's org is 'supply' type.
- * raw_price is confidential to NewCo Supply.
- */
-function stripRawPrice<T extends { raw_price?: number | null }>(items: T[], orgType?: string | null): T[] {
-  if (orgType === 'supply') return items
-  return items.map(item => ({ ...item, raw_price: null }))
 }
 
 export const MATERIAL_STATUSES = ['needed', 'ordered', 'shipped', 'delivered', 'installed'] as const
