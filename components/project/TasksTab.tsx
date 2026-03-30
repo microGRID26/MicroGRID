@@ -403,8 +403,8 @@ export function TasksTab({
 
                         {/* Duration badge — shows days from started to completed */}
                         {startedDate && completedDate && (() => {
-                          const s = new Date(String(startedDate).slice(0, 10) + 'T00:00:00').getTime()
-                          const c = new Date(String(completedDate).slice(0, 10) + 'T00:00:00').getTime()
+                          const s = new Date(String(startedDate)).getTime()
+                          const c = new Date(String(completedDate)).getTime()
                           if (isNaN(s) || isNaN(c)) return null
                           const days = Math.max(0, Math.round((c - s) / 86400000))
                           return (
@@ -416,7 +416,7 @@ export function TasksTab({
 
                         {/* In-progress duration — days since started (not yet complete) */}
                         {startedDate && !completedDate && status === 'In Progress' && (() => {
-                          const s = new Date(String(startedDate).slice(0, 10) + 'T00:00:00').getTime()
+                          const s = new Date(String(startedDate)).getTime()
                           if (isNaN(s)) return null
                           const days = Math.max(0, Math.round((Date.now() - s) / 86400000))
                           if (days === 0) return null
@@ -431,8 +431,7 @@ export function TasksTab({
                         {completedDate && (
                           <span className="text-[10px] text-gray-500 flex-shrink-0">
                             {(() => {
-                              const raw = String(completedDate).slice(0, 10)
-                              const d = new Date(raw + 'T00:00:00')
+                              const d = new Date(String(completedDate))
                               return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                             })()}
                           </span>
