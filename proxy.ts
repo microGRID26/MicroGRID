@@ -39,6 +39,9 @@ const ROUTE_ROLE_REQUIREMENTS: { prefix: string; minLevel: number; label: string
   { prefix: '/audit-trail', minLevel: 2, label: 'manager' },
   { prefix: '/audit', minLevel: 2, label: 'manager' },
   { prefix: '/dashboard', minLevel: 2, label: 'manager' },
+  { prefix: '/sales', minLevel: 4, label: 'admin' },
+  { prefix: '/invoices', minLevel: 3, label: 'finance' },
+  { prefix: '/engineering', minLevel: 2, label: 'manager' },
 ]
 
 function isPublicRoute(pathname: string): boolean {
