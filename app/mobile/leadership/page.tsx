@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import { useSupabaseQuery } from '@/lib/hooks'
 import { fmt$, daysAgo, STAGE_LABELS, STAGE_ORDER } from '@/lib/utils'
+import { db } from '@/lib/db'
 import type { ProjectFunding } from '@/types/database'
 import {
   ArrowLeft,
@@ -16,6 +17,7 @@ import {
   Clock,
   Users,
   BarChart3,
+  Timer,
 } from 'lucide-react'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -100,6 +102,55 @@ export default function MobileLeadershipPage() {
     fundingRows.forEach((f) => { map[f.project_id] = f })
     return map
   }, [fundingRows])
+
+  // Crew hours data
+  const [crewHours, setCrewHours] = useState<{ name: string; todayMins: number; weekMins: number; activeNow: boolean }[]>([])
+  const [hoursLoading, setHoursLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadCrewHours() {
+      setHoursLoading(true)
+      const supabase = db()
+      const now = new Date()
+      const todayStart = now.toISOString().split('T')[0] + 'T00:00:00'
+      const weekStart = new Date(now)
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay()) // Sunday
+      const weekStartStr = weekStart.toISOString().split('T')[0] + 'T00:00:00'
+
+      const { data: entries } = await supabase
+        .from('time_entries')
+        .select('user_id, user_name, clock_in, clock_out, duration_minutes')
+        .gte('clock_in', weekStartStr)
+        .order('clock_in', { ascending: false })
+        .limit(2000)
+
+      if (!entries) { setHoursLoading(false); return }
+
+      const byUser = new Map<string, { name: string; todayMins: number; weekMins: number; activeNow: boolean }>()
+
+      for (const e of entries as { user_id: string; user_name: string | null; clock_in: string; clock_out: string | null; duration_minutes: number | null }[]) {
+        const key = e.user_id
+        const existing = byUser.get(key) ?? { name: e.user_name ?? 'Unknown', todayMins: 0, weekMins: 0, activeNow: false }
+
+        const mins = e.duration_minutes ?? (e.clock_out ? 0 : Math.floor((Date.now() - new Date(e.clock_in).getTime()) / 60000))
+        existing.weekMins += mins
+
+        if (e.clock_in >= todayStart) {
+          existing.todayMins += mins
+        }
+
+        if (!e.clock_out) {
+          existing.activeNow = true
+        }
+
+        byUser.set(key, existing)
+      }
+
+      setCrewHours(Array.from(byUser.values()).sort((a, b) => b.todayMins - a.todayMins))
+      setHoursLoading(false)
+    }
+    loadCrewHours()
+  }, [lastRefresh])
 
   const loading = projLoading || fundLoading
 
@@ -404,6 +455,55 @@ export default function MobileLeadershipPage() {
                 value={String(metrics.agingCount)}
                 valueColor={metrics.agingCount > 0 ? 'text-amber-400' : undefined}
               />
+            </div>
+          </section>
+
+          {/* ── Crew Hours ─────────────────────────────────────── */}
+          <section>
+            <SectionHeader icon={<Timer className="w-4 h-4 text-green-400" />} title="Crew Hours" />
+            <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+              {hoursLoading ? (
+                <div className="px-4 py-6 text-center text-gray-500 text-sm">Loading hours...</div>
+              ) : crewHours.length === 0 ? (
+                <div className="px-4 py-6 text-center text-gray-500 text-sm">No time entries this week</div>
+              ) : (
+                <>
+                  {/* Summary row */}
+                  <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
+                    <div className="text-xs text-gray-400">
+                      {crewHours.filter(c => c.activeNow).length} active now
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      Week total: <span className="text-white font-mono font-medium">
+                        {Math.floor(crewHours.reduce((s, c) => s + c.weekMins, 0) / 60)}h {crewHours.reduce((s, c) => s + c.weekMins, 0) % 60}m
+                      </span>
+                    </div>
+                  </div>
+                  {/* Crew rows */}
+                  {crewHours.map((crew, i) => (
+                    <div key={i} className="flex items-center justify-between px-4 py-2.5 border-b border-gray-800/50 last:border-0">
+                      <div className="flex items-center gap-2">
+                        {crew.activeNow && <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />}
+                        <span className="text-sm text-white">{crew.name}</span>
+                      </div>
+                      <div className="flex items-center gap-4 text-right">
+                        <div>
+                          <div className="text-xs text-gray-500">Today</div>
+                          <div className="text-sm font-mono text-white">
+                            {crew.todayMins > 0 ? `${Math.floor(crew.todayMins / 60)}h ${crew.todayMins % 60}m` : '--'}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500">Week</div>
+                          <div className="text-sm font-mono text-gray-300">
+                            {Math.floor(crew.weekMins / 60)}h {crew.weekMins % 60}m
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           </section>
 

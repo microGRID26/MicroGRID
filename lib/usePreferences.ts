@@ -9,12 +9,29 @@ export interface ExportPreset {
   keys: string[]
 }
 
+export interface NotificationPrefs {
+  blocked: boolean
+  stuck_tasks: boolean
+  mentions: boolean
+  digest_email: boolean
+  stuck_email: boolean
+}
+
+export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
+  blocked: true,
+  stuck_tasks: true,
+  mentions: true,
+  digest_email: true,
+  stuck_email: true,
+}
+
 export interface UserPreferences {
   homepage: string
   default_pm_filter: string | null
   collapsed_sections: Record<string, boolean>
   queue_card_fields: string[]
   export_presets: ExportPreset[]
+  notification_prefs: NotificationPrefs
 }
 
 const DEFAULTS: UserPreferences = {
@@ -23,6 +40,7 @@ const DEFAULTS: UserPreferences = {
   collapsed_sections: {},
   queue_card_fields: ['name', 'city', 'financier', 'contract'],
   export_presets: [],
+  notification_prefs: { ...DEFAULT_NOTIFICATION_PREFS },
 }
 
 const LS_KEY = 'mg_user_prefs'
@@ -87,6 +105,7 @@ export function usePreferences() {
           collapsed_sections: row.collapsed_sections ?? DEFAULTS.collapsed_sections,
           queue_card_fields: row.queue_card_fields ?? DEFAULTS.queue_card_fields,
           export_presets: (row.export_presets as unknown as ExportPreset[]) ?? DEFAULTS.export_presets,
+          notification_prefs: { ...DEFAULT_NOTIFICATION_PREFS, ...((row as unknown as { notification_prefs?: NotificationPrefs }).notification_prefs ?? {}) },
         }
         cachedPrefs = merged
         setPrefs(merged)

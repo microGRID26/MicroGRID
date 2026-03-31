@@ -37,7 +37,13 @@ interface MentionRow {
   project: { name: string } | null
 }
 
-export function useNotifications() {
+export interface NotificationFilterPrefs {
+  blocked?: boolean
+  stuck_tasks?: boolean
+  mentions?: boolean
+}
+
+export function useNotifications(filterPrefs?: NotificationFilterPrefs) {
   const { user } = useCurrentUser()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
@@ -145,7 +151,15 @@ export function useNotifications() {
     // Sort newest first
     notifs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
-    setNotifications(notifs)
+    // Apply user preferences filter
+    const filtered = filterPrefs ? notifs.filter(n => {
+      if (n.type === 'blocked' && filterPrefs.blocked === false) return false
+      if (n.type === 'revision' && filterPrefs.stuck_tasks === false) return false
+      if (n.type === 'mention' && filterPrefs.mentions === false) return false
+      return true
+    }) : notifs
+
+    setNotifications(filtered)
     setLoading(false)
   }, [user])
 
