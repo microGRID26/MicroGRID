@@ -1,9 +1,9 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { fmt$ } from '@/lib/utils'
+import { fmt$, daysAgo } from '@/lib/utils'
 import {
-  MetricCard, ProjectListModal, ExportButton, downloadCSV,
+  MetricCard, ProjectListModal, ExportButton, downloadCSV, SortHeader, useSortable,
   type AnalyticsData,
 } from './shared'
 import type { Project } from '@/types/database'
@@ -162,6 +162,134 @@ export function FundingTab({ data }: { data: AnalyticsData }) {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Funding Aging — how long unfunded projects have been waiting */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+          <div className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-4">M2 Funding Aging</div>
+          {(() => {
+            const unfunded = projects.filter(p => {
+              const f = funding[p.id]
+              return f && !f.m2_funded_date && p.install_complete_date
+            })
+            const buckets = [
+              { label: '0-7 days', min: 0, max: 7, count: 0 },
+              { label: '8-14 days', min: 8, max: 14, count: 0 },
+              { label: '15-30 days', min: 15, max: 30, count: 0 },
+              { label: '31-60 days', min: 31, max: 60, count: 0 },
+              { label: '60+ days', min: 61, max: 9999, count: 0 },
+            ]
+            unfunded.forEach(p => {
+              const days = daysAgo(p.install_complete_date)
+              const bucket = buckets.find(b => days >= b.min && days <= b.max)
+              if (bucket) bucket.count++
+            })
+            const maxCount = Math.max(...buckets.map(b => b.count), 1)
+            return buckets.map(b => (
+              <div key={b.label} className="flex items-center gap-3 py-1">
+                <div className="text-xs text-gray-400 w-20 flex-shrink-0">{b.label}</div>
+                <div className="flex-1 bg-gray-700 rounded-full h-3">
+                  <div className={`h-3 rounded-full ${b.min >= 31 ? 'bg-red-500' : b.min >= 15 ? 'bg-amber-500' : 'bg-green-600'}`}
+                    style={{ width: `${Math.max(b.count / maxCount * 100, b.count > 0 ? 5 : 0)}%` }} />
+                </div>
+                <div className="text-xs text-gray-300 font-mono w-8 text-right">{b.count}</div>
+              </div>
+            ))
+          })()}
+        </div>
+
+        <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+          <div className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-4">M3 Funding Aging</div>
+          {(() => {
+            const unfunded = projects.filter(p => {
+              const f = funding[p.id]
+              return f && !f.m3_funded_date && p.pto_date
+            })
+            const buckets = [
+              { label: '0-7 days', min: 0, max: 7, count: 0 },
+              { label: '8-14 days', min: 8, max: 14, count: 0 },
+              { label: '15-30 days', min: 15, max: 30, count: 0 },
+              { label: '31-60 days', min: 31, max: 60, count: 0 },
+              { label: '60+ days', min: 61, max: 9999, count: 0 },
+            ]
+            unfunded.forEach(p => {
+              const days = daysAgo(p.pto_date)
+              const bucket = buckets.find(b => days >= b.min && days <= b.max)
+              if (bucket) bucket.count++
+            })
+            const maxCount = Math.max(...buckets.map(b => b.count), 1)
+            return buckets.map(b => (
+              <div key={b.label} className="flex items-center gap-3 py-1">
+                <div className="text-xs text-gray-400 w-20 flex-shrink-0">{b.label}</div>
+                <div className="flex-1 bg-gray-700 rounded-full h-3">
+                  <div className={`h-3 rounded-full ${b.min >= 31 ? 'bg-red-500' : b.min >= 15 ? 'bg-amber-500' : 'bg-green-600'}`}
+                    style={{ width: `${Math.max(b.count / maxCount * 100, b.count > 0 ? 5 : 0)}%` }} />
+                </div>
+                <div className="text-xs text-gray-300 font-mono w-8 text-right">{b.count}</div>
+              </div>
+            ))
+          })()}
+        </div>
+      </div>
+
+      {/* Funding Performance by PM */}
+      <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+        <div className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-4">Funding Performance by PM</div>
+        {(() => {
+          const pmMap = new Map<string, { pm: string; m2Funded: number; m2Total: number; m3Funded: number; m3Total: number; totalFunded: number }>()
+          projects.forEach(p => {
+            if (!p.pm) return
+            const f = funding[p.id]
+            if (!f) return
+            const existing = pmMap.get(p.pm) ?? { pm: p.pm, m2Funded: 0, m2Total: 0, m3Funded: 0, m3Total: 0, totalFunded: 0 }
+            if (p.install_complete_date) {
+              existing.m2Total++
+              if (f.m2_funded_date) { existing.m2Funded++; existing.totalFunded += (Number(f.m2_amount) || 0) }
+            }
+            if (p.pto_date) {
+              existing.m3Total++
+              if (f.m3_funded_date) { existing.m3Funded++; existing.totalFunded += (Number(f.m3_amount) || 0) }
+            }
+            pmMap.set(p.pm, existing)
+          })
+          const pmRows = Array.from(pmMap.values()).filter(r => r.m2Total > 0 || r.m3Total > 0).sort((a, b) => b.totalFunded - a.totalFunded)
+          if (pmRows.length === 0) return <div className="text-xs text-gray-500">No PM funding data</div>
+          return (
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-gray-700">
+                  <th className="text-left px-2 py-2 text-gray-500">PM</th>
+                  <th className="text-center px-2 py-2 text-gray-500">M2 Rate</th>
+                  <th className="text-center px-2 py-2 text-gray-500">M3 Rate</th>
+                  <th className="text-right px-2 py-2 text-gray-500">Total Funded</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pmRows.map(r => (
+                  <tr key={r.pm} className="border-b border-gray-800/50">
+                    <td className="px-2 py-2 text-white font-medium">{r.pm}</td>
+                    <td className="px-2 py-2 text-center">
+                      {r.m2Total > 0 ? (
+                        <span className={`font-mono ${r.m2Funded / r.m2Total >= 0.8 ? 'text-green-400' : r.m2Funded / r.m2Total >= 0.5 ? 'text-amber-400' : 'text-red-400'}`}>
+                          {r.m2Funded}/{r.m2Total} ({Math.round(r.m2Funded / r.m2Total * 100)}%)
+                        </span>
+                      ) : <span className="text-gray-600">—</span>}
+                    </td>
+                    <td className="px-2 py-2 text-center">
+                      {r.m3Total > 0 ? (
+                        <span className={`font-mono ${r.m3Funded / r.m3Total >= 0.8 ? 'text-green-400' : r.m3Funded / r.m3Total >= 0.5 ? 'text-amber-400' : 'text-red-400'}`}>
+                          {r.m3Funded}/{r.m3Total} ({Math.round(r.m3Funded / r.m3Total * 100)}%)
+                        </span>
+                      ) : <span className="text-gray-600">—</span>}
+                    </td>
+                    <td className="px-2 py-2 text-right text-gray-300 font-mono">{fmt$(r.totalFunded)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )
+        })()}
       </div>
 
       {drillDown && <ProjectListModal title={drillDown.title} projects={drillDown.projects} onClose={() => setDrillDown(null)} />}

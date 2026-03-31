@@ -1,9 +1,9 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { fmt$, daysAgo, SLA_THRESHOLDS } from '@/lib/utils'
+import { fmt$, daysAgo, SLA_THRESHOLDS, STAGE_LABELS, STAGE_ORDER } from '@/lib/utils'
 import {
-  ExportButton, downloadCSV, SortHeader, useSortable, ProjectListModal,
+  MetricCard, MiniBar, ExportButton, downloadCSV, SortHeader, useSortable, ProjectListModal,
   inRange, PERIOD_LABELS, type AnalyticsData,
 } from './shared'
 import type { Project } from '@/types/database'
@@ -69,9 +69,37 @@ export function ByPM({ data }: { data: AnalyticsData }) {
     setDrillDown({ title: `${pm.pm} — Active Projects`, projects: ps })
   }
 
+  // Summary metrics
+  const totalActive = sorted.reduce((s, pm) => s + pm.active, 0)
+  const totalBlocked = sorted.reduce((s, pm) => s + pm.blocked, 0)
+  const totalPortfolio = sorted.reduce((s, pm) => s + pm.value, 0)
+  const totalInstalls = sorted.reduce((s, pm) => s + pm.installs, 0)
+  const avgSLA = sorted.length > 0 ? Math.round(sorted.reduce((s, pm) => s + pm.slaCompliance, 0) / sorted.length) : 0
+  const maxActive = Math.max(...sorted.map(pm => pm.active), 1)
+
+  // Stage distribution per PM
+  const pmStageData = useMemo(() => {
+    return sorted.map(pm => {
+      const ps = projects.filter(p => p.pm === pm.pm && p.stage !== 'complete')
+      const stages: Record<string, number> = {}
+      STAGE_ORDER.filter(s => s !== 'complete').forEach(s => { stages[s] = 0 })
+      ps.forEach(p => { stages[p.stage] = (stages[p.stage] ?? 0) + 1 })
+      return { pm: pm.pm, stages }
+    })
+  }, [sorted, projects])
+
   return (
-    <div className="max-w-4xl">
-      <div className="flex justify-end mb-4"><ExportButton onClick={handleExport} /></div>
+    <div className="max-w-6xl space-y-6">
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <MetricCard label="Total PMs" value={String(sorted.length)} />
+        <MetricCard label="Active Projects" value={String(totalActive)} sub={fmt$(totalPortfolio)} />
+        <MetricCard label="Blocked" value={String(totalBlocked)} color={totalBlocked > 0 ? 'text-red-400' : undefined} />
+        <MetricCard label={`Installs (${PERIOD_LABELS[period]})`} value={String(totalInstalls)} color="text-green-400" />
+        <MetricCard label="Avg SLA Compliance" value={`${avgSLA}%`} color={avgSLA >= 80 ? 'text-green-400' : avgSLA >= 50 ? 'text-amber-400' : 'text-red-400'} />
+      </div>
+
+      <div className="flex justify-end"><ExportButton onClick={handleExport} /></div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs border-collapse min-w-[500px]">
           <thead>
@@ -109,6 +137,75 @@ export function ByPM({ data }: { data: AnalyticsData }) {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* PM Workload Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+          <div className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-4">PM Workload</div>
+          <div className="space-y-2">
+            {sorted.map(pm => (
+              <div key={pm.pm} className="flex items-center gap-3">
+                <div className="text-xs text-gray-400 w-24 flex-shrink-0 truncate">{pm.pm.split(' ')[0]}</div>
+                <div className="flex-1 bg-gray-700 rounded-full h-5 relative overflow-hidden">
+                  {/* Active (green) */}
+                  <div
+                    className="absolute left-0 top-0 h-full bg-green-600 rounded-l-full"
+                    style={{ width: `${((pm.active - pm.blocked) / maxActive) * 100}%` }}
+                  />
+                  {/* Blocked (red, stacked on top) */}
+                  {pm.blocked > 0 && (
+                    <div
+                      className="absolute top-0 h-full bg-red-600 rounded-r-full"
+                      style={{ left: `${((pm.active - pm.blocked) / maxActive) * 100}%`, width: `${(pm.blocked / maxActive) * 100}%` }}
+                    />
+                  )}
+                  <div className="absolute inset-0 flex items-center justify-end pr-2">
+                    <span className="text-[10px] text-white font-bold">{pm.active}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-4 mt-3 text-[10px] text-gray-500">
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-600" /> Active</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-600" /> Blocked</span>
+          </div>
+        </div>
+
+        {/* Stage Distribution Heatmap */}
+        <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+          <div className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-4">Projects by Stage per PM</div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[10px]">
+              <thead>
+                <tr>
+                  <th className="text-left px-1 py-1 text-gray-500">PM</th>
+                  {STAGE_ORDER.filter(s => s !== 'complete').map(s => (
+                    <th key={s} className="px-1 py-1 text-gray-500 text-center">{(STAGE_LABELS[s] ?? s).slice(0, 4)}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {pmStageData.map(row => (
+                  <tr key={row.pm}>
+                    <td className="px-1 py-1 text-gray-300 font-medium truncate max-w-[80px]">{row.pm.split(' ')[0]}</td>
+                    {STAGE_ORDER.filter(s => s !== 'complete').map(s => {
+                      const count = row.stages[s] ?? 0
+                      const bg = count === 0 ? '' : count <= 5 ? 'bg-green-900/40' : count <= 20 ? 'bg-amber-900/40' : 'bg-red-900/40'
+                      const text = count === 0 ? 'text-gray-700' : count <= 5 ? 'text-green-400' : count <= 20 ? 'text-amber-400' : 'text-red-400'
+                      return (
+                        <td key={s} className={`px-1 py-1 text-center font-mono rounded ${bg} ${text}`}>
+                          {count > 0 ? count : '·'}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       {drillDown && <ProjectListModal title={drillDown.title} projects={drillDown.projects} onClose={() => setDrillDown(null)} />}
