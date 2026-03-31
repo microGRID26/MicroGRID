@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { fmt$ } from '@/lib/utils'
+import { fmt$, daysAgo, SLA_THRESHOLDS } from '@/lib/utils'
 import {
   ExportButton, downloadCSV, SortHeader, useSortable, ProjectListModal,
   inRange, PERIOD_LABELS, type AnalyticsData,
@@ -15,6 +15,9 @@ interface PMRow {
   blocked: number
   value: number
   installs: number
+  avgDealSize: number
+  avgCycleDays: number
+  slaCompliance: number
 }
 
 export function ByPM({ data }: { data: AnalyticsData }) {
@@ -28,13 +31,27 @@ export function ByPM({ data }: { data: AnalyticsData }) {
     return pmPairs.map(({ id: pmId, name: pm }) => {
       const ps = projects.filter(p => p.pm_id === pmId)
       const activePs = ps.filter(p => p.stage !== 'complete')
+      const value = activePs.reduce((s, p) => s + (Number(p.contract) || 0), 0)
+      // Avg cycle days for active projects
+      // Avg days in current stage (not days since sale)
+      const cycleDays = activePs.map(p => daysAgo(p.stage_date)).filter(d => d > 0)
+      const avgCycleDays = cycleDays.length > 0 ? Math.round(cycleDays.reduce((s, d) => s + d, 0) / cycleDays.length) : 0
+      // SLA compliance: % of active projects on track
+      const onTrack = activePs.filter(p => {
+        const t = SLA_THRESHOLDS[p.stage] ?? { target: 5, risk: 10, crit: 15 }
+        return daysAgo(p.stage_date) <= t.target
+      }).length
+      const slaCompliance = activePs.length > 0 ? Math.round((onTrack / activePs.length) * 100) : 100
       return {
         pm,
         total: ps.length,
         active: activePs.length,
         blocked: activePs.filter(p => p.blocker).length,
-        value: activePs.reduce((s, p) => s + (Number(p.contract) || 0), 0),
+        value,
         installs: ps.filter(p => inRange(p.install_complete_date ?? (p.stage === 'complete' ? p.stage_date : null), period)).length,
+        avgDealSize: activePs.length > 0 ? Math.round(value / activePs.length) : 0,
+        avgCycleDays,
+        slaCompliance,
       }
     })
   }, [projects, period])
@@ -42,8 +59,8 @@ export function ByPM({ data }: { data: AnalyticsData }) {
   const { sorted, sortKey, sortDir, toggleSort } = useSortable<PMRow>(pmStats, 'active')
 
   const handleExport = () => {
-    const headers = ['PM', 'Active', 'Blocked', 'Portfolio', `Installs (${PERIOD_LABELS[period]})`]
-    const rows = sorted.map(pm => [pm.pm, pm.active, pm.blocked, pm.value, pm.installs])
+    const headers = ['PM', 'Active', 'Blocked', 'Portfolio', 'Avg Deal', 'Avg Cycle', 'SLA %', `Installs (${PERIOD_LABELS[period]})`]
+    const rows = sorted.map(pm => [pm.pm, pm.active, pm.blocked, pm.value, pm.avgDealSize, pm.avgCycleDays, pm.slaCompliance + '%', pm.installs])
     downloadCSV(`pm-performance-${period}.csv`, headers, rows)
   }
 
@@ -63,6 +80,9 @@ export function ByPM({ data }: { data: AnalyticsData }) {
               <SortHeader label="Active" field={'active' as keyof PMRow} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
               <SortHeader label="Blocked" field={'blocked' as keyof PMRow} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
               <SortHeader label="Portfolio" field={'value' as keyof PMRow} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+              <SortHeader label="Avg Deal" field={'avgDealSize' as keyof PMRow} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+              <SortHeader label="Avg Cycle" field={'avgCycleDays' as keyof PMRow} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+              <SortHeader label="SLA %" field={'slaCompliance' as keyof PMRow} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
               <SortHeader label={`Installs (${PERIOD_LABELS[period]})`} field={'installs' as keyof PMRow} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
             </tr>
           </thead>
@@ -77,6 +97,13 @@ export function ByPM({ data }: { data: AnalyticsData }) {
                     : <span className="text-gray-600">—</span>}
                 </td>
                 <td className="px-3 py-2 text-gray-300 font-mono">{fmt$(pm.value)}</td>
+                <td className="px-3 py-2 text-gray-300 font-mono">{fmt$(pm.avgDealSize)}</td>
+                <td className="px-3 py-2 text-gray-300 font-mono">{pm.avgCycleDays > 0 ? `${pm.avgCycleDays}d` : '—'}</td>
+                <td className="px-3 py-2 font-mono">
+                  <span className={pm.slaCompliance >= 80 ? 'text-green-400' : pm.slaCompliance >= 50 ? 'text-amber-400' : 'text-red-400'}>
+                    {pm.slaCompliance}%
+                  </span>
+                </td>
                 <td className="px-3 py-2 text-green-400 font-mono">{pm.installs}</td>
               </tr>
             ))}

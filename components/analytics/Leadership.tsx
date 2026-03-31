@@ -98,10 +98,10 @@ export function Leadership({ data }: { data: AnalyticsData }) {
         </div>
       </div>
 
-      {/* Portfolio overview */}
+      {/* Sales Velocity + Portfolio */}
       <div>
         <div className="text-xs text-gray-500 uppercase tracking-wider mb-3">Portfolio Overview</div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <MetricCard label="Active Projects" value={String(active.length)} sub={fmt$(totalPortfolio)}
             onClick={() => setDrillDown({ title: 'Active Projects', projects: active })} />
           <MetricCard label="Complete" value={String(complete.length)}
@@ -110,6 +110,12 @@ export function Leadership({ data }: { data: AnalyticsData }) {
             onClick={() => setDrillDown({ title: 'Forecast: Next 30 Days', projects: next30 })} />
           <MetricCard label="Forecast 60d" value={String(next60.length)} sub={fmt$(next60.reduce((s, p) => s + (Number(p.contract) || 0), 0))}
             onClick={() => setDrillDown({ title: 'Forecast: 31-60 Days', projects: next60 })} />
+          <MetricCard
+            label="Sales Velocity"
+            value={`${sales.length > 0 ? (sales.length / Math.max(1, Math.ceil((Date.now() - new Date(sales[0]?.sale_date ?? Date.now()).getTime()) / (7 * 86400000)))).toFixed(1) : '0'}/wk`}
+            sub={`${sales.length} deals in period`}
+            color="text-green-400"
+          />
         </div>
       </div>
 

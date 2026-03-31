@@ -50,6 +50,20 @@ export const ALL_EXPORT_FIELDS: ExportField[] = [
   { key: 'hoa',                    label: 'HOA',               getValue: p => p.hoa },
   { key: 'esid',                   label: 'ESID',              getValue: p => p.esid },
   { key: 'blocker',                label: 'Blocker',           getValue: p => p.blocker },
+  { key: 'zip',                    label: 'Zip',               getValue: p => p.zip },
+  { key: 'state',                  label: 'State',             getValue: p => p.state },
+  { key: 'down_payment',           label: 'Down Payment',      getValue: p => p.down_payment },
+  { key: 'tpo_escalator',          label: 'TPO Escalator',     getValue: p => p.tpo_escalator },
+  { key: 'optimizer',              label: 'Optimizer',          getValue: p => p.optimizer },
+  { key: 'optimizer_qty',          label: 'Optimizer Qty',      getValue: p => p.optimizer_qty },
+  { key: 'panel_location',         label: 'Panel Location',     getValue: p => p.panel_location },
+  { key: 'voltage',                label: 'Voltage',            getValue: p => p.voltage },
+  { key: 'msp_bus_rating',         label: 'MSP Bus Rating',     getValue: p => p.msp_bus_rating },
+  { key: 'shutdown',               label: 'Shutdown Type',      getValue: p => p.shutdown },
+  { key: 'permit_fee',             label: 'Permit Fee',         getValue: p => p.permit_fee },
+  { key: 'reinspection_fee',       label: 'Reinspection Fee',   getValue: p => p.reinspection_fee },
+  { key: 'follow_up_date',         label: 'Follow-up Date',     getValue: p => p.follow_up_date },
+  { key: 'energy_community',       label: 'Energy Community',   getValue: p => p.energy_community ? 'Yes' : 'No' },
 ]
 
 // Default selection — all fields on
