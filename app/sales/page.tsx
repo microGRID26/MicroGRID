@@ -1653,7 +1653,9 @@ function OnboardingTab({ reps, teams, requirements, onRefresh }: {
 
 function ComplianceTab({ reps, isAdmin }: { reps: SalesRep[]; isAdmin: boolean }) {
   const [licenses, setLicenses] = useState<any[]>([])
-  const [files, setFiles] = useState<Map<string, any[]>>(new Map())
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editDraft, setEditDraft] = useState<any>({})
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState('')
   const [showAdd, setShowAdd] = useState(false)
@@ -1706,6 +1708,35 @@ function ComplianceTab({ reps, isAdmin }: { reps: SalesRep[]; isAdmin: boolean }
   })
   const expired = licenses.filter(l => l.status === 'expired' || (l.expiry_date && new Date(l.expiry_date) < now && l.status === 'active'))
 
+  const reloadLicenses = () => {
+    db().from('rep_licenses').select('*').order('expiry_date').limit(500).then(({ data }: any) => setLicenses(data ?? []))
+  }
+
+  function startEdit(l: any) {
+    setEditingId(l.id)
+    setEditDraft({ license_number: l.license_number ?? '', state: l.state ?? '', expiry_date: l.expiry_date ?? '', status: l.status, file_url: l.file_url ?? '', notes: l.notes ?? '' })
+  }
+
+  async function saveEdit(id: string) {
+    await db().from('rep_licenses').update({
+      license_number: editDraft.license_number || null,
+      state: editDraft.state || null,
+      expiry_date: editDraft.expiry_date || null,
+      status: editDraft.status,
+      file_url: editDraft.file_url || null,
+      notes: editDraft.notes || null,
+    }).eq('id', id)
+    setEditingId(null)
+    reloadLicenses()
+  }
+
+  async function deleteLicense(id: string) {
+    if (!confirm('Delete this license record?')) return
+    await db().from('rep_licenses').delete().eq('id', id)
+    setExpandedId(null)
+    reloadLicenses()
+  }
+
   async function addLicense() {
     if (!addRepId) return
     await db().from('rep_licenses').insert({
@@ -1719,7 +1750,7 @@ function ComplianceTab({ reps, isAdmin }: { reps: SalesRep[]; isAdmin: boolean }
     })
     setShowAdd(false)
     setAddRepId(''); setAddNumber(''); setAddState(''); setAddExpiry(''); setAddFileUrl('')
-    db().from('rep_licenses').select('*').order('expiry_date').limit(500).then(({ data }: any) => setLicenses(data ?? []))
+    reloadLicenses()
   }
 
   return (
@@ -1770,27 +1801,114 @@ function ComplianceTab({ reps, isAdmin }: { reps: SalesRep[]; isAdmin: boolean }
             {filtered.map(l => {
               const rep = repMap.get(l.rep_id)
               const isExpiringSoon = l.expiry_date && l.status === 'active' && new Date(l.expiry_date) > now && (new Date(l.expiry_date).getTime() - now.getTime()) / 86400000 <= 30
+              const isExpanded = expandedId === l.id
+              const isEditing = editingId === l.id
               return (
-                <tr key={l.id} className="border-b border-gray-700/50 hover:bg-gray-750">
-                  <td className="px-4 py-2 text-white font-medium">{rep ? `${rep.first_name} ${rep.last_name}` : 'Unknown'}</td>
-                  <td className="px-4 py-2 text-gray-300 capitalize">{l.license_type.replace(/_/g, ' ')}</td>
-                  <td className="px-4 py-2 text-gray-300 font-mono">{l.license_number ?? '\u2014'}</td>
-                  <td className="px-4 py-2 text-gray-300">{l.state ?? '\u2014'}</td>
-                  <td className={`px-4 py-2 ${isExpiringSoon ? 'text-amber-400 font-medium' : 'text-gray-300'}`}>
-                    {l.expiry_date ? fmtDate(l.expiry_date) : '\u2014'}
-                    {isExpiringSoon && <span className="ml-1 text-[10px]">&#9888;</span>}
-                  </td>
-                  <td className="px-4 py-2">
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${STATUS_COLORS[l.status] ?? 'bg-gray-700 text-gray-400'}`}>
-                      {l.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2">
-                    {l.file_url ? (
-                      <a href={l.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 text-[10px]">View</a>
-                    ) : '\u2014'}
-                  </td>
-                </tr>
+                <React.Fragment key={l.id}>
+                  <tr className={`border-b border-gray-700/50 hover:bg-gray-750 cursor-pointer ${isExpanded ? 'bg-gray-750' : ''}`}
+                    onClick={() => setExpandedId(isExpanded ? null : l.id)}>
+                    <td className="px-4 py-2 text-white font-medium">{rep ? `${rep.first_name} ${rep.last_name}` : 'Unknown'}</td>
+                    <td className="px-4 py-2 text-gray-300 capitalize">{l.license_type.replace(/_/g, ' ')}</td>
+                    <td className="px-4 py-2 text-gray-300 font-mono">{l.license_number ?? '\u2014'}</td>
+                    <td className="px-4 py-2 text-gray-300">{l.state ?? '\u2014'}</td>
+                    <td className={`px-4 py-2 ${isExpiringSoon ? 'text-amber-400 font-medium' : 'text-gray-300'}`}>
+                      {l.expiry_date ? fmtDate(l.expiry_date) : '\u2014'}
+                      {isExpiringSoon && <span className="ml-1 text-[10px]">&#9888;</span>}
+                    </td>
+                    <td className="px-4 py-2">
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${STATUS_COLORS[l.status] ?? 'bg-gray-700 text-gray-400'}`}>
+                        {l.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2">
+                      {l.file_url ? (
+                        <a href={l.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 text-[10px]" onClick={e => e.stopPropagation()}>View</a>
+                      ) : '\u2014'}
+                    </td>
+                  </tr>
+                  {isExpanded && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-4 bg-gray-900/50 border-b border-gray-700">
+                        {isEditing ? (
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs" onClick={e => e.stopPropagation()}>
+                            <div>
+                              <label className="text-[10px] text-gray-500">License #</label>
+                              <input value={editDraft.license_number} onChange={e => setEditDraft((d: any) => ({ ...d, license_number: e.target.value }))}
+                                className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white font-mono" />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-gray-500">State</label>
+                              <input value={editDraft.state} onChange={e => setEditDraft((d: any) => ({ ...d, state: e.target.value }))}
+                                className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white" />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-gray-500">Expiry Date</label>
+                              <input type="date" value={editDraft.expiry_date} onChange={e => setEditDraft((d: any) => ({ ...d, expiry_date: e.target.value }))}
+                                className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white" />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-gray-500">Status</label>
+                              <select value={editDraft.status} onChange={e => setEditDraft((d: any) => ({ ...d, status: e.target.value }))}
+                                className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white">
+                                <option value="active">Active</option>
+                                <option value="expired">Expired</option>
+                                <option value="pending">Pending</option>
+                                <option value="revoked">Revoked</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-gray-500">File URL</label>
+                              <input value={editDraft.file_url} onChange={e => setEditDraft((d: any) => ({ ...d, file_url: e.target.value }))}
+                                className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white" placeholder="https://..." />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-gray-500">Notes</label>
+                              <input value={editDraft.notes} onChange={e => setEditDraft((d: any) => ({ ...d, notes: e.target.value }))}
+                                className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white" />
+                            </div>
+                            <div className="col-span-full flex gap-2 pt-1">
+                              <button onClick={() => saveEdit(l.id)} className="px-3 py-1 bg-green-600 hover:bg-green-500 rounded text-[10px] text-white font-medium">Save</button>
+                              <button onClick={() => setEditingId(null)} className="px-3 py-1 text-gray-400 hover:text-white text-[10px]">Cancel</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                            <div>
+                              <span className="text-gray-500 block text-[10px]">Issued</span>
+                              <span className="text-gray-300">{l.issued_date ? fmtDate(l.issued_date) : '\u2014'}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500 block text-[10px]">Verified By</span>
+                              <span className="text-gray-300">{l.verified_by ?? 'Not verified'}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500 block text-[10px]">Notes</span>
+                              <span className="text-gray-300">{l.notes ?? '\u2014'}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500 block text-[10px]">File</span>
+                              {l.file_url ? (
+                                <a href={l.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300">Open file</a>
+                              ) : <span className="text-gray-500">No file attached</span>}
+                            </div>
+                            {isAdmin && (
+                              <div className="col-span-full flex gap-2 pt-2 border-t border-gray-700/50">
+                                <button onClick={(e) => { e.stopPropagation(); startEdit(l) }}
+                                  className="flex items-center gap-1 px-2 py-1 text-blue-400 hover:text-blue-300 text-[10px]">
+                                  <Pencil className="w-3 h-3" /> Edit
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); deleteLicense(l.id) }}
+                                  className="flex items-center gap-1 px-2 py-1 text-red-400 hover:text-red-300 text-[10px]">
+                                  <Trash2 className="w-3 h-3" /> Delete
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               )
             })}
             {filtered.length === 0 && (
