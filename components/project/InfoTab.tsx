@@ -730,7 +730,7 @@ export function InfoTab({ project, editMode, editDraft, setEditDraft, ahjInfo, u
               options={['15A','20A','25A','30A','40A','50A','60A']} />
             <SelectEditRow label="Main breaker" field="main_breaker" value={project.main_breaker} draft={editDraft} editing={editMode} onChange={setEditDraft}
               options={['100A','125A','150A','200A','225A','400A']} />
-            <EditRow label="ESID" field="esid" value={project.esid?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+            <EditRow label="ESID" field="esid" value={project.esid != null ? String(project.esid).replace(/(\d)\.(\d+)[eE]\+(\d+)/, (_, d, dec, exp) => (d + dec).padEnd(Number(exp) + 1, '0')) : undefined} draft={editDraft} editing={editMode} onChange={setEditDraft} />
             <EditRow label="Meter Number" field="meter_number" value={project.meter_number?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} />
           </Section>
           <Section title="HOA">
