@@ -7,11 +7,12 @@ import { X } from 'lucide-react'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export type Period = 'wtd' | 'mtd' | 'qtd' | 'ytd' | 'last7' | 'last30' | 'last90'
+export type Period = 'wtd' | 'mtd' | 'qtd' | 'ytd' | 'last7' | 'last30' | 'last90' | 'custom'
 
 export const PERIOD_LABELS: Record<Period, string> = {
   wtd: 'Week to Date', mtd: 'This Month', qtd: 'This Quarter',
   ytd: 'This Year', last7: 'Last 7 Days', last30: 'Last 30 Days', last90: 'Last 90 Days',
+  custom: 'Custom Range',
 }
 
 export const STAGE_DAYS_REMAINING: Record<string, number> = {
@@ -20,7 +21,19 @@ export const STAGE_DAYS_REMAINING: Record<string, number> = {
 
 // ── Period helpers ───────────────────────────────────────────────────────────
 
+// Global custom range state — set by analytics page, read by tabs
+let _customFrom: Date | null = null
+let _customTo: Date | null = null
+export function setCustomRange(from: string | null, to: string | null) {
+  _customFrom = from ? new Date(from + 'T00:00:00') : null
+  _customTo = to ? new Date(to + 'T23:59:59') : null
+}
+export function getCustomRange(): { from: Date | null; to: Date | null } {
+  return { from: _customFrom, to: _customTo }
+}
+
 export function rangeStart(period: Period): Date {
+  if (period === 'custom' && _customFrom) return _customFrom
   const d = new Date()
   switch (period) {
     case 'wtd':   d.setDate(d.getDate() - d.getDay()); break
@@ -30,6 +43,7 @@ export function rangeStart(period: Period): Date {
     case 'last7':  d.setDate(d.getDate() - 7); break
     case 'last30': d.setDate(d.getDate() - 30); break
     case 'last90': d.setDate(d.getDate() - 90); break
+    case 'custom': break // fallback to today
   }
   d.setHours(0, 0, 0, 0)
   return d
@@ -39,7 +53,9 @@ export function inRange(dateStr: string | null | undefined, period: Period): boo
   if (!dateStr) return false
   const d = new Date(dateStr + 'T00:00:00')
   if (isNaN(d.getTime())) return false
-  return d >= rangeStart(period) && d <= new Date()
+  const start = rangeStart(period)
+  const end = (period === 'custom' && _customTo) ? _customTo : new Date()
+  return d >= start && d <= end
 }
 
 // ── Shared data shape passed to each tab ────────────────────────────────────

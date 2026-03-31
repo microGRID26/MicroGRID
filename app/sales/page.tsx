@@ -669,6 +669,12 @@ function PersonnelTab({ reps, teams, payScales, requirements, orgId, onRefresh }
                               <div className="text-xs space-y-1">
                                 <p className="text-gray-300">{rep.email}</p>
                                 {rep.phone && <p className="text-gray-400">{rep.phone}</p>}
+                                {rep.recheck_id && <p><span className="text-gray-500">RECHECK ID:</span> <span className="text-gray-300 font-mono">{rep.recheck_id}</span></p>}
+                                {rep.blacklisted && (
+                                  <p className="text-red-400 text-[10px] font-medium">
+                                    BLACKLISTED{rep.blacklist_reason ? `: ${rep.blacklist_reason}` : ''}
+                                  </p>
+                                )}
                                 {rep.notes && <p className="text-gray-500 text-[10px]">{rep.notes}</p>}
                               </div>
                             </div>

@@ -178,16 +178,19 @@ export function TasksTab({
   // ── Computed: stage completion counts ──────────────────────────────────────
   const stageCounts = useMemo(() => {
     const counts: Record<string, { done: number; total: number; stuck: number }> = {}
+    const ahj = project?.ahj ?? null
     for (const stageId of STAGE_ORDER) {
       const tasks = TASKS[stageId] ?? []
-      const done = tasks.filter(t => taskStates[t.id] === 'Complete').length
-      const stuck = tasks.filter(t =>
+      // Only count required tasks (per Zach's feedback: "6/12 looks wrong when 6 are optional")
+      const requiredTasks = tasks.filter(t => isTaskRequired(t, ahj))
+      const done = requiredTasks.filter(t => taskStates[t.id] === 'Complete').length
+      const stuck = requiredTasks.filter(t =>
         taskStates[t.id] === 'Pending Resolution' || taskStates[t.id] === 'Revision Required'
       ).length
-      counts[stageId] = { done, total: tasks.length, stuck }
+      counts[stageId] = { done, total: requiredTasks.length, stuck }
     }
     return counts
-  }, [taskStates])
+  }, [taskStates, project?.ahj])
 
   // ── Computed: revision counts per task from history ────────────────────────
   const revisionCounts = useMemo(() => {
@@ -280,7 +283,7 @@ export function TasksTab({
                     }`}
                   >
                     {isCur && <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />}
-                    <span>{STAGE_LABELS[stageId]}</span>
+                    <span className={c.done === c.total && c.total > 0 ? 'text-green-400' : ''}>{STAGE_LABELS[stageId]}</span>
                     <span className={`text-[10px] ${
                       c.done === c.total && c.total > 0 ? 'text-green-400' :
                       c.stuck > 0 ? 'text-red-400' : 'text-gray-500'

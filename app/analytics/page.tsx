@@ -5,7 +5,7 @@ import { Nav } from '@/components/Nav'
 import { useSupabaseQuery, clearQueryCache } from '@/lib/hooks'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import { RefreshCw } from 'lucide-react'
-import { Leadership, PipelineHealth, ByPM, FundingTab, CycleTimes, Dealers, PERIOD_LABELS } from '@/components/analytics'
+import { Leadership, PipelineHealth, ByPM, FundingTab, CycleTimes, Dealers, PERIOD_LABELS, setCustomRange } from '@/components/analytics'
 import type { Period, AnalyticsData } from '@/components/analytics'
 import type { ProjectFunding } from '@/types/database'
 
@@ -21,6 +21,21 @@ export default function AnalyticsPage() {
   const [period, setPeriod] = useState<Period>('mtd')
   const [tab, setTab] = useState<Tab>('leadership')
   const [refreshing, setRefreshing] = useState(false)
+  const [customFrom, setCustomFrom] = useState('')
+  const [customTo, setCustomTo] = useState('')
+
+  const handlePeriodChange = (p: Period) => {
+    setPeriod(p)
+    if (p === 'custom') {
+      setCustomRange(customFrom || null, customTo || null)
+    }
+  }
+  const handleCustomDateChange = (from: string, to: string) => {
+    setCustomFrom(from)
+    setCustomTo(to)
+    setCustomRange(from || null, to || null)
+    setPeriod('custom')
+  }
 
   const { data: projects, loading: projLoading, refresh: refreshProjects } = useSupabaseQuery('projects', {
     select: 'id, name, stage, contract, install_complete_date, stage_date, sale_date, pm, pm_id, blocker, financier, disposition, pto_date, dealer, consultant, advisor, systemkw',
@@ -90,13 +105,22 @@ export default function AnalyticsPage() {
           <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} />
           <span className="hidden sm:inline">Refresh</span>
         </button>
-        <select value={period} onChange={e => setPeriod(e.target.value as Period)}
+        <select value={period} onChange={e => handlePeriodChange(e.target.value as Period)}
           aria-label="Time period"
           className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">
           {(Object.entries(PERIOD_LABELS) as [Period, string][]).map(([k, v]) => (
             <option key={k} value={k}>{v}</option>
           ))}
         </select>
+        {period === 'custom' && (
+          <div className="flex items-center gap-1.5">
+            <input type="date" value={customFrom} onChange={e => handleCustomDateChange(e.target.value, customTo)}
+              className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5" />
+            <span className="text-gray-500 text-xs">to</span>
+            <input type="date" value={customTo} onChange={e => handleCustomDateChange(customFrom, e.target.value)}
+              className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5" />
+          </div>
+        )}
       </div>
 
       {/* Sub-tabs — wraps on mobile */}

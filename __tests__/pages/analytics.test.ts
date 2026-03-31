@@ -137,8 +137,9 @@ describe('inRange', () => {
 // ── PERIOD_LABELS ────────────────────────────────────────────────────────────
 
 describe('PERIOD_LABELS', () => {
-  it('has all 7 period entries', () => {
-    expect(Object.keys(PERIOD_LABELS)).toHaveLength(7)
+  it('has all 8 period entries (including custom)', () => {
+    expect(Object.keys(PERIOD_LABELS)).toHaveLength(8)
+    expect(PERIOD_LABELS.custom).toBe('Custom Range')
   })
 
   it('includes expected periods', () => {

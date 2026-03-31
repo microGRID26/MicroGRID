@@ -731,6 +731,7 @@ export function InfoTab({ project, editMode, editDraft, setEditDraft, ahjInfo, u
             <SelectEditRow label="Main breaker" field="main_breaker" value={project.main_breaker} draft={editDraft} editing={editMode} onChange={setEditDraft}
               options={['100A','125A','150A','200A','225A','400A']} />
             <EditRow label="ESID" field="esid" value={project.esid?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} />
+            <EditRow label="Meter Number" field="meter_number" value={project.meter_number?.toString()} draft={editDraft} editing={editMode} onChange={setEditDraft} />
           </Section>
           <Section title="HOA">
             <AutocompleteRow label="HOA" field="hoa" value={project.hoa} draft={editDraft} editing={editMode} onChange={setEditDraft} table="hoas" onClickValue={openHoaEdit} />

@@ -45,6 +45,7 @@ export interface Project {
   main_breaker: string | null
   hoa: string | null
   esid: string | null
+  meter_number: string | null
   permit_number: string | null
   utility_app_number: string | null
   permit_fee: number | null
@@ -962,6 +963,9 @@ export interface SalesRep {
   split_percentage: number
   split_partner_id: string | null
   notes: string | null
+  recheck_id: string | null
+  blacklisted: boolean
+  blacklist_reason: string | null
   org_id: string | null
   created_at: string
   updated_at: string
