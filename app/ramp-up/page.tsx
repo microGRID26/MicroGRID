@@ -153,7 +153,8 @@ export default function RampUpPage() {
         if (tasks.get('inventory') === 'Complete') (autoR as any).equipment_ready = true
         if (tasks.get('util_permit') === 'Complete') (autoR as any).utility_approved = true
         if (tasks.get('hoa') === 'Complete') (autoR as any).hoa_approved = true
-        if (tasks.get('eng_approval') === 'Complete' && tasks.get('stamps') === 'Complete') (autoR as any).redesign_complete = true
+        // Redesign is NEVER auto-checked — must be manually confirmed
+        // Old TriSMART engineering/stamps don't count under MicroGRID
       }
       const readiness = dbReadiness ?? autoR as any
       const readinessScore = computeReadinessScore(readiness)
