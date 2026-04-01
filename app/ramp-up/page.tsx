@@ -26,7 +26,7 @@ const MapContainer = dynamic(() => import('react-leaflet').then(m => m.MapContai
 const TileLayer = dynamic(() => import('react-leaflet').then(m => m.TileLayer), { ssr: false })
 const CircleMarker = dynamic(() => import('react-leaflet').then(m => m.CircleMarker), { ssr: false })
 const Tooltip = dynamic(() => import('react-leaflet').then(m => m.Tooltip), { ssr: false })
-const Marker = dynamic(() => import('react-leaflet').then(m => m.Marker), { ssr: false })
+const Polyline = dynamic(() => import('react-leaflet').then(m => m.Polyline), { ssr: false })
 
 const CREW_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ec4899'] // green, blue, amber, pink
 
@@ -655,6 +655,20 @@ export default function RampUpPage() {
                       <span style={{ fontSize: '10px', color: '#fff', background: '#1f2937', padding: '2px 6px', borderRadius: '4px' }}>Warehouse</span>
                     </Tooltip>
                   </CircleMarker>
+                  {/* Route lines per crew */}
+                  {[...weekRoutes.entries()].map(([crew, route], ci) => {
+                    if (!config || route.ordered.length === 0) return null
+                    const color = CREW_COLORS[ci] ?? '#6b7280'
+                    const points: [number, number][] = [
+                      [config.warehouse_lat, config.warehouse_lng],
+                      ...route.ordered.map(p => [p.lat, p.lng] as [number, number]),
+                      [config.warehouse_lat, config.warehouse_lng],
+                    ]
+                    return (
+                      <Polyline key={`route-${crew}`} positions={points}
+                        pathOptions={{ color, weight: 2, opacity: 0.6, dashArray: '6 4' }} />
+                    )
+                  })}
                   {/* Scheduled jobs — colored by crew */}
                   {weekSchedule.map(s => {
                     const p = projects.find(pr => pr.id === s.project_id)
