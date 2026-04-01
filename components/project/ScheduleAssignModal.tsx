@@ -50,11 +50,12 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
     stories: '',
     special_equipment: '',
     electrical_notes: '',
-    wind_speed: '',
-    risk_category: '',
     wifi_info: '',
     msp_upgrade: '',
   })
+  const [serviceDetail, setServiceDetail] = useState('')
+  const [reinstallDate, setReinstallDate] = useState('')
+  const [ahjInfo, setAhjInfo] = useState<{ name: string; phone: string | null; permit_required: boolean } | null>(null)
   const [installOpen, setInstallOpen] = useState(false)
   const [projectSearch, setProjectSearch] = useState('')
   const [projectResults, setProjectResults] = useState<Project[]>([])
@@ -98,16 +99,12 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
           stories: data.stories ?? '',
           special_equipment: data.special_equipment ?? '',
           electrical_notes: data.electrical_notes ?? '',
-          wind_speed: data.wind_speed ?? '',
-          risk_category: data.risk_category ?? '',
           wifi_info: data.wifi_info ?? '',
           msp_upgrade: data.msp_upgrade ?? '',
         })
-        // Auto-expand install details if any field has data
-        if (data.job_type === 'install') {
+        if (data.job_type === 'install' || data.job_type === 'service') {
           const hasData = data.arrival_window || data.arrays || data.pitch || data.stories ||
-            data.special_equipment || data.electrical_notes || data.wind_speed ||
-            data.risk_category || data.wifi_info || data.msp_upgrade
+            data.special_equipment || data.electrical_notes || data.wifi_info || data.msp_upgrade
           if (hasData) setInstallOpen(true)
         }
       }
@@ -199,10 +196,18 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
       record.stories = installDetails.stories || null
       record.special_equipment = installDetails.special_equipment || null
       record.electrical_notes = installDetails.electrical_notes || null
-      record.wind_speed = installDetails.wind_speed || null
-      record.risk_category = installDetails.risk_category || null
       record.wifi_info = installDetails.wifi_info || null
       record.msp_upgrade = installDetails.msp_upgrade || null
+    }
+
+    // R&R: auto-create reinstall schedule entry if Removal with reinstall date
+    if (form.job_type === 'service' && serviceDetail === 'removal' && reinstallDate) {
+      const reinstallId = crypto.randomUUID()
+      await supabase.from('schedule').insert({
+        id: reinstallId, project_id: pid, crew_id: form.crew_id,
+        job_type: 'service', date: reinstallDate, status: 'scheduled',
+        notes: `[Reinstall] Linked to removal on ${form.date}. ${form.notes ?? ''}`,
+      })
     }
     // Auto-populate PM from the project if not already set
     if (!scheduleId) {
@@ -356,13 +361,23 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
                     <a href={`tel:${selectedProject.phone}`} className="text-blue-400 hover:text-blue-300">{selectedProject.phone}</a>
                   </div>
                 )}
-                {driveUrl && (
-                  <div className="text-[10px]">
-                    <a href={driveUrl} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300">
-                      Open Planset Folder →
-                    </a>
+                {ahjInfo && (
+                  <div className="text-[10px] text-gray-300">
+                    AHJ: <span className="text-white font-medium">{ahjInfo.name}</span>
+                    {ahjInfo.phone && <> · <a href={`tel:${ahjInfo.phone}`} className="text-blue-400 hover:text-blue-300">{ahjInfo.phone}</a></>}
+                    <span className={`ml-1 ${ahjInfo.permit_required ? 'text-amber-400' : 'text-green-400'}`}>
+                      ({ahjInfo.permit_required ? 'Permit required' : 'No permit'})
+                    </span>
                   </div>
                 )}
+                <div className="flex gap-2 mt-1 flex-wrap">
+                  {driveUrl && (
+                    <a href={driveUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-green-400 hover:text-green-300">Planset Folder →</a>
+                  )}
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${selectedProject.address ?? ''}, ${selectedProject.city ?? ''} TX`)}`}
+                    target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-[10px] text-blue-400 hover:text-blue-300">Google Maps →</a>
+                  <a href={`/pipeline?open=${selectedProject.id}`} target="_blank" className="text-[10px] text-purple-400 hover:text-purple-300">Open in MicroGRID →</a>
+                </div>
               </div>
             ) : (
               <div className="relative">
@@ -377,11 +392,16 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
                   <div className="absolute top-full left-0 right-0 bg-gray-800 border border-gray-700 rounded-lg mt-1 z-10 overflow-hidden">
                     {projectResults.map(p => (
                       <div key={p.id} onClick={() => {
-                        setSelectedProject(p); setProjectSearch(''); setProjectResults([]); setDriveUrl(null)
-                        // Load Google Drive folder URL
+                        setSelectedProject(p); setProjectSearch(''); setProjectResults([]); setDriveUrl(null); setAhjInfo(null)
                         const pid = p.id
+                        // Load Google Drive folder URL
                         supabase.from('project_folders').select('folder_url').eq('project_id', pid).maybeSingle()
                           .then(({ data }: any) => { if (data?.folder_url) setDriveUrl(data.folder_url) })
+                        // Load AHJ info
+                        if ((p as any).ahj) {
+                          supabase.from('ahjs').select('name, permit_phone, permit_required').eq('name', (p as any).ahj).maybeSingle()
+                            .then(({ data }: any) => { if (data) setAhjInfo({ name: data.name, phone: data.permit_phone, permit_required: data.permit_required ?? true }) })
+                        }
                       }}
                         className="px-3 py-2 hover:bg-gray-700 cursor-pointer">
                         <div className="text-xs font-medium text-white">{p.name}</div>
@@ -430,6 +450,23 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
               <select className={inputCls} value={form.job_type} onChange={e => set('job_type', e.target.value)}>
                 {JOB_TYPES.map(j => <option key={j.value} value={j.value}>{j.label}</option>)}
               </select>
+              {form.job_type === 'service' && (
+                <div className="mt-2">
+                  <label className={labelCls}>Service Detail</label>
+                  <select className={inputCls} value={serviceDetail} onChange={e => setServiceDetail(e.target.value)}>
+                    <option value="">Regular Service</option>
+                    <option value="removal">Removal (R&R)</option>
+                    <option value="reinstall">Reinstall (R&R)</option>
+                  </select>
+                  {serviceDetail === 'removal' && (
+                    <div className="mt-2">
+                      <label className={labelCls}>Reinstall Date</label>
+                      <input type="date" className={inputCls} value={reinstallDate} onChange={e => setReinstallDate(e.target.value)} />
+                      <p className="text-[9px] text-gray-500 mt-0.5">Auto-creates a reinstall job on this date</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             {/* Status */}
             <div>
@@ -445,8 +482,56 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
 
           {/* Notes */}
           <div>
-            <label className={labelCls}>Notes</label>
-            <textarea className={inputCls} rows={2} placeholder="Optional notes..."
+            <div className="flex items-center justify-between">
+              <label className={labelCls}>Notes</label>
+              {selectedProject && (
+                <button type="button" onClick={() => {
+                  const p = selectedProject as any
+                  const brief = [
+                    `CUSTOMER: ${p.name ?? '—'}`,
+                    `PHONE: ${p.phone ?? '—'}`,
+                    `ADDRESS: ${p.address ?? '—'}, ${p.city ?? ''} TX ${p.zip ?? ''}`,
+                    `PROJECT ID: ${p.id}`,
+                    '',
+                    `FINANCIER: ${p.financier ?? '—'} ${p.financing_type ? `(${p.financing_type})` : ''}`,
+                    `CONSULTANT: ${p.consultant ?? '—'}`,
+                    '',
+                    `SYSTEM SIZE: ${p.systemkw ?? '—'} kW`,
+                    `PANELS: ${p.module_qty ?? '—'} × ${p.module ?? '—'}`,
+                    `INVERTER: ${p.inverter ?? '—'}`,
+                    p.battery ? `BATTERY: ${p.battery}${p.battery_qty ? ` × ${p.battery_qty}` : ''}` : null,
+                    '',
+                    `UTILITY: ${p.utility ?? '—'}`,
+                    `AHJ: ${p.ahj ?? '—'}${ahjInfo?.phone ? ` — ${ahjInfo.phone}` : ''}`,
+                    p.esid ? `ESID: ${p.esid}` : null,
+                    '',
+                    installDetails.arrays ? `ARRAYS: ${installDetails.arrays}` : 'ARRAYS:',
+                    installDetails.pitch ? `PITCH: ${installDetails.pitch}` : 'PITCH:',
+                    installDetails.stories ? `STORIES: ${installDetails.stories}` : 'STORIES:',
+                    installDetails.msp_upgrade ? `MSP UPGRADE: ${installDetails.msp_upgrade}` : 'MSP UPGRADE: No',
+                    installDetails.wifi_info ? `WIFI: ${installDetails.wifi_info}` : 'WIFI:',
+                    installDetails.special_equipment ? `SPECIAL EQUIPMENT: ${installDetails.special_equipment}` : 'SPECIAL EQUIPMENT:',
+                    '',
+                    installDetails.electrical_notes ? `ELECTRICAL NOTES:\n${installDetails.electrical_notes}` : 'ELECTRICAL NOTES:',
+                    '',
+                    'ARRIVAL WINDOW:',
+                    'ADDITIONAL NOTES:',
+                    '',
+                    '— LINKS —',
+                    `MicroGRID: ${window.location.origin}/pipeline?open=${p.id}`,
+                    driveUrl ? `Planset Folder: ${driveUrl}` : null,
+                    `Google Maps: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${p.address ?? ''}, ${p.city ?? ''} TX ${p.zip ?? ''}`)}`,
+                    `Create Ticket: ${window.location.origin}/tickets`,
+                    `Redesign Tool: ${window.location.origin}/redesign`,
+                  ].filter(Boolean).join('\n')
+                  set('notes', brief)
+                }}
+                  className="text-[10px] px-2 py-0.5 bg-green-900/40 text-green-400 rounded hover:opacity-80 mb-1">
+                  Generate Crew Brief
+                </button>
+              )}
+            </div>
+            <textarea className={inputCls} rows={4} placeholder="Optional notes..."
               value={form.notes} onChange={e => set('notes', e.target.value)} />
           </div>
 
@@ -512,23 +597,6 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
                       <label className={labelCls}>WiFi Info</label>
                       <input className={inputCls} placeholder="e.g. Customer will provide"
                         value={installDetails.wifi_info} onChange={e => setInstall('wifi_info', e.target.value)} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelCls}>Wind Speed</label>
-                      <input className={inputCls} placeholder="e.g. 126 VMPH"
-                        value={installDetails.wind_speed} onChange={e => setInstall('wind_speed', e.target.value)} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Risk Category</label>
-                      <select className={inputCls} value={installDetails.risk_category} onChange={e => setInstall('risk_category', e.target.value)}>
-                        <option value="">Select...</option>
-                        <option value="A">A</option>
-                        <option value="B">B</option>
-                        <option value="C">C</option>
-                        <option value="D">D</option>
-                      </select>
                     </div>
                   </div>
                   <div>
