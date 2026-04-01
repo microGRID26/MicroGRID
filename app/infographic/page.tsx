@@ -120,42 +120,42 @@ export default function InfographicPage() {
         .ring-chart { transform: rotate(-90deg); }
       `}</style>
       <Nav active="Infographic" />
-      <div className="max-w-6xl mx-auto px-6 py-8 space-y-10 print:space-y-6">
+      <div className="max-w-6xl mx-auto px-3 md:px-6 py-4 md:py-8 space-y-6 md:space-y-10 print:space-y-6">
 
         {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <h1 className="text-3xl font-bold"><span className="text-green-400 print:text-green-700">MicroGRID</span> Infographic</h1>
-          <div className="flex items-center gap-2">
-            <div className="flex bg-gray-800 rounded-lg p-0.5 print:hidden overflow-x-auto max-w-[70vw]">
-              {!isSales && ([
-                { key: 'leadership' as Tab, label: 'Leadership' },
-                ...(isMicrogridEmployee ? [{ key: 'sales' as Tab, label: 'Sales' }] : []),
-                { key: 'inside_ops' as Tab, label: 'Inside Ops' },
-                { key: 'field_ops' as Tab, label: 'Field Ops' },
-                { key: 'journey' as Tab, label: 'Customer Journey' },
-                ...(canSeeTechnical ? [{ key: 'technical' as Tab, label: 'Technical' }] : []),
-              ]).map(t => (
-                <button key={t.key} onClick={() => setTab(t.key)} className={`px-4 py-1.5 text-xs font-medium rounded-md transition-colors ${tab === t.key ? 'bg-green-700 text-white' : 'text-gray-400 hover:text-white'}`}>{t.label}</button>
-              ))}
-            </div>
-            <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs rounded-md print:hidden"><Printer className="w-3.5 h-3.5" /> Print</button>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl md:text-3xl font-bold"><span className="text-green-400 print:text-green-700">MicroGRID</span> Infographic</h1>
+            <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs rounded-md print:hidden flex-shrink-0"><Printer className="w-3.5 h-3.5" /> Print</button>
+          </div>
+          <div className="flex bg-gray-800 rounded-lg p-0.5 print:hidden overflow-x-auto">
+            {!isSales && ([
+              { key: 'leadership' as Tab, label: 'Leadership' },
+              ...(isMicrogridEmployee ? [{ key: 'sales' as Tab, label: 'Sales' }] : []),
+              { key: 'inside_ops' as Tab, label: 'Inside Ops' },
+              { key: 'field_ops' as Tab, label: 'Field Ops' },
+              { key: 'journey' as Tab, label: 'Journey' },
+              ...(canSeeTechnical ? [{ key: 'technical' as Tab, label: 'Technical' }] : []),
+            ]).map(t => (
+              <button key={t.key} onClick={() => setTab(t.key)} className={`px-3 md:px-4 py-1.5 text-[11px] md:text-xs font-medium rounded-md transition-colors whitespace-nowrap flex-shrink-0 ${tab === t.key ? 'bg-green-700 text-white' : 'text-gray-400 hover:text-white'}`}>{t.label}</button>
+            ))}
           </div>
         </div>
 
         {/* ═══ EXECUTIVE ═══ */}
         {tab === 'leadership' && (
-          <div className="space-y-14">
+          <div className="space-y-8 md:space-y-14">
 
             {/* HERO — The number */}
-            <div className="text-center py-12 relative">
-              <div className="absolute inset-0 bg-gradient-radial from-green-900/20 via-transparent to-transparent rounded-3xl" style={{ background: 'radial-gradient(ellipse at center, rgba(29,158,117,0.08) 0%, transparent 70%)' }} />
-              <div className="animate-count text-7xl font-black text-green-400 print:text-green-700 tracking-tight drop-shadow-[0_0_30px_rgba(29,158,117,0.3)]">
+            <div className="text-center py-6 md:py-12 relative">
+              <div className="absolute inset-0 rounded-3xl" style={{ background: 'radial-gradient(ellipse at center, rgba(29,158,117,0.08) 0%, transparent 70%)' }} />
+              <div className="animate-count text-4xl md:text-7xl font-black text-green-400 print:text-green-700 tracking-tight drop-shadow-[0_0_30px_rgba(29,158,117,0.3)]">
                 {fmt$(stats.totalValue)}
               </div>
-              <div className="animate-count text-xl text-gray-300 mt-3 print:text-gray-700" style={{ animationDelay: '0.2s' }}>
+              <div className="animate-count text-base md:text-xl text-gray-300 mt-2 md:mt-3 print:text-gray-700" style={{ animationDelay: '0.2s' }}>
                 Portfolio Under Management
               </div>
-              <div className="animate-count text-sm text-gray-500 mt-2" style={{ animationDelay: '0.4s' }}>
+              <div className="animate-count text-xs md:text-sm text-gray-500 mt-1 md:mt-2" style={{ animationDelay: '0.4s' }}>
                 {stats.totalProjects.toLocaleString()} active projects · 7 automated pipeline stages · 14,705 legacy records preserved
               </div>
             </div>
@@ -165,16 +165,16 @@ export default function InfographicPage() {
               <h2 className="text-xs text-gray-500 uppercase tracking-wider mb-4 font-semibold">Pipeline Breakdown</h2>
               <div className="space-y-2">
                 {stats.pipeline.map(s => (
-                  <div key={s.stage} className="flex items-center gap-3">
-                    <div className="w-24 text-right flex-shrink-0">
-                      <div className="text-xs font-bold" style={{ color: s.color }}>{s.label}</div>
+                  <div key={s.stage} className="flex items-center gap-2 md:gap-3">
+                    <div className="w-16 md:w-24 text-right flex-shrink-0">
+                      <div className="text-[10px] md:text-xs font-bold" style={{ color: s.color }}>{s.label}</div>
                     </div>
                     <div className="flex-1">
-                      <div className="h-14 rounded-lg bg-gray-800/50 print:bg-gray-100 overflow-hidden">
-                        <div className="h-full rounded-lg flex items-center justify-between px-4 animate-grow animate-pulse-glow"
-                          style={{ width: `${Math.max((s.count / maxCount) * 100, 12)}%`, backgroundColor: `${s.color}15`, borderLeft: `5px solid ${s.color}`, boxShadow: `inset 0 0 30px ${s.color}10` }}>
-                          <span className="text-sm font-bold print:text-black">{s.count} projects</span>
-                          <span className="text-sm font-bold text-green-400 print:text-green-700">{fmt$(s.value)}</span>
+                      <div className="h-10 md:h-14 rounded-lg bg-gray-800/50 print:bg-gray-100 overflow-hidden">
+                        <div className="h-full rounded-lg flex items-center justify-between px-2 md:px-4 animate-grow animate-pulse-glow"
+                          style={{ width: `${Math.max((s.count / maxCount) * 100, 15)}%`, backgroundColor: `${s.color}15`, borderLeft: `4px solid ${s.color}`, boxShadow: `inset 0 0 30px ${s.color}10` }}>
+                          <span className="text-[10px] md:text-sm font-bold print:text-black">{s.count}</span>
+                          <span className="text-[10px] md:text-sm font-bold text-green-400 print:text-green-700 hidden sm:inline">{fmt$(s.value)}</span>
                         </div>
                       </div>
                     </div>
@@ -281,15 +281,15 @@ export default function InfographicPage() {
 
         {/* ═══ INSIDE OPS ═══ */}
         {tab === 'inside_ops' && (
-          <div className="space-y-12">
+          <div className="space-y-6 md:space-y-12">
             <div className="text-center py-2">
-              <h2 className="text-2xl font-bold">Inside Operations</h2>
-              <p className="text-sm text-gray-500 mt-1">For PMs, ops managers, and inside coordinators</p>
+              <h2 className="text-xl md:text-2xl font-bold">Inside Operations</h2>
+              <p className="text-xs md:text-sm text-gray-500 mt-1">For PMs, ops managers, and inside coordinators</p>
             </div>
 
             {/* Daily workflow */}
             <div>
-              <h2 className="text-xl font-bold mb-4">Your Daily Workflow</h2>
+              <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Your Daily Workflow</h2>
               <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                 {[
                   { step: '1', name: 'Command Center', desc: 'Action items, stuck tasks, follow-ups, today\'s schedule', color: '#1D9E75', href: '/command' },
@@ -315,7 +315,7 @@ export default function InfographicPage() {
                 <div className="text-sm text-gray-400 mt-1">Per PM through automation — that's 3.75 hours per week back</div>
               </div>
 
-              <h2 className="text-xl font-bold mb-4">Automation Saves You Time</h2>
+              <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Automation Saves You Time</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
                   { category: 'Pipeline', color: '#1D9E75', items: [
@@ -351,7 +351,7 @@ export default function InfographicPage() {
 
             {/* Shortcuts */}
             <div>
-              <h2 className="text-xl font-bold mb-4">Tips & Shortcuts</h2>
+              <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Tips & Shortcuts</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {[
                   { shortcut: '⌘K', desc: 'Global search — find any project from any page' },
@@ -371,7 +371,7 @@ export default function InfographicPage() {
 
             {/* Quick start */}
             <div>
-              <h2 className="text-xl font-bold mb-4">New PM Quick Start</h2>
+              <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-4">New PM Quick Start</h2>
               <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
                 {['Log in with Google (@gomicrogridenergy.com)', 'Command Center loads — check your action items and stuck tasks', 'Queue shows your assigned projects filtered by default', 'Click any project → Tasks tab to update statuses and add notes', 'Questions? Help page or @mention someone in Notes'].map((step, i) => (
                   <div key={i} className="flex items-start gap-3 py-2">
@@ -386,17 +386,17 @@ export default function InfographicPage() {
 
         {/* ═══ FIELD OPS ═══ */}
         {tab === 'field_ops' && (
-          <div className="space-y-12">
-            <div className="text-center py-6 relative">
+          <div className="space-y-6 md:space-y-12">
+            <div className="text-center py-3 md:py-6 relative">
               <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, rgba(59,130,246,0.06) 0%, transparent 70%)' }} />
-              <div className="text-4xl mb-2">🔨</div>
-              <h2 className="text-2xl font-bold">Field Operations</h2>
-              <p className="text-sm text-gray-500 mt-1">Built for crew leads, installers, and field technicians</p>
+              <div className="text-2xl md:text-4xl mb-1">🔨</div>
+              <h2 className="text-xl md:text-2xl font-bold">Field Operations</h2>
+              <p className="text-xs md:text-sm text-gray-500 mt-1">Built for crew leads, installers, and field technicians</p>
             </div>
 
             {/* Field day workflow */}
             <div>
-              <h2 className="text-xl font-bold mb-4">Your Day in the Field</h2>
+              <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Your Day in the Field</h2>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 {[
                   { step: '1', name: 'Check Schedule', desc: 'Open crew view on your phone. See today\'s jobs with addresses and customer info.', color: '#1D9E75', icon: '📱' },
@@ -416,7 +416,7 @@ export default function InfographicPage() {
 
             {/* Mobile tools */}
             <div>
-              <h2 className="text-xl font-bold mb-4">Your Mobile Tools</h2>
+              <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Your Mobile Tools</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[
                   { name: 'Crew View', desc: 'See your scheduled jobs for the week. Customer name, address, phone, equipment specs, job type.', color: '#1D9E75', href: '/crew' },
@@ -436,7 +436,7 @@ export default function InfographicPage() {
 
             {/* Work order types */}
             <div>
-              <h2 className="text-xl font-bold mb-4">Job Types & Checklists</h2>
+              <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Job Types & Checklists</h2>
               <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                 {[
                   { type: 'Install', items: 9, desc: 'Panels, wiring, inverter, battery, testing, cleanup', color: '#f97316' },
@@ -457,7 +457,7 @@ export default function InfographicPage() {
 
             {/* Quick start for field */}
             <div>
-              <h2 className="text-xl font-bold mb-4">Field Quick Start</h2>
+              <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Field Quick Start</h2>
               <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
                 {[
                   'Open MicroGRID on your phone browser (microgrid-crm.vercel.app)',
@@ -478,10 +478,10 @@ export default function InfographicPage() {
 
         {/* ═══ SALES ═══ */}
         {tab === 'sales' && (
-          <div className="space-y-12">
+          <div className="space-y-6 md:space-y-12">
             {/* Commission pipeline */}
             <div>
-              <h2 className="text-xl font-bold mb-4">Your Commission Pipeline</h2>
+              <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Your Commission Pipeline</h2>
               <div className="relative">
                 <div className="absolute top-1/2 left-0 right-0 h-0.5 animate-flow" style={{ marginTop: '-1px' }} />
               </div>
@@ -496,8 +496,8 @@ export default function InfographicPage() {
                   { step: 'Commission Paid', desc: 'Rep gets paid', color: '#1D9E75', icon: '💰' },
                 ].map((s, i) => (
                   <div key={s.step} className="flex items-center flex-shrink-0">
-                    <div className="rounded-xl px-4 py-4 text-center min-w-[120px] border" style={{ backgroundColor: `${s.color}10`, borderColor: `${s.color}40` }}>
-                      <div className="text-xl mb-1">{s.icon}</div>
+                    <div className="rounded-xl px-3 md:px-4 py-3 md:py-4 text-center min-w-[90px] md:min-w-[120px] border" style={{ backgroundColor: `${s.color}10`, borderColor: `${s.color}40` }}>
+                      <div className="text-lg md:text-xl mb-1">{s.icon}</div>
                       <div className="text-[10px] font-bold" style={{ color: s.color }}>{s.step}</div>
                       <div className="text-[9px] text-gray-500 mt-0.5">{s.desc}</div>
                     </div>
@@ -509,8 +509,8 @@ export default function InfographicPage() {
 
             {/* What happens after you submit */}
             <div>
-              <h2 className="text-xl font-bold mb-2">What Happens After You Close</h2>
-              <p className="text-sm text-gray-500 mb-4">You close the sale — here's how your deal moves toward your paycheck. Every step is tracked so you always know where it stands.</p>
+              <h2 className="text-lg md:text-xl font-bold mb-2">What Happens After You Close</h2>
+              <p className="text-xs md:text-sm text-gray-500 mb-3 md:mb-4">You close the sale — here's how your deal moves toward your paycheck.</p>
               <div className="space-y-2">
                 {[
                   { step: 1, who: 'Your Deal', action: 'Contract enters the pipeline. Your commission is calculated and tracked from this moment.', color: '#3b82f6' },
@@ -534,7 +534,7 @@ export default function InfographicPage() {
 
             {/* How you get paid */}
             <div>
-              <h2 className="text-xl font-bold mb-4">How You Get Paid</h2>
+              <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-4">How You Get Paid</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
                   <h3 className="text-sm font-bold text-green-400 mb-3">Deal Snapshot</h3>
@@ -580,7 +580,7 @@ export default function InfographicPage() {
 
             {/* Rep tools */}
             <div>
-              <h2 className="text-xl font-bold mb-4">Your Tools</h2>
+              <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Your Tools</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {[
                   { name: 'Commission Calculator', desc: 'Enter system size + adders → see your payout breakdown by role', color: '#1D9E75', href: '/commissions' },
@@ -602,11 +602,11 @@ export default function InfographicPage() {
 
         {/* ═══ CUSTOMER JOURNEY ═══ */}
         {tab === 'journey' && (
-          <div className="space-y-12">
+          <div className="space-y-6 md:space-y-12">
             {/* Hero */}
-            <div className="text-center py-4">
-              <h2 className="text-2xl font-bold">The Homeowner Experience</h2>
-              <p className="text-sm text-gray-500 mt-1">From contract signing to powering their home — here's what the customer experiences at every step.</p>
+            <div className="text-center py-2 md:py-4">
+              <h2 className="text-xl md:text-2xl font-bold">The Homeowner Experience</h2>
+              <p className="text-xs md:text-sm text-gray-500 mt-1">From contract signing to powering their home — here's what the customer experiences at every step.</p>
             </div>
 
             {/* Timeline */}
@@ -646,7 +646,7 @@ export default function InfographicPage() {
 
             {/* Where delays happen */}
             <div>
-              <h2 className="text-xl font-bold mb-4">Where Delays Happen & How We Prevent Them</h2>
+              <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Where Delays Happen & How We Prevent Them</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {[
                   { blocker: 'Permit rejection', stage: 'Permitting', fix: 'AHJ database with 1,633 records — portal URLs, requirements, and notes from past submissions. Tickets auto-created on rejection.', color: '#f59e0b' },
@@ -669,7 +669,7 @@ export default function InfographicPage() {
 
             {/* The numbers */}
             <div>
-              <h2 className="text-xl font-bold mb-4">By the Numbers</h2>
+              <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-4">By the Numbers</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
                   { value: '~90', unit: 'days', label: 'Avg Sale to In-Service', color: '#1D9E75', pct: 100 },
@@ -696,10 +696,10 @@ export default function InfographicPage() {
 
         {/* ═══ TECHNICAL ═══ */}
         {tab === 'technical' && (
-          <div className="space-y-12">
+          <div className="space-y-6 md:space-y-12">
             {/* Architecture — layered bands */}
             <div>
-              <h2 className="text-xl font-bold mb-4">Architecture</h2>
+              <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Architecture</h2>
               <div className="space-y-1">
                 {[
                   { layer: 'Browser', color: '#3b82f6', items: ['Next.js 16 App Router', 'React 19', 'TypeScript (strict)', 'Tailwind CSS v4', 'Leaflet Maps'] },
@@ -723,7 +723,7 @@ export default function InfographicPage() {
 
             {/* Data flow */}
             <div>
-              <h2 className="text-xl font-bold mb-4">Data Flow</h2>
+              <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Data Flow</h2>
               <div className="flex items-center gap-2 overflow-x-auto pb-2 justify-center">
                 {[
                   { name: 'Project', color: '#1D9E75' },
@@ -746,7 +746,7 @@ export default function InfographicPage() {
 
             {/* Live stats */}
             <div>
-              <h2 className="text-xl font-bold mb-4">Live Database Stats</h2>
+              <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Live Database Stats</h2>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 {[
                   { label: 'Active Projects', value: stats.totalProjects },
@@ -771,7 +771,7 @@ export default function InfographicPage() {
             {/* Testing + Security side by side */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <h2 className="text-xl font-bold mb-4">Testing</h2>
+                <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Testing</h2>
                 <div className="bg-gray-800 rounded-xl p-5 border border-gray-700 space-y-2">
                   {[
                     ['Framework', 'Vitest + React Testing Library'],
@@ -785,7 +785,7 @@ export default function InfographicPage() {
                 </div>
               </div>
               <div>
-                <h2 className="text-xl font-bold mb-4">Security</h2>
+                <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Security</h2>
                 <div className="bg-gray-800 rounded-xl p-5 border border-gray-700 space-y-2">
                   {[
                     ['Auth', 'Google OAuth (domain-restricted)'],
