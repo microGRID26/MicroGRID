@@ -358,8 +358,15 @@ export function useSupabaseQuery<T extends TableName>(
 
       if (queryError) throw new Error(queryError.message)
 
+      const resultRows = (rows ?? []) as Row[]
+
+      // Warn when query hits limit — may be silently truncating data
+      if (!isPaginated && resultRows.length >= limit) {
+        console.warn(`[useSupabaseQuery] "${table}" returned ${resultRows.length} rows (limit: ${limit}) — data may be truncated. Consider pagination or increasing limit.`)
+      }
+
       const result: CacheEntry<Row> = {
-        data: (rows ?? []) as Row[],
+        data: resultRows,
         totalCount: count,
         timestamp: Date.now(),
       }
