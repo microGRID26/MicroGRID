@@ -19,10 +19,17 @@ function timeAgo(ts: string): string {
 export function NotificationBell() {
   const { prefs, updatePref } = usePreferences()
   const notifPrefsForHook = prefs.notification_prefs ?? DEFAULT_NOTIFICATION_PREFS
-  const { notifications, loading, unreadCount, markRead, markAllRead } = useNotifications(notifPrefsForHook)
+  const { notifications, loading, unreadCount, markRead, markAllRead, refresh } = useNotifications(notifPrefsForHook)
   const [open, setOpen] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+
+  // Listen for custom event to refresh immediately (e.g., after @mention in ticket comment)
+  useEffect(() => {
+    const handler = () => refresh()
+    window.addEventListener('notifications:refresh', handler)
+    return () => window.removeEventListener('notifications:refresh', handler)
+  }, [refresh])
 
   const notifPrefs = prefs.notification_prefs ?? DEFAULT_NOTIFICATION_PREFS
   const togglePref = (key: keyof NotificationPrefs) => {

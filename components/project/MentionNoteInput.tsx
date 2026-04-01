@@ -101,6 +101,11 @@ export function MentionNoteInput({
       }
     }
 
+    // Trigger notification bell refresh if mentions were created
+    if (mentions && mentions.length > 0) {
+      window.dispatchEvent(new Event('notifications:refresh'))
+    }
+
     onSubmit(text)
     setValue('')
   }
