@@ -25,8 +25,26 @@ import { Calendar, MapPin, Truck, ChevronLeft, ChevronRight, Check, X, Zap, Aler
 const MapContainer = dynamic(() => import('react-leaflet').then(m => m.MapContainer), { ssr: false })
 const TileLayer = dynamic(() => import('react-leaflet').then(m => m.TileLayer), { ssr: false })
 const CircleMarker = dynamic(() => import('react-leaflet').then(m => m.CircleMarker), { ssr: false })
+const Circle = dynamic(() => import('react-leaflet').then(m => m.Circle), { ssr: false })
 const Tooltip = dynamic(() => import('react-leaflet').then(m => m.Tooltip), { ssr: false })
 const Polyline = dynamic(() => import('react-leaflet').then(m => m.Polyline), { ssr: false })
+
+// ── Proximity Tiers ─────────────────────────────────────────────────────────
+const PROXIMITY_TIERS = [
+  { key: 'A' as const, label: '0–3 mi', max: 3, color: '#22c55e', ring: '#22c55e40' },
+  { key: 'B' as const, label: '3–6 mi', max: 6, color: '#3b82f6', ring: '#3b82f640' },
+  { key: 'C' as const, label: '6–12 mi', max: 12, color: '#f59e0b', ring: '#f59e0b30' },
+  { key: 'D' as const, label: '12–24 mi', max: 24, color: '#6b7280', ring: '#6b728020' },
+]
+type TierKey = 'A' | 'B' | 'C' | 'D'
+function getTierKey(miles: number): TierKey | null {
+  if (miles <= 3) return 'A'
+  if (miles <= 6) return 'B'
+  if (miles <= 12) return 'C'
+  if (miles <= 24) return 'D'
+  return null
+}
+const TIER_COLOR_MAP: Record<TierKey, string> = { A: '#22c55e', B: '#3b82f6', C: '#f59e0b', D: '#6b7280' }
 
 const CREW_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ec4899'] // green, blue, amber, pink
 
@@ -79,6 +97,10 @@ export default function RampUpPage() {
   const [selectedWeek, setSelectedWeek] = useState(rampStart)
   const [panelProject, setPanelProject] = useState<Project | null>(null)
   const [tab, setTab] = useState<'planner' | 'queue' | 'timeline'>('planner')
+  // Proximity clustering state
+  const [clusterFocusId, setClusterFocusId] = useState<string | null>(null)
+  const [clusterRouteIds, setClusterRouteIds] = useState<Set<string>>(new Set())
+  const [showClusterRoute, setShowClusterRoute] = useState(false)
   const [showGuide, setShowGuide] = useState(() => {
     if (typeof window === 'undefined') return true
     return localStorage.getItem('mg_rampup_guide_dismissed') !== 'true'
@@ -532,6 +554,62 @@ export default function RampUpPage() {
   const totalWeekMiles = [...weekRoutes.values()].reduce((sum, r) => sum + r.totalMiles, 0)
   const totalWeekMinutes = [...weekRoutes.values()].reduce((sum, r) => sum + r.totalMinutes, 0)
 
+  // Proximity clustering computed data
+  const clusterFocusProject = useMemo(() => projects.find(p => p.id === clusterFocusId) ?? null, [projects, clusterFocusId])
+  const clusterNearby = useMemo(() => {
+    if (!clusterFocusProject) return [] as any[]
+    const result: any[] = []
+    for (const p of projects) {
+      if (p.id === clusterFocusProject.id) continue
+      const distance = haversineDistance(clusterFocusProject.lat, clusterFocusProject.lng, p.lat, p.lng)
+      const tier = getTierKey(distance)
+      if (tier) result.push({ ...p, distance, tier })
+    }
+    result.sort((a: any, b: any) => a.distance - b.distance)
+    return result
+  }, [clusterFocusProject, projects])
+  const clusterTierCounts = useMemo(() => {
+    const c: Record<TierKey, number> = { A: 0, B: 0, C: 0, D: 0 }
+    for (const p of clusterNearby) c[p.tier as TierKey]++
+    return c
+  }, [clusterNearby])
+  const clusterRoutePoints = useMemo(() => {
+    if (!showClusterRoute || !clusterFocusProject || clusterRouteIds.size === 0) return []
+    const selected = clusterNearby.filter(p => clusterRouteIds.has(p.id))
+    const remaining = [...selected]
+    const ordered: typeof selected = []
+    let curLat = clusterFocusProject.lat, curLng = clusterFocusProject.lng
+    while (remaining.length > 0) {
+      let bestIdx = 0, bestDist = Infinity
+      for (let i = 0; i < remaining.length; i++) {
+        const d = haversineDistance(curLat, curLng, remaining[i].lat, remaining[i].lng)
+        if (d < bestDist) { bestDist = d; bestIdx = i }
+      }
+      const next = remaining.splice(bestIdx, 1)[0]
+      ordered.push(next)
+      curLat = next.lat; curLng = next.lng
+    }
+    return ordered
+  }, [showClusterRoute, clusterFocusProject, clusterRouteIds, clusterNearby])
+  const clusterPolyline = useMemo(() => {
+    if (!clusterFocusProject || clusterRoutePoints.length === 0) return []
+    return [[clusterFocusProject.lat, clusterFocusProject.lng] as [number, number], ...clusterRoutePoints.map(p => [p.lat, p.lng] as [number, number])]
+  }, [clusterFocusProject, clusterRoutePoints])
+  const clusterTotalMiles = useMemo(() => {
+    if (clusterPolyline.length < 2) return 0
+    let t = 0
+    for (let i = 1; i < clusterPolyline.length; i++) t += haversineDistance(clusterPolyline[i-1][0], clusterPolyline[i-1][1], clusterPolyline[i][0], clusterPolyline[i][1])
+    return Math.round(t * 10) / 10
+  }, [clusterPolyline])
+  const clusterGoogleUrl = useMemo(() => {
+    if (!clusterFocusProject || clusterRoutePoints.length === 0) return null
+    const origin = `${clusterFocusProject.address ?? ''}, ${clusterFocusProject.city ?? ''} TX ${clusterFocusProject.zip ?? ''}`
+    const dest = clusterRoutePoints[clusterRoutePoints.length - 1]
+    const destination = `${dest.address ?? ''}, ${dest.city ?? ''} TX ${dest.zip ?? ''}`
+    const waypoints = clusterRoutePoints.length > 1 ? clusterRoutePoints.map(p => `${p.address ?? ''}, ${p.city ?? ''} TX ${p.zip ?? ''}`).join('|') : ''
+    return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}${waypoints ? `&waypoints=${encodeURIComponent(waypoints)}` : ''}`
+  }, [clusterFocusProject, clusterRoutePoints])
+
   if (authLoading) return <div className="min-h-screen bg-gray-950"><Nav active="Ramp-Up" /></div>
   if (!isManager) return <div className="min-h-screen bg-gray-950"><Nav active="Ramp-Up" /><div className="max-w-7xl mx-auto px-4 py-20 text-center text-gray-500">Not authorized.</div></div>
 
@@ -772,9 +850,10 @@ export default function RampUpPage() {
               </div>
             )}
 
-            {/* Week Map */}
+            {/* Week Map + Proximity Sidebar */}
             {config && (
-              <div className="bg-gray-800 rounded-lg overflow-hidden" style={{ height: '400px' }}>
+              <div className="flex bg-gray-800 rounded-lg overflow-hidden" style={{ height: clusterFocusId ? '600px' : '400px' }}>
+                <div className="flex-1 relative">
                 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
                 <MapContainer
                   center={[config.warehouse_lat, config.warehouse_lng] as [number, number]}
@@ -792,8 +871,21 @@ export default function RampUpPage() {
                       <span style={{ fontSize: '10px', color: '#fff', background: '#1f2937', padding: '2px 6px', borderRadius: '4px' }}>Warehouse</span>
                     </Tooltip>
                   </CircleMarker>
-                  {/* Route lines per crew */}
-                  {[...weekRoutes.entries()].map(([crew, route], ci) => {
+
+                  {/* Proximity distance rings */}
+                  {clusterFocusProject && PROXIMITY_TIERS.map(t => (
+                    <Circle key={t.key} center={[clusterFocusProject.lat, clusterFocusProject.lng]}
+                      radius={t.max * 1609.34}
+                      pathOptions={{ color: t.color, fillColor: t.ring, fillOpacity: 0.08, weight: 1, dashArray: '4 4' }} />
+                  ))}
+
+                  {/* Cluster route polyline */}
+                  {showClusterRoute && clusterPolyline.length > 1 && (
+                    <Polyline positions={clusterPolyline} pathOptions={{ color: '#22c55e', weight: 3, opacity: 0.8 }} />
+                  )}
+
+                  {/* Route lines per crew (hidden in cluster mode) */}
+                  {!clusterFocusId && [...weekRoutes.entries()].map(([crew, route], ci) => {
                     if (!config || route.ordered.length === 0) return null
                     const color = CREW_COLORS[ci] ?? '#6b7280'
                     const points: [number, number][] = [
@@ -806,53 +898,155 @@ export default function RampUpPage() {
                         pathOptions={{ color, weight: 2, opacity: 0.6, dashArray: '6 4' }} />
                     )
                   })}
-                  {/* Scheduled jobs — colored by crew */}
+                  {/* Scheduled jobs */}
                   {weekSchedule.map(s => {
                     const p = projects.find(pr => pr.id === s.project_id)
                     if (!p) return null
                     const crewIdx = crewNames.indexOf(s.crew_name ?? '')
-                    const color = CREW_COLORS[crewIdx] ?? '#6b7280'
+                    const nearbyInfo = clusterNearby.find(n => n.id === p.id)
+                    const isClusterFocus = p.id === clusterFocusId
+                    const inClusterRoute = clusterRouteIds.has(p.id)
+                    let color = CREW_COLORS[crewIdx] ?? '#6b7280'
+                    let radius = 8
+                    let opacity = 0.8
+                    if (clusterFocusId && !isClusterFocus) {
+                      if (nearbyInfo) { color = TIER_COLOR_MAP[nearbyInfo.tier as TierKey]; radius = nearbyInfo.tier === 'A' ? 9 : 7 }
+                      else { opacity = 0.2; radius = 5 }
+                      if (inClusterRoute) { color = '#22c55e'; radius = 10 }
+                    }
+                    if (isClusterFocus) { color = '#ffffff'; radius = 12; opacity = 1 }
                     return (
-                      <CircleMarker key={s.id} center={[p.lat, p.lng]} radius={8}
-                        pathOptions={{ color, fillColor: color, fillOpacity: 0.8, weight: 2 }}>
+                      <CircleMarker key={s.id} center={[p.lat, p.lng]} radius={radius}
+                        pathOptions={{ color: isClusterFocus ? '#ffffff' : color, fillColor: isClusterFocus ? '#22c55e' : color, fillOpacity: opacity, weight: isClusterFocus ? 3 : 2 }}
+                        eventHandlers={{ click: () => { setClusterFocusId(p.id === clusterFocusId ? null : p.id); setClusterRouteIds(new Set()); setShowClusterRoute(false) } }}>
                         <Tooltip direction="top" offset={[0, -10]}>
                           <div style={{ background: '#1f2937', color: '#e5e7eb', padding: '8px 12px', borderRadius: '8px', fontSize: '11px', border: `2px solid ${color}`, minWidth: '220px' }}>
                             <div style={{ fontWeight: 700, color: '#fff', fontSize: '12px', marginBottom: '4px' }}>{p.name}</div>
-                            <div style={{ color: '#9ca3af', fontSize: '10px' }}>{p.id} · {p.city}{p.address ? `, ${p.address}` : ''}</div>
-                            <div style={{ display: 'flex', gap: '12px', marginTop: '6px', fontSize: '10px' }}>
-                              <span style={{ color: '#9ca3af' }}>AHJ: <span style={{ color: '#e5e7eb' }}>{p.ahj ?? '—'}</span></span>
-                              <span style={{ color: '#9ca3af' }}>{p.systemkw ?? '—'} kW</span>
-                              <span style={{ color: '#22c55e' }}>{fmt$(Number(p.contract) || 0)}</span>
-                            </div>
-                            <div style={{ display: 'flex', gap: '12px', marginTop: '4px', fontSize: '10px' }}>
-                              <span style={{ color: '#9ca3af' }}>Module: <span style={{ color: '#e5e7eb' }}>{(p.module ?? '—').slice(0, 25)}</span></span>
-                            </div>
-                            <div style={{ borderTop: '1px solid #374151', marginTop: '6px', paddingTop: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ color, fontWeight: 600, fontSize: '11px' }}>{s.crew_name} · Job {s.slot}</span>
-                              <span style={{ color: '#fff', fontSize: '11px', fontWeight: 600 }}>{s.scheduled_day ? new Date(s.scheduled_day + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'No date set'}</span>
-                            </div>
-                            <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>
-                              {p.distanceMiles}mi from warehouse · ~{p.driveMinutes}min drive · {s.status}
-                            </div>
+                            <div style={{ color: '#9ca3af', fontSize: '10px' }}>{p.id} · {p.city}</div>
+                            {nearbyInfo && <div style={{ color: TIER_COLOR_MAP[nearbyInfo.tier as TierKey], fontSize: '10px', fontWeight: 600, marginTop: '4px' }}>Tier {nearbyInfo.tier} · {nearbyInfo.distance.toFixed(1)} mi</div>}
+                            <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>{s.crew_name} · {s.status}</div>
                           </div>
                         </Tooltip>
                       </CircleMarker>
                     )
                   })}
-                  {/* Suggested projects — gray dots */}
-                  {suggestions.filter(p => !scheduledIds.has(p.id)).map(p => (
-                    <CircleMarker key={p.id} center={[p.lat, p.lng]} radius={5}
-                      pathOptions={{ color: '#4b5563', fillColor: '#4b556380', fillOpacity: 0.6, weight: 1 }}>
-                      <Tooltip direction="top" offset={[0, -8]}>
-                        <div style={{ background: '#1f2937', color: '#9ca3af', padding: '4px 8px', borderRadius: '4px', fontSize: '10px' }}>
-                          {p.name} ({p.id}) · Score: {p.priorityScore}
-                        </div>
-                      </Tooltip>
-                    </CircleMarker>
-                  ))}
+                  {/* Suggested projects — clickable for clustering */}
+                  {suggestions.filter(p => !scheduledIds.has(p.id)).map(p => {
+                    const nearbyInfo = clusterNearby.find(n => n.id === p.id)
+                    const isClusterFocus = p.id === clusterFocusId
+                    const inClusterRoute = clusterRouteIds.has(p.id)
+                    let dotColor = '#4b5563'
+                    let dotRadius = 5
+                    let dotOpacity = 0.6
+                    if (clusterFocusId && !isClusterFocus) {
+                      if (nearbyInfo) { dotColor = TIER_COLOR_MAP[nearbyInfo.tier as TierKey]; dotRadius = nearbyInfo.tier === 'A' ? 8 : 6 }
+                      else { dotOpacity = 0.15; dotRadius = 3 }
+                      if (inClusterRoute) { dotColor = '#22c55e'; dotRadius = 9 }
+                    }
+                    if (isClusterFocus) { dotColor = '#22c55e'; dotRadius = 12; dotOpacity = 1 }
+                    return (
+                      <CircleMarker key={p.id} center={[p.lat, p.lng]} radius={dotRadius}
+                        pathOptions={{ color: isClusterFocus ? '#fff' : dotColor, fillColor: dotColor, fillOpacity: dotOpacity, weight: isClusterFocus ? 3 : 1 }}
+                        eventHandlers={{ click: () => { setClusterFocusId(p.id === clusterFocusId ? null : p.id); setClusterRouteIds(new Set()); setShowClusterRoute(false) } }}>
+                        <Tooltip direction="top" offset={[0, -8]}>
+                          <div style={{ background: '#1f2937', color: '#9ca3af', padding: '4px 8px', borderRadius: '4px', fontSize: '10px' }}>
+                            {p.name} ({p.id}) · Score: {p.priorityScore}
+                            {nearbyInfo && <span style={{ color: TIER_COLOR_MAP[nearbyInfo.tier as TierKey], fontWeight: 600 }}> · Tier {nearbyInfo.tier} ({nearbyInfo.distance.toFixed(1)}mi)</span>}
+                          </div>
+                        </Tooltip>
+                      </CircleMarker>
+                    )
+                  })}
                 </MapContainer>
-                {/* Crew legend */}
-                <div className="bg-gray-900 border-t border-gray-700 px-4 py-2 flex flex-wrap gap-4">
+
+                {/* Tier legend overlay (in cluster mode) */}
+                {clusterFocusId && (
+                  <div className="absolute bottom-2 left-2 bg-gray-900/90 border border-gray-700 rounded-lg p-2 z-[400]">
+                    <div className="text-[9px] text-gray-500 uppercase font-medium mb-1">Distance Tiers</div>
+                    {PROXIMITY_TIERS.map(t => (
+                      <div key={t.key} className="flex items-center gap-1.5 text-[10px]">
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.color }} />
+                        <span className="text-gray-300">{t.key}: {t.label}</span>
+                        <span className="text-gray-500 ml-auto">{clusterTierCounts[t.key]}</span>
+                      </div>
+                    ))}
+                    <button onClick={() => { setClusterFocusId(null); setClusterRouteIds(new Set()); setShowClusterRoute(false) }} className="text-[9px] text-gray-400 hover:text-white mt-1 pt-1 border-t border-gray-700 w-full text-left">
+                      <X className="w-3 h-3 inline" /> Exit Cluster
+                    </button>
+                  </div>
+                )}
+                </div>
+
+                {/* Proximity Sidebar */}
+                {clusterFocusId && clusterFocusProject && (
+                  <div className="w-72 bg-gray-900 border-l border-gray-700 flex flex-col overflow-hidden">
+                    <div className="p-3 border-b border-gray-700 flex-shrink-0">
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs font-bold text-white truncate">{clusterFocusProject.name}</div>
+                        <button onClick={() => { setClusterFocusId(null); setClusterRouteIds(new Set()); setShowClusterRoute(false) }} className="text-gray-500 hover:text-white"><X className="w-3.5 h-3.5" /></button>
+                      </div>
+                      <div className="text-[10px] text-gray-400">{clusterFocusProject.id} · {clusterFocusProject.city}</div>
+                      <div className="flex gap-1 mt-2">
+                        {PROXIMITY_TIERS.map(t => (
+                          <div key={t.key} className="flex-1 text-center rounded py-1" style={{ backgroundColor: t.color + '15' }}>
+                            <div className="text-xs font-bold" style={{ color: t.color }}>{clusterTierCounts[t.key]}</div>
+                            <div className="text-[8px] text-gray-500">{t.key}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    {clusterRouteIds.size > 0 && (
+                      <div className="p-2 border-b border-gray-700 flex-shrink-0 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-gray-400">{clusterRouteIds.size} selected</span>
+                          <button onClick={() => setShowClusterRoute(!showClusterRoute)} className={cn('text-[10px] px-2 py-0.5 rounded font-medium', showClusterRoute ? 'bg-green-900 text-green-300' : 'bg-gray-800 text-gray-300')}>
+                            {showClusterRoute ? 'Hide Route' : 'Show Route'}
+                          </button>
+                        </div>
+                        {showClusterRoute && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-gray-500">{clusterTotalMiles} mi total</span>
+                            {clusterGoogleUrl && <a href={clusterGoogleUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-400 hover:text-blue-300">Google Maps →</a>}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <div className="flex-1 overflow-y-auto">
+                      {PROXIMITY_TIERS.map(t => {
+                        const tierProjects = clusterNearby.filter(p => p.tier === t.key)
+                        if (tierProjects.length === 0) return null
+                        return (
+                          <div key={t.key}>
+                            <div className="px-3 py-1 text-[9px] font-bold uppercase tracking-wider sticky top-0 bg-gray-900 z-10" style={{ color: t.color }}>
+                              Tier {t.key} · {t.label} · {tierProjects.length}
+                            </div>
+                            {tierProjects.map(p => (
+                              <div key={p.id}
+                                className={cn('px-3 py-1.5 hover:bg-gray-800/50 cursor-pointer border-l-2 flex items-start gap-2', clusterRouteIds.has(p.id) ? 'border-green-500 bg-green-950/20' : 'border-transparent')}
+                                onClick={() => setClusterRouteIds(prev => { const n = new Set(prev); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); return n })}
+                              >
+                                <input type="checkbox" checked={clusterRouteIds.has(p.id)} readOnly className="mt-0.5 rounded border-gray-600 text-green-500 focus:ring-0 flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-[11px] text-white font-medium truncate">{p.name}</div>
+                                  <div className="text-[9px] text-gray-500">{p.id} · {p.distance.toFixed(1)} mi · {p.systemkw ?? '—'} kW</div>
+                                </div>
+                                {showClusterRoute && clusterRouteIds.has(p.id) && (
+                                  <span className="text-[10px] font-bold text-green-400">#{clusterRoutePoints.findIndex(r => r.id === p.id) + 1}</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )
+                      })}
+                      {clusterNearby.length === 0 && <div className="p-3 text-center text-gray-500 text-[10px]">No projects within 24 miles</div>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {/* Crew legend (below map) */}
+            {config && (
+              <div className="bg-gray-900 rounded-b-lg border-t border-gray-700 px-4 py-2 flex flex-wrap gap-4 -mt-2">
                   {crewNames.map((name, i) => (
                     <div key={name} className="flex items-center gap-1.5">
                       <span className="w-3 h-3 rounded-full" style={{ backgroundColor: CREW_COLORS[i] ?? '#6b7280' }} />
@@ -867,7 +1061,7 @@ export default function RampUpPage() {
                     <span className="w-3 h-3 rounded-full bg-gray-500" />
                     <span className="text-[10px] text-gray-300">Suggested</span>
                   </div>
-                </div>
+                  <div className="text-[9px] text-gray-500 ml-auto">Click any dot to see nearby clusters</div>
               </div>
             )}
 
