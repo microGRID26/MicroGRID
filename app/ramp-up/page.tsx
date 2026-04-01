@@ -872,12 +872,7 @@ export default function RampUpPage() {
                     </Tooltip>
                   </CircleMarker>
 
-                  {/* Proximity distance rings */}
-                  {clusterFocusProject && PROXIMITY_TIERS.map(t => (
-                    <Circle key={t.key} center={[clusterFocusProject.lat, clusterFocusProject.lng]}
-                      radius={t.max * 1609.34}
-                      pathOptions={{ color: t.color, fillColor: t.ring, fillOpacity: 0.08, weight: 1, dashArray: '4 4' }} />
-                  ))}
+                  {/* Dots color-code by tier A/B/C/D — no ring overlays */}
 
                   {/* Cluster route polyline */}
                   {showClusterRoute && clusterPolyline.length > 1 && (
