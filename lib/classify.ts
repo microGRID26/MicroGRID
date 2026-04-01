@@ -19,7 +19,7 @@ export interface Classified {
 
 export interface TaskEntry { status: string; reason?: string; completed_date?: string | null }
 
-export interface StuckTask { name: string; status: 'Pending Resolution' | 'Revision Required'; reason: string }
+export interface StuckTask { id: string; name: string; status: 'Pending Resolution' | 'Revision Required'; reason: string }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 export function cycleDays(p: Project): number {
@@ -74,6 +74,7 @@ export function getStuckTasks(p: Project, taskMap: Record<string, TaskEntry>): S
         console.warn(`Task ID "${t.id}" has no name in STAGE_TASKS for stage "${p.stage}"`)
       }
       return {
+        id: t.id,
         name: t.name || formatTaskId(t.id),
         status: (taskMap[t.id]?.status ?? '') as 'Pending Resolution' | 'Revision Required',
         reason: taskMap[t.id]?.reason ?? '',

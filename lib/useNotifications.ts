@@ -101,6 +101,33 @@ export function useNotifications(filterPrefs?: NotificationFilterPrefs) {
       })
     })
 
+    // Overdue follow-ups — ephemeral, reflect current state
+    const todayStr = new Date().toISOString().slice(0, 10)
+    if (pids.length > 0) {
+      const { data: overdueFollowUps } = await supabase
+        .from('projects')
+        .select('id, name, follow_up_date')
+        .in('id', pids)
+        .lt('follow_up_date', todayStr)
+        .not('follow_up_date', 'is', null)
+        .limit(10)
+      if (overdueFollowUps) {
+        for (const p of overdueFollowUps as { id: string; name: string; follow_up_date: string }[]) {
+          const id = `followup-${p.id}`
+          notifs.push({
+            id,
+            type: 'revision' as const,
+            title: 'Follow-up Overdue',
+            message: `${p.name}: follow-up was due ${p.follow_up_date}`,
+            projectId: p.id,
+            projectName: p.name,
+            timestamp: p.follow_up_date,
+            read: dismissedEphemeralRef.current.has(id),
+          })
+        }
+      }
+    }
+
     // Recent revision/pending tasks — ephemeral, reflect current state
     if (recentHistory) {
       recentHistory.forEach((h: TaskHistoryRow) => {

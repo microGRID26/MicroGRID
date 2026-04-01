@@ -15,6 +15,7 @@ import { updateProject, addNote } from '@/lib/api'
 import { db } from '@/lib/db'
 import type { Project } from '@/types/database'
 import { Calendar, X, MessageSquare, ArrowUpDown } from 'lucide-react'
+import { QuickActionMenu } from '@/components/QuickActionMenu'
 
 /** Project with computed follow-up fields attached in the followUps memo */
 interface ProjectWithFollowUp extends Project {
@@ -759,6 +760,7 @@ function QueuePage() {
                     <span className="text-xs text-gray-500">{p.id}</span>
                     <span className="text-xs text-gray-500">·</span>
                     <span className="text-xs text-green-400">{STAGE_LABELS[p.stage]}</span>
+                    <QuickActionMenu projectId={p.id} projectName={p.name} onRefresh={refreshAll} />
                     <FundingBadge funding={fundingMap[p.id]} onUpdate={async (key, val) => {
                       await db().from('project_funding').update({ [key]: val }).eq('project_id', p.id)
                       refreshAll()

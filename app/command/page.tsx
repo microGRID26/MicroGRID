@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { loadProjectsByIds, loadTickets } from '@/lib/api'
+import { loadProjectsByIds, loadTickets, upsertTaskState, insertTaskHistory } from '@/lib/api'
 import { loadCrewsByIds } from '@/lib/api'
 import { daysAgo, fmt$, fmtDate, STAGE_LABELS, STAGE_ORDER, STAGE_TASKS } from '@/lib/utils'
 import { exportProjectsCSV, ALL_EXPORT_FIELDS, DEFAULT_EXPORT_KEYS } from '@/lib/export-utils'
@@ -597,11 +597,11 @@ export default function CommandPage() {
 
   // ── Stuck tasks ──────────────────────────────────────────────────────────
   const stuckItems = useMemo(() => {
-    const items: { project: Project; taskName: string; status: string; reason: string }[] = []
+    const items: { project: Project; taskId: string; taskName: string; status: string; reason: string }[] = []
     for (const p of activeProjects) {
       const tasks = getStuckTasks(p, taskMapAll[p.id] ?? {})
       for (const t of tasks) {
-        items.push({ project: p, taskName: t.name, status: t.status, reason: t.reason })
+        items.push({ project: p, taskId: t.id, taskName: t.name, status: t.status, reason: t.reason })
       }
     }
     return items
@@ -879,6 +879,16 @@ export default function CommandPage() {
                   {item.reason && (
                     <span className="text-xs text-gray-500 max-w-[180px] truncate hidden lg:block">{item.reason}</span>
                   )}
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation()
+                      if (!confirm(`Resolve "${item.taskName}" on ${item.project.name}? This sets it to In Progress.`)) return
+                      await upsertTaskState({ project_id: item.project.id, task_id: item.taskId, status: 'In Progress', reason: null })
+                      await insertTaskHistory({ project_id: item.project.id, task_id: item.taskId, status: 'In Progress', changed_by: currentUser?.name ?? 'Unknown' })
+                      refresh()
+                    }}
+                    className="text-[10px] px-2 py-0.5 bg-green-900/40 text-green-400 rounded hover:opacity-80 flex-shrink-0"
+                  >Resolve</button>
                 </ActionRow>
               ))}
             </ActionSection>
