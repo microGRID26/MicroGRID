@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Nav } from '@/components/Nav'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import { db } from '@/lib/db'
-import { fmt$, INTERNAL_DOMAINS } from '@/lib/utils'
+import { fmt$, INTERNAL_DOMAINS, STAGE_LABELS } from '@/lib/utils'
 import { Printer } from 'lucide-react'
 
 type Tab = 'leadership' | 'sales' | 'inside_ops' | 'field_ops' | 'journey' | 'technical'
@@ -16,15 +16,19 @@ interface LiveStats {
   crewCount: number; ahjCount: number; equipmentCount: number
 }
 
-const STAGE_META: Record<string, { label: string; color: string }> = {
-  evaluation: { label: 'Evaluation', color: '#3b82f6' },
-  survey: { label: 'Site Survey', color: '#8b5cf6' },
-  design: { label: 'Design', color: '#ec4899' },
-  permit: { label: 'Permitting', color: '#f59e0b' },
-  install: { label: 'Installation', color: '#f97316' },
-  inspection: { label: 'Inspection', color: '#06b6d4' },
-  complete: { label: 'Complete', color: '#22c55e' },
+const STAGE_COLORS: Record<string, string> = {
+  evaluation: '#3b82f6',
+  survey: '#8b5cf6',
+  design: '#ec4899',
+  permit: '#f59e0b',
+  install: '#f97316',
+  inspection: '#06b6d4',
+  complete: '#22c55e',
 }
+
+const STAGE_META: Record<string, { label: string; color: string }> = Object.fromEntries(
+  Object.keys(STAGE_COLORS).map(s => [s, { label: STAGE_LABELS[s] ?? s, color: STAGE_COLORS[s] }])
+)
 
 const DEFAULTS: LiveStats = {
   totalProjects: 871, totalValue: 142370278, pipeline: [

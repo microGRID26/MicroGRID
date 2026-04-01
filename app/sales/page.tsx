@@ -814,7 +814,7 @@ function PersonnelTab({ reps, teams, payScales, requirements, orgId, isAdmin, on
                               <h4 className="text-[10px] uppercase text-gray-500 font-medium tracking-wider">Assignment</h4>
                               <div className="text-xs space-y-1">
                                 <p><span className="text-gray-500">Team:</span> <span className="text-gray-300">{team?.name ?? 'Unassigned'}</span></p>
-                                <p><span className="text-gray-500">Pay Scale:</span> <span className="text-gray-300">{scale ? `${scale.name} ($${scale.per_watt_rate}/W)` : 'None'}</span></p>
+                                <p><span className="text-gray-500">Pay Scale:</span> <span className="text-gray-300">{scale ? `${scale.name} ($${scale.per_watt_rate}/W)` : '—'}</span></p>
                                 <p><span className="text-gray-500">Role:</span> <span className="text-gray-300 capitalize">{rep.role_key.replace(/_/g, ' ')}</span></p>
                                 {team && scale && (
                                   <p className="text-green-400 text-[10px] font-medium">

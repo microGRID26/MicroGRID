@@ -751,7 +751,7 @@ function TicketsPageInner() {
                                   <div><span className="text-gray-500 block text-[10px]">Category</span><span className="text-gray-300 capitalize">{t.category}</span></div>
                                   <div><span className="text-gray-500 block text-[10px]">Subcategory</span><span className="text-gray-300 capitalize">{t.subcategory?.replace(/_/g, ' ') ?? '\u2014'}</span></div>
                                   <div><span className="text-gray-500 block text-[10px]">Assigned Team</span><span className="text-gray-300">{t.assigned_team ?? '\u2014'}</span></div>
-                                  <div><span className="text-gray-500 block text-[10px]">First Response</span><span className="text-gray-300">{t.first_response_at ? fmtDate(t.first_response_at) : 'None'}</span></div>
+                                  <div><span className="text-gray-500 block text-[10px]">First Response</span><span className="text-gray-300">{t.first_response_at ? fmtDate(t.first_response_at) : '—'}</span></div>
                                   <div><span className="text-gray-500 block text-[10px]">Resolved</span><span className="text-gray-300">{t.resolved_at ? fmtDate(t.resolved_at) : 'Open'}</span></div>
                                   {t.tags && t.tags.length > 0 && (
                                     <div className="col-span-full">
