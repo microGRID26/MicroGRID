@@ -10,6 +10,7 @@ import { analyticsTopics } from './analytics'
 import { administrationTopics } from './administration'
 import { systemFeaturesTopics } from './system-features'
 import { designToolsTopics } from './design-tools'
+import { ticketingTopics } from './ticketing'
 import type { HelpTopicData } from './index'
 
 export const ALL_TOPICS: HelpTopicData[] = [
@@ -25,4 +26,5 @@ export const ALL_TOPICS: HelpTopicData[] = [
   ...administrationTopics,
   ...systemFeaturesTopics,
   ...designToolsTopics,
+  ...ticketingTopics,
 ]

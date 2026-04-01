@@ -369,9 +369,45 @@ File references in project notes are rendered as clickable blue links. Clicking 
 
 Equipment specifications and crew assignments imported from NetSuite are stored as historical notes on their respective projects, preserving the original data as timestamped records.
 
-### Service Page
+### Service Page (Legacy)
 
-The service page (`/service`) displays 922 imported service cases from NetSuite. Column names in the database use `issue`, `type`, `created`, `date` (not `issue_type`, `description`, `created_at`). The page queries `service_calls` and displays status, project, issue, type, and dates.
+The service page (`/service`) displays 922 imported service cases from NetSuite. Renamed to "Service (Legacy)" in nav. Column names in the database use `issue`, `type`, `created`, `date` (not `issue_type`, `description`, `created_at`). The page queries `service_calls` and displays status, project, issue, type, and dates. New tickets should use the Tickets page.
+
+### Ticketing System
+
+Full data-driven ticketing system at `/tickets` (page: `app/tickets/page.tsx`, API: `lib/api/tickets.ts`). Replaces the legacy Service page for new issue tracking. Accessible from nav: More → Operations → Tickets. Manager+ role required.
+
+**Database Tables:**
+- **`tickets`** — Core ticket table. Fields: `id` (UUID PK), `ticket_number` (TEXT UNIQUE, format `TKT-YYYYMMDD-NNN`), `project_id` (TEXT FK → projects), `category` (service/sales/billing/warranty/permitting/installation/design/other), `subcategory` (TEXT), `priority` (low/normal/high/urgent/critical), `source` (internal/customer_call/customer_email/field_report/inspection/warranty_claim), `title`, `description`, `status` (open/assigned/in_progress/waiting_on_customer/waiting_on_vendor/escalated/resolved/closed), `resolution_category`, `resolution_notes`, `assigned_to`, `assigned_to_id`, `assigned_team`, `escalated_to`, `escalated_at`, `reported_by`, `reported_by_id`, `sales_rep_id` (FK → sales_reps), `pm_id`, `sla_response_hours` (default 24), `sla_resolution_hours` (default 72), `first_response_at`, `resolved_at`, `closed_at`, `tags` (TEXT[]), `related_ticket_id` (self-FK), `org_id`, `created_by`, `created_by_id`, `created_at`, `updated_at`. Indexes on ticket_number, project_id, status, category, priority, assigned_to_id, sales_rep_id, org_id, created_at DESC. RLS: org-scoped SELECT, authenticated INSERT/UPDATE, super_admin DELETE.
+- **`ticket_comments`** — Threaded conversation per ticket. Fields: `id`, `ticket_id` (FK → tickets CASCADE), `author`, `author_id`, `message`, `is_internal` (BOOLEAN — internal notes vs customer-visible), `created_at`. RLS: all authenticated read/write, admin delete.
+- **`ticket_history`** — Full audit trail of every field change. Fields: `id`, `ticket_id` (FK → tickets CASCADE), `field`, `old_value`, `new_value`, `changed_by`, `changed_by_id`, `created_at`. RLS: all authenticated read/write.
+- **`ticket_categories`** — Admin-configurable categories and subcategories. 26 seeded across 8 categories with default SLA targets per subcategory. Fields: `category`, `subcategory`, `label`, `description`, `default_priority`, `default_sla_response`, `default_sla_resolution`, `active`, `sort_order`, `org_id`.
+- **`ticket_resolution_codes`** — Admin-configurable resolution categories. 15 seeded (fixed, replaced, refunded, redesigned, customer_error, etc.). Fields: `code`, `label`, `description`, `applies_to` (TEXT[] — which categories), `active`, `sort_order`.
+- **`ticket_metrics`** — Analytics view with per-category stats: total, open, resolved, critical, escalated counts, avg response/resolution hours, SLA breach counts.
+
+**Status Lifecycle:** open → assigned → in_progress → (waiting_on_customer | waiting_on_vendor | escalated) → resolved → closed. Can reopen from resolved/closed. Escalated can go to in_progress or resolved. Transitions validated by `getValidTransitions()`.
+
+**SLA Tracking:** Each ticket has response and resolution SLA targets (in hours). `first_response_at` auto-set on first comment or assignment. `resolved_at` auto-set when resolved. `getSLAStatus()` returns ok/warning/breached for both metrics. Displayed as colored dots in the table.
+
+**Page Features:**
+- 5 clickable stat cards: Total Open, Escalated, Critical/Urgent, SLA Breached, Resolved Today
+- Category breakdown chips (clickable to filter)
+- Filters: search (ticket #, title, project, assigned_to, description), status, category, priority
+- Sortable columns: created_at, priority, status, category
+- Expandable detail rows with description, metadata, resolution info
+- Status action buttons (validated transitions)
+- Edit button for title, priority, category, assigned_to (changes logged to history)
+- Resolution modal — requires resolution category + notes when resolving
+- Comments tab with threaded conversation + internal notes toggle
+- History tab showing all field changes with timestamps
+- Details tab with full ticket metadata
+- CSV export
+- Realtime subscription for auto-refresh
+- ProjectPanel integration (click project ID)
+
+**API Layer:** `lib/api/tickets.ts` exports: `loadTickets`, `loadTicket`, `loadProjectTickets`, `createTicket`, `updateTicket`, `updateTicketStatus` (validates transitions, auto-timestamps), `loadTicketComments`, `addTicketComment` (auto-sets first_response_at), `loadTicketHistory`, `addTicketHistory`, `loadTicketCategories`, `loadResolutionCodes`, `generateTicketNumber` (retry on collision), `getValidTransitions`, `getSLAStatus`. Constants: `TICKET_STATUSES`, `TICKET_STATUS_LABELS`, `TICKET_STATUS_COLORS`, `TICKET_PRIORITIES`, `TICKET_PRIORITY_COLORS`, `TICKET_CATEGORIES`, `TICKET_CATEGORY_COLORS`, `TICKET_SOURCES`.
+
+**Migration:** `supabase/064-ticketing-system.sql`
 
 ### Google Drive Integration
 

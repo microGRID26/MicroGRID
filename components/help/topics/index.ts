@@ -27,6 +27,8 @@ export const CATEGORIES = [
 ]
 
 export const WHATS_NEW = [
+  { date: 'Mar 2026', title: 'Ticketing System', topicId: 'ticketing-overview' },
+  { date: 'Mar 2026', title: 'Compliance Tab', topicId: 'ticketing-overview' },
   { date: 'Mar 2026', title: 'EC/Non-EC Commissions & M1 Advances', topicId: 'ec-commissions' },
   { date: 'Mar 2026', title: 'Sales Teams & Pay Scales', topicId: 'sales-teams' },
   { date: 'Mar 2026', title: 'Rep Onboarding', topicId: 'rep-onboarding' },
