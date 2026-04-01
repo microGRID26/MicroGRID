@@ -79,7 +79,7 @@ export function MentionNoteInput({
 
     // Extract @mentions and create notifications
     const mentions = text.match(/@[A-Z][a-z]+ [A-Z][a-z]+/g)
-    if (mentions && projectId) {
+    if (mentions) {
       const write = db()
       const { data: allUsers } = await write.from('users').select('id, name').eq('active', true)
       if (allUsers) {
@@ -90,7 +90,7 @@ export function MentionNoteInput({
           )
           if (user) {
             const { error: mentionErr } = await write.from('mention_notifications').insert({
-              project_id: projectId,
+              project_id: projectId || 'TICKET',
               mentioned_user_id: user.id,
               mentioned_by: currentUserName || 'Unknown',
               message: text.slice(0, 200),

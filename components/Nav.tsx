@@ -20,6 +20,7 @@ const PRIMARY_LINKS = [
   { label: 'Schedule',  href: '/schedule'  },
   { label: 'Funding',   href: '/funding'   },
   { label: 'Analytics', href: '/analytics' },
+  { label: 'Tickets',   href: '/tickets'   },
   { label: 'Inventory', href: '/inventory' },
   { label: 'Legacy',    href: '/legacy'    },
 ]

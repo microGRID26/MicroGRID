@@ -831,7 +831,7 @@ export default function CommandPage() {
             label="My Tickets"
             value={myTicketCount}
             accent={myTicketCount > 0 ? 'border-orange-500' : 'border-gray-700'}
-            onClick={() => router.push('/tickets')}
+            onClick={() => router.push(`/tickets?assigned=${encodeURIComponent(currentUser?.name ?? '')}`)}
           />
           <MetricCard
             label="Installs This Month"

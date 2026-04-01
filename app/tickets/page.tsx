@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Nav } from '@/components/Nav'
 import { Pagination } from '@/components/Pagination'
 import { useCurrentUser } from '@/lib/useCurrentUser'
@@ -28,10 +29,16 @@ import { Plus, Search, X, Send, Download, Pencil } from 'lucide-react'
 const PAGE_SIZE = 50
 
 export default function TicketsPage() {
+  return <Suspense fallback={<div className="min-h-screen bg-gray-950"><Nav active="Tickets" /></div>}><TicketsPageInner /></Suspense>
+}
+
+function TicketsPageInner() {
   const { user, loading: authLoading } = useCurrentUser()
   const isManager = user?.isManager ?? false
   const userName = user?.name ?? null
   const { orgId } = useOrg()
+  const searchParams = useSearchParams()
+  const assignedParam = searchParams.get('assigned')
 
   // Data
   const [tickets, setTickets] = useState<Ticket[]>([])
@@ -48,6 +55,7 @@ export default function TicketsPage() {
   const [sortAsc, setSortAsc] = useState(false)
   const [filterSLA, setFilterSLA] = useState(false)
   const [filterResolved, setFilterResolved] = useState(false)
+  const [filterAssigned, setFilterAssigned] = useState(assignedParam ?? '')
   const [showAnalytics, setShowAnalytics] = useState(false)
 
   // UI state
@@ -221,6 +229,7 @@ export default function TicketsPage() {
     if (filterPriority) list = list.filter(t => t.priority === filterPriority)
     if (filterSLA) list = list.filter(t => { const s = getSLAStatus(t); return !['resolved', 'closed'].includes(t.status) && (s.response === 'breached' || s.resolution === 'breached') })
     if (filterResolved) list = list.filter(t => t.resolved_at && t.resolved_at.slice(0, 10) === new Date().toISOString().slice(0, 10))
+    if (filterAssigned) list = list.filter(t => t.assigned_to === filterAssigned)
 
     list.sort((a, b) => {
       let cmp = 0
@@ -237,7 +246,7 @@ export default function TicketsPage() {
       return sortAsc ? cmp : -cmp
     })
     return list
-  }, [tickets, search, filterStatus, filterCategory, filterPriority, filterSLA, filterResolved, sortCol, sortAsc])
+  }, [tickets, search, filterStatus, filterCategory, filterPriority, filterSLA, filterResolved, filterAssigned, sortCol, sortAsc])
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
@@ -470,8 +479,8 @@ export default function TicketsPage() {
             <option value="">All Priorities</option>
             {TICKET_PRIORITIES.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
           </select>
-          {(filterStatus || filterCategory || filterPriority || search || filterSLA || filterResolved) && (
-            <button onClick={() => { setFilterStatus(''); setFilterCategory(''); setFilterPriority(''); setSearch(''); setFilterSLA(false); setFilterResolved(false) }}
+          {(filterStatus || filterCategory || filterPriority || search || filterSLA || filterResolved || filterAssigned) && (
+            <button onClick={() => { setFilterStatus(''); setFilterCategory(''); setFilterPriority(''); setSearch(''); setFilterSLA(false); setFilterResolved(false); setFilterAssigned('') }}
               className="text-xs text-gray-400 hover:text-white">Clear All</button>
           )}
         </div>
