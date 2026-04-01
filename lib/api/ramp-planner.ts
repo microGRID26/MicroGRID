@@ -129,13 +129,12 @@ export function estimateDriveMinutes(miles: number): number {
 // 0-100 based on checklist items. Each item has a weight.
 
 export const READINESS_WEIGHTS = [
-  { field: 'equipment_ready', label: 'Equipment', weight: 20 },
-  { field: 'homeowner_confirmed', label: 'Homeowner', weight: 20 },
-  { field: 'permit_clear', label: 'Permit', weight: 20 },
+  { field: 'equipment_ready', label: 'Equipment', weight: 25 },
+  { field: 'permit_clear', label: 'Permit', weight: 25 },
   { field: 'utility_approved', label: 'Utility', weight: 15 },
+  { field: 'redesign_complete', label: 'Redesign', weight: 15 },
   { field: 'hoa_approved', label: 'HOA', weight: 10 },
-  { field: 'redesign_complete', label: 'Redesign', weight: 10 },
-  { field: 'crew_available', label: 'Crew', weight: 5 },
+  { field: 'crew_available', label: 'Crew', weight: 10 },
 ] as const
 
 export function computeReadinessScore(r: Partial<ProjectReadiness>): number {
@@ -157,11 +156,10 @@ export function autoReadiness(ahj: string | null, module: string | null, inverte
   const isEcoflow = [module, inverter, battery].some(f => (f ?? '').toLowerCase().includes('ecoflow'))
   return {
     equipment_ready: false,
-    homeowner_confirmed: true,     // Projects in pipeline = homeowner already confirmed
     permit_clear: !needsPermit,    // No permit needed = auto-clear
     utility_approved: false,
     hoa_approved: true,            // Default true — most projects don't have HOA issues
-    redesign_complete: !isEcoflow, // Non-ecoflow = no redesign needed
+    redesign_complete: false,      // Nothing redesigned yet under MicroGRID transition
     crew_available: true,
   }
 }

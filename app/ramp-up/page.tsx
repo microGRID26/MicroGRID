@@ -19,7 +19,16 @@ import {
   TIER_INFO, RAMP_STATUS_COLORS, READINESS_WEIGHTS,
 } from '@/lib/api/ramp-planner'
 import type { Tier, RampConfig, ProjectReadiness, RampScheduleEntry, RoutePoint } from '@/lib/api/ramp-planner'
+import dynamic from 'next/dynamic'
 import { Calendar, MapPin, Truck, ChevronLeft, ChevronRight, Check, X, Zap, AlertTriangle, Target } from 'lucide-react'
+
+const MapContainer = dynamic(() => import('react-leaflet').then(m => m.MapContainer), { ssr: false })
+const TileLayer = dynamic(() => import('react-leaflet').then(m => m.TileLayer), { ssr: false })
+const CircleMarker = dynamic(() => import('react-leaflet').then(m => m.CircleMarker), { ssr: false })
+const Tooltip = dynamic(() => import('react-leaflet').then(m => m.Tooltip), { ssr: false })
+const Marker = dynamic(() => import('react-leaflet').then(m => m.Marker), { ssr: false })
+
+const CREW_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ec4899'] // green, blue, amber, pink
 
 // ── Zip geocode cache (reused from map page) ─────────────────────────────────
 const zipCache = new Map<string, [number, number]>()
@@ -473,6 +482,77 @@ export default function RampUpPage() {
               </div>
             )}
 
+            {/* Week Map */}
+            {config && (
+              <div className="bg-gray-800 rounded-lg overflow-hidden" style={{ height: '400px' }}>
+                <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+                <MapContainer
+                  center={[config.warehouse_lat, config.warehouse_lng] as [number, number]}
+                  zoom={9}
+                  style={{ height: '100%', width: '100%', background: '#0a0a0a' }}
+                >
+                  <TileLayer
+                    attribution='&copy; OpenStreetMap'
+                    url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                  />
+                  {/* Warehouse marker */}
+                  <CircleMarker center={[config.warehouse_lat, config.warehouse_lng]} radius={10}
+                    pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.9, weight: 2 }}>
+                    <Tooltip permanent direction="top" offset={[0, -12]}>
+                      <span style={{ fontSize: '10px', color: '#fff', background: '#1f2937', padding: '2px 6px', borderRadius: '4px' }}>Warehouse</span>
+                    </Tooltip>
+                  </CircleMarker>
+                  {/* Scheduled jobs — colored by crew */}
+                  {weekSchedule.map(s => {
+                    const p = projects.find(pr => pr.id === s.project_id)
+                    if (!p) return null
+                    const crewIdx = crewNames.indexOf(s.crew_name ?? '')
+                    const color = CREW_COLORS[crewIdx] ?? '#6b7280'
+                    return (
+                      <CircleMarker key={s.id} center={[p.lat, p.lng]} radius={8}
+                        pathOptions={{ color, fillColor: color, fillOpacity: 0.8, weight: 2 }}>
+                        <Tooltip direction="top" offset={[0, -10]}>
+                          <div style={{ background: '#1f2937', color: '#e5e7eb', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', border: `2px solid ${color}` }}>
+                            <div style={{ fontWeight: 600, color: '#fff' }}>{p.name}</div>
+                            <div style={{ color: '#9ca3af', fontSize: '10px' }}>{p.id} · {p.city}</div>
+                            <div style={{ color, fontSize: '10px', fontWeight: 600, marginTop: '2px' }}>{s.crew_name} · Job {s.slot}</div>
+                          </div>
+                        </Tooltip>
+                      </CircleMarker>
+                    )
+                  })}
+                  {/* Suggested projects — gray dots */}
+                  {suggestions.filter(p => !scheduledIds.has(p.id)).map(p => (
+                    <CircleMarker key={p.id} center={[p.lat, p.lng]} radius={5}
+                      pathOptions={{ color: '#4b5563', fillColor: '#4b556380', fillOpacity: 0.6, weight: 1 }}>
+                      <Tooltip direction="top" offset={[0, -8]}>
+                        <div style={{ background: '#1f2937', color: '#9ca3af', padding: '4px 8px', borderRadius: '4px', fontSize: '10px' }}>
+                          {p.name} ({p.id}) · Score: {p.priorityScore}
+                        </div>
+                      </Tooltip>
+                    </CircleMarker>
+                  ))}
+                </MapContainer>
+                {/* Crew legend */}
+                <div className="absolute bottom-2 left-2 bg-gray-900/90 border border-gray-700 rounded-lg p-2 z-[400]" style={{ position: 'relative', marginTop: '-40px', marginLeft: '8px', display: 'inline-flex', gap: '12px' }}>
+                  {crewNames.map((name, i) => (
+                    <div key={name} className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded-full" style={{ backgroundColor: CREW_COLORS[i] ?? '#6b7280' }} />
+                      <span className="text-[10px] text-gray-300">{name}</span>
+                    </div>
+                  ))}
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-full bg-amber-500" />
+                    <span className="text-[10px] text-gray-300">Warehouse</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-full bg-gray-500" />
+                    <span className="text-[10px] text-gray-300">Suggested</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Suggestions */}
             {suggestions.length > 0 && (
               <div className="bg-gray-800 rounded-lg p-4">
@@ -601,7 +681,8 @@ export default function RampUpPage() {
                   const weekJobs = schedule.filter(s => s.scheduled_week === week && s.status !== 'cancelled')
                   const completed = weekJobs.filter(s => s.status === 'completed').length
                   const planned = weekJobs.length
-                  const target = (config?.crews_count ?? 2) * (config?.installs_per_crew_per_week ?? 2)
+                  const weekCrewCount = getActiveCrewCount(week)
+                  const target = weekCrewCount * (config?.installs_per_crew_per_week ?? 2)
                   const revenue = weekJobs.reduce((sum, s) => {
                     const p = projects.find(pr => pr.id === s.project_id)
                     return sum + (Number(p?.contract) || 0)
@@ -622,7 +703,7 @@ export default function RampUpPage() {
                         {completed > 0 && <div className="bg-green-600 h-full" style={{ width: `${completed / target * 100}%` }} />}
                         {planned > completed && <div className="bg-blue-600/50 h-full" style={{ width: `${(planned - completed) / target * 100}%` }} />}
                       </div>
-                      <span className="text-[10px] text-gray-400 w-16 text-right">{planned}/{target} jobs</span>
+                      <span className="text-[10px] text-gray-400 w-20 text-right">{planned}/{target} jobs ({weekCrewCount}c)</span>
                       <span className="text-[10px] text-green-400 w-20 text-right">{revenue > 0 ? fmt$(revenue) : '—'}</span>
                       {isCurrentWeek && <span className="text-[9px] text-green-400 font-medium">THIS WEEK</span>}
                     </div>
