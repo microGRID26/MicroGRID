@@ -6,12 +6,25 @@ import { db } from '@/lib/db'
  *  Catches multi-day jobs: date <= endDate AND (end_date >= startDate OR (end_date IS NULL AND date >= startDate))
  */
 export async function loadScheduleByDateRange(startDate: string, endDate: string) {
-  // Uses db() because the select includes a join (project:projects) which requires untyped query
   const { data, error } = await db().from('schedule')
-    .select('*, project:projects(name, city)')
+    .select('*')
     .lte('date', endDate)
     .or(`end_date.gte.${startDate},and(end_date.is.null,date.gte.${startDate})`)
     .limit(2000)
   if (error) console.error('schedule load failed:', error)
-  return { data: data ?? [], error }
+
+  // Manually join project names since FK doesn't exist
+  const entries = (data ?? []) as any[]
+  if (entries.length > 0) {
+    const projectIds = [...new Set(entries.map(e => e.project_id).filter(Boolean))]
+    if (projectIds.length > 0) {
+      const { data: projects } = await db().from('projects').select('id, name, city').in('id', projectIds).limit(2000)
+      const projectMap = new Map((projects ?? []).map((p: any) => [p.id, p]))
+      for (const entry of entries) {
+        entry.project = projectMap.get(entry.project_id) ?? null
+      }
+    }
+  }
+
+  return { data: entries, error }
 }
