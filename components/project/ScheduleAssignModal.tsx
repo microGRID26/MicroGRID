@@ -404,7 +404,9 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
                   )}
                   <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${selectedProject.address ?? ''}, ${selectedProject.city ?? ''} TX`)}`}
                     target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-[10px] text-blue-400 hover:text-blue-300">Google Maps →</a>
-                  <a href={`/pipeline?open=${selectedProject.id}`} target="_blank" className="text-[10px] text-purple-400 hover:text-purple-300">Open in MicroGRID →</a>
+                  <a href={`/pipeline?open=${selectedProject.id}`} target="_blank" className="text-[10px] text-purple-400 hover:text-purple-300">MicroGRID →</a>
+                  <a href={`/tickets`} target="_blank" className="text-[10px] text-amber-400 hover:text-amber-300">Create Ticket →</a>
+                  <a href={`/redesign`} target="_blank" className="text-[10px] text-cyan-400 hover:text-cyan-300">Redesign Tool →</a>
                 </div>
               </div>
             ) : (
@@ -512,28 +514,17 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
           <div>
             <div className="flex items-center justify-between">
               <label className={labelCls}>Notes</label>
-              {selectedProject && (
+              {selectedProject && form.job_type === 'install' && (
                 <button type="button" onClick={() => {
                   const p = selectedProject as any
-                  // Auto-fill install detail fields from project data
-                  if (form.job_type === 'install') {
-                    setInstallDetails(d => ({
-                      ...d,
-                      msp_upgrade: d.msp_upgrade || (p.msp_bus_rating ? `Yes - ${p.msp_bus_rating}` : ''),
-                    }))
-                    setInstallOpen(true)
-                  }
-                  // Put links and additional context in notes (not the full brief — details live in structured fields)
-                  const links = [
-                    `— LINKS —`,
-                    `MicroGRID: ${window.location.origin}/pipeline?open=${p.id}`,
-                    driveUrl ? `Planset: ${driveUrl}` : null,
-                    `Maps: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${p.address ?? ''}, ${p.city ?? ''} TX ${p.zip ?? ''}`)}`,
-                  ].filter(Boolean).join('\n')
-                  set('notes', links)
+                  setInstallDetails(d => ({
+                    ...d,
+                    msp_upgrade: d.msp_upgrade || (p.msp_bus_rating ? `Yes - ${p.msp_bus_rating}` : ''),
+                  }))
+                  setInstallOpen(true)
                 }}
                   className="text-[10px] px-2 py-0.5 bg-green-900/40 text-green-400 rounded hover:opacity-80 mb-1">
-                  Auto-Fill Brief
+                  Auto-Fill Details
                 </button>
               )}
             </div>
