@@ -53,7 +53,6 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
     electrical_notes: '',
     wind_speed: '',
     risk_category: '',
-    travel_adder: '',
     wifi_info: '',
     msp_upgrade: '',
   })
@@ -102,7 +101,6 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
           electrical_notes: data.electrical_notes ?? '',
           wind_speed: data.wind_speed ?? '',
           risk_category: data.risk_category ?? '',
-          travel_adder: data.travel_adder ?? '',
           wifi_info: data.wifi_info ?? '',
           msp_upgrade: data.msp_upgrade ?? '',
         })
@@ -110,7 +108,7 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
         if (data.job_type === 'install') {
           const hasData = data.arrival_window || data.arrays || data.pitch || data.stories ||
             data.special_equipment || data.electrical_notes || data.wind_speed ||
-            data.risk_category || data.travel_adder || data.wifi_info || data.msp_upgrade
+            data.risk_category || data.wifi_info || data.msp_upgrade
           if (hasData) setInstallOpen(true)
         }
       }
@@ -125,15 +123,19 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
     })
   }, [projectId])
 
-  // Project search
+  // Project search — debounced with stale-check
   useEffect(() => {
     if (!projectSearch.trim() || projectSearch.length < 2) { setProjectResults([]); return }
-    const q = projectSearch.toLowerCase()
-    supabase.from('projects').select('id,name,city,pm')
-      .or(`name.ilike.%${escapeIlike(q)}%,id.ilike.%${escapeIlike(q)}%,city.ilike.%${escapeIlike(q)}%`)
-      .neq('stage', 'complete')
-      .limit(8)
-      .then(({ data }: any) => { if (data) setProjectResults(data as Project[]) })
+    let stale = false
+    const timer = setTimeout(() => {
+      const q = projectSearch.toLowerCase()
+      supabase.from('projects').select('id,name,city,pm,phone,address,zip')
+        .or(`name.ilike.%${escapeIlike(q)}%,id.ilike.%${escapeIlike(q)}%,city.ilike.%${escapeIlike(q)}%`)
+        .neq('stage', 'complete')
+        .limit(8)
+        .then(({ data }: any) => { if (data && !stale) setProjectResults(data as Project[]) })
+    }, 200)
+    return () => { stale = true; clearTimeout(timer) }
   }, [projectSearch])
 
   // Check conflict — handles multi-day ranges
@@ -375,10 +377,11 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
                   <div className="absolute top-full left-0 right-0 bg-gray-800 border border-gray-700 rounded-lg mt-1 z-10 overflow-hidden">
                     {projectResults.map(p => (
                       <div key={p.id} onClick={() => {
-                        setSelectedProject(p); setProjectSearch(''); setProjectResults([])
+                        setSelectedProject(p); setProjectSearch(''); setProjectResults([]); setDriveUrl(null)
                         // Load Google Drive folder URL
-                        supabase.from('project_folders').select('folder_url').eq('project_id', p.id).maybeSingle()
-                          .then(({ data }: any) => setDriveUrl(data?.folder_url ?? null))
+                        const pid = p.id
+                        supabase.from('project_folders').select('folder_url').eq('project_id', pid).maybeSingle()
+                          .then(({ data }: any) => { if (data?.folder_url) setDriveUrl(data.folder_url) })
                       }}
                         className="px-3 py-2 hover:bg-gray-700 cursor-pointer">
                         <div className="text-xs font-medium text-white">{p.name}</div>

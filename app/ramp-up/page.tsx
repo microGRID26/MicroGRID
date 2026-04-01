@@ -158,7 +158,7 @@ export default function RampUpPage() {
         // Redesign is NEVER auto-checked — must be manually confirmed
         // Old TriSMART engineering/stamps don't count under MicroGRID
       }
-      const readiness = dbReadiness ?? autoR as any
+      const readiness = (dbReadiness ?? autoR) as ProjectReadiness
       const readinessScore = computeReadinessScore(readiness)
       // Tier derived from readiness score
       const tier = tierFromScore(readinessScore, readiness?.permit_clear ?? false, readiness?.redesign_complete ?? false)
@@ -378,17 +378,17 @@ export default function RampUpPage() {
     const reason = prompt('Reason for cancellation:')
     if (reason === null) return
 
-    // Also remove from main schedule
+    // Also remove from main schedule — match by project + crew + specific date
     const entry = schedule.find(s => s.id === id)
     if (entry) {
       const crew = allCrews.find(c => c.name === entry.crew_name)
-      if (crew) {
+      if (crew && entry.scheduled_day) {
         await db().from('schedule')
           .delete()
           .eq('project_id', entry.project_id)
           .eq('crew_id', crew.id)
+          .eq('date', entry.scheduled_day)
           .eq('job_type', 'install')
-          .eq('status', 'Scheduled')
       }
     }
 
