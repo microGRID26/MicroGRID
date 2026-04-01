@@ -107,6 +107,21 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
             data.special_equipment || data.electrical_notes || data.wifi_info || data.msp_upgrade
           if (hasData) setInstallOpen(true)
         }
+        // Load full project data for crew brief & AHJ display
+        if (data.project_id) {
+          supabase.from('projects').select('id,name,city,pm,phone,address,zip,financier,financing_type,consultant,systemkw,module,module_qty,inverter,battery,battery_qty,utility,ahj,esid,org_id')
+            .eq('id', data.project_id).single().then(({ data: proj }: any) => {
+              if (proj) {
+                setSelectedProject(proj as Project)
+                if (proj.ahj) {
+                  supabase.from('ahjs').select('name, permit_phone, permit_required').eq('name', proj.ahj).maybeSingle()
+                    .then(({ data: ahjData }: any) => { if (ahjData) setAhjInfo({ name: ahjData.name, phone: ahjData.permit_phone, permit_required: ahjData.permit_required ?? true }) })
+                }
+                supabase.from('project_folders').select('folder_url').eq('project_id', proj.id).maybeSingle()
+                  .then(({ data: folderData }: any) => { if (folderData?.folder_url) setDriveUrl(folderData.folder_url) })
+              }
+            })
+        }
       }
     })
   }, [scheduleId])
@@ -114,8 +129,18 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
   // Load pre-filled project
   useEffect(() => {
     if (!projectId) return
-    supabase.from('projects').select('id,name,city,pm').eq('id', projectId).single().then(({ data }: any) => {
-      if (data) setSelectedProject(data as Project)
+    supabase.from('projects').select('id,name,city,pm,phone,address,zip,financier,financing_type,consultant,systemkw,module,module_qty,inverter,battery,battery_qty,utility,ahj,esid,org_id').eq('id', projectId).single().then(({ data }: any) => {
+      if (data) {
+        setSelectedProject(data as Project)
+        // Load AHJ info
+        if (data.ahj) {
+          supabase.from('ahjs').select('name, permit_phone, permit_required').eq('name', data.ahj).maybeSingle()
+            .then(({ data: ahjData }: any) => { if (ahjData) setAhjInfo({ name: ahjData.name, phone: ahjData.permit_phone, permit_required: ahjData.permit_required ?? true }) })
+        }
+        // Load Drive folder
+        supabase.from('project_folders').select('folder_url').eq('project_id', data.id).maybeSingle()
+          .then(({ data: folderData }: any) => { if (folderData?.folder_url) setDriveUrl(folderData.folder_url) })
+      }
     })
   }, [projectId])
 
@@ -125,7 +150,7 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
     let stale = false
     const timer = setTimeout(() => {
       const q = projectSearch.toLowerCase()
-      supabase.from('projects').select('id,name,city,pm,phone,address,zip')
+      supabase.from('projects').select('id,name,city,pm,phone,address,zip,financier,financing_type,consultant,systemkw,module,module_qty,inverter,battery,battery_qty,utility,ahj,esid,org_id')
         .or(`name.ilike.%${escapeIlike(q)}%,id.ilike.%${escapeIlike(q)}%,city.ilike.%${escapeIlike(q)}%`)
         .neq('stage', 'complete')
         .limit(8)
@@ -203,11 +228,14 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
     // R&R: auto-create reinstall schedule entry if Removal with reinstall date
     if (form.job_type === 'service' && serviceDetail === 'removal' && reinstallDate) {
       const reinstallId = crypto.randomUUID()
-      await supabase.from('schedule').insert({
+      const reinstallRecord: Record<string, any> = {
         id: reinstallId, project_id: pid, crew_id: form.crew_id,
         job_type: 'service', date: reinstallDate, status: 'scheduled',
         notes: `[Reinstall] Linked to removal on ${form.date}. ${form.notes ?? ''}`,
-      })
+      }
+      // Inherit org_id from the project
+      if ((selectedProject as any)?.org_id) reinstallRecord.org_id = (selectedProject as any).org_id
+      await supabase.from('schedule').insert(reinstallRecord)
     }
     // Auto-populate PM from the project if not already set
     if (!scheduleId) {
