@@ -192,6 +192,16 @@ export function JobBriefPanel({ scheduleId, onClose, onEdit, onOpenProject }: Pr
             </Section>
           )}
 
+          {/* Site & Utility */}
+          {p && (
+            <Section title="Site & Utility">
+              <Row label="Utility" value={p.utility} />
+              <Row label="AHJ" value={p.ahj} />
+              <Row label="ESID" value={p.esid} />
+              <Row label="Meter #" value={(p as any).meter_number} />
+            </Section>
+          )}
+
           {/* Install Details (from schedule record) */}
           {jobType === 'install' && (
             <Section title="Install Details">
@@ -199,12 +209,9 @@ export function JobBriefPanel({ scheduleId, onClose, onEdit, onOpenProject }: Pr
               <Row label="Arrays" value={job.arrays} />
               <Row label="Pitch" value={job.pitch} />
               <Row label="Stories" value={job.stories} />
-              <Row label="Special Equip." value={job.special_equipment} />
               <Row label="MSP Upgrade" value={job.msp_upgrade} />
               <Row label="WiFi Info" value={job.wifi_info} />
-              <Row label="Wind Speed" value={job.wind_speed} />
-              <Row label="Risk Category" value={job.risk_category} />
-              <Row label="Travel Adder" value={job.travel_adder} />
+              <Row label="Special Equip." value={job.special_equipment} />
               {job.electrical_notes && (
                 <div className="mt-1">
                   <div className="text-gray-500 text-xs mb-1">Electrical Notes</div>

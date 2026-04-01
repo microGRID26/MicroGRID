@@ -515,47 +515,25 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
               {selectedProject && (
                 <button type="button" onClick={() => {
                   const p = selectedProject as any
-                  const brief = [
-                    `CUSTOMER: ${p.name ?? '—'}`,
-                    `PHONE: ${p.phone ?? '—'}`,
-                    `ADDRESS: ${p.address ?? '—'}, ${p.city ?? ''} TX ${p.zip ?? ''}`,
-                    `PROJECT ID: ${p.id}`,
-                    '',
-                    `FINANCIER: ${p.financier ?? '—'} ${p.financing_type ? `(${p.financing_type})` : ''}`,
-                    `CONSULTANT: ${p.consultant ?? '—'}`,
-                    '',
-                    `SYSTEM SIZE: ${p.systemkw ?? '—'} kW`,
-                    `PANELS: ${p.module_qty ?? '—'} × ${p.module ?? '—'}`,
-                    `INVERTER: ${p.inverter ?? '—'}`,
-                    p.battery ? `BATTERY: ${p.battery}${p.battery_qty ? ` × ${p.battery_qty}` : ''}` : null,
-                    '',
-                    `UTILITY: ${p.utility ?? '—'}`,
-                    `AHJ: ${p.ahj ?? '—'}${ahjInfo?.phone ? ` — ${ahjInfo.phone}` : ''}`,
-                    p.esid ? `ESID: ${p.esid}` : null,
-                    '',
-                    installDetails.arrays ? `ARRAYS: ${installDetails.arrays}` : 'ARRAYS:',
-                    installDetails.pitch ? `PITCH: ${installDetails.pitch}` : 'PITCH:',
-                    installDetails.stories ? `STORIES: ${installDetails.stories}` : 'STORIES:',
-                    installDetails.msp_upgrade ? `MSP UPGRADE: ${installDetails.msp_upgrade}` : 'MSP UPGRADE: No',
-                    installDetails.wifi_info ? `WIFI: ${installDetails.wifi_info}` : 'WIFI:',
-                    installDetails.special_equipment ? `SPECIAL EQUIPMENT: ${installDetails.special_equipment}` : 'SPECIAL EQUIPMENT:',
-                    '',
-                    installDetails.electrical_notes ? `ELECTRICAL NOTES:\n${installDetails.electrical_notes}` : 'ELECTRICAL NOTES:',
-                    '',
-                    'ARRIVAL WINDOW:',
-                    'ADDITIONAL NOTES:',
-                    '',
-                    '— LINKS —',
+                  // Auto-fill install detail fields from project data
+                  if (form.job_type === 'install') {
+                    setInstallDetails(d => ({
+                      ...d,
+                      msp_upgrade: d.msp_upgrade || (p.msp_bus_rating ? `Yes - ${p.msp_bus_rating}` : ''),
+                    }))
+                    setInstallOpen(true)
+                  }
+                  // Put links and additional context in notes (not the full brief — details live in structured fields)
+                  const links = [
+                    `— LINKS —`,
                     `MicroGRID: ${window.location.origin}/pipeline?open=${p.id}`,
-                    driveUrl ? `Planset Folder: ${driveUrl}` : null,
-                    `Google Maps: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${p.address ?? ''}, ${p.city ?? ''} TX ${p.zip ?? ''}`)}`,
-                    `Create Ticket: ${window.location.origin}/tickets`,
-                    `Redesign Tool: ${window.location.origin}/redesign`,
+                    driveUrl ? `Planset: ${driveUrl}` : null,
+                    `Maps: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${p.address ?? ''}, ${p.city ?? ''} TX ${p.zip ?? ''}`)}`,
                   ].filter(Boolean).join('\n')
-                  set('notes', brief)
+                  set('notes', links)
                 }}
                   className="text-[10px] px-2 py-0.5 bg-green-900/40 text-green-400 rounded hover:opacity-80 mb-1">
-                  Generate Crew Brief
+                  Auto-Fill Brief
                 </button>
               )}
             </div>
