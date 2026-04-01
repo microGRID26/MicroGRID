@@ -92,13 +92,17 @@ export const RAMP_STATUS_COLORS: Record<string, string> = {
 
 // ── Tier Classification ──────────────────────────────────────────────────────
 
-export function classifyTier(ahj: string | null, module: string | null, inverter: string | null, battery: string | null): Tier {
-  const isCounty = (ahj ?? '').toLowerCase().includes('county')
+// permitRequired: pass the AHJ's permit_required field if available.
+// Falls back to pattern-matching on "county" in the AHJ name.
+export function classifyTier(ahj: string | null, module: string | null, inverter: string | null, battery: string | null, permitRequired?: boolean): Tier {
+  const needsPermit = permitRequired !== undefined
+    ? permitRequired
+    : !(ahj ?? '').toLowerCase().includes('county') // Fallback: counties don't need permits
   const isEcoflow = [module, inverter, battery].some(f => (f ?? '').toLowerCase().includes('ecoflow'))
 
-  if (isCounty && !isEcoflow) return 1
-  if (isCounty && isEcoflow) return 2
-  if (!isCounty && !isEcoflow) return 3
+  if (!needsPermit && !isEcoflow) return 1
+  if (!needsPermit && isEcoflow) return 2
+  if (needsPermit && !isEcoflow) return 3
   return 4
 }
 
@@ -146,13 +150,15 @@ export function computeReadinessScore(r: Partial<ProjectReadiness>): number {
 // County AHJ → permit_clear = true (no permit needed)
 // Non-ecoflow → redesign_complete = true (no redesign needed)
 // crew_available defaults to true
-export function autoReadiness(ahj: string | null, module: string | null, inverter: string | null, battery: string | null): Partial<ProjectReadiness> {
-  const isCounty = (ahj ?? '').toLowerCase().includes('county')
+export function autoReadiness(ahj: string | null, module: string | null, inverter: string | null, battery: string | null, permitRequired?: boolean): Partial<ProjectReadiness> {
+  const needsPermit = permitRequired !== undefined
+    ? permitRequired
+    : !(ahj ?? '').toLowerCase().includes('county')
   const isEcoflow = [module, inverter, battery].some(f => (f ?? '').toLowerCase().includes('ecoflow'))
   return {
     equipment_ready: false,
     homeowner_confirmed: false,
-    permit_clear: isCounty,       // County = no permit needed
+    permit_clear: !needsPermit,    // No permit needed = auto-clear
     utility_approved: false,
     hoa_approved: true,            // Default true — most projects don't have HOA issues
     redesign_complete: !isEcoflow, // Non-ecoflow = no redesign needed

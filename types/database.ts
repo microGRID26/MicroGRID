@@ -245,6 +245,7 @@ export interface AHJ {
   permit_notes: string | null
   username: string | null
   password: string | null
+  permit_required: boolean
 }
 
 export interface Utility {

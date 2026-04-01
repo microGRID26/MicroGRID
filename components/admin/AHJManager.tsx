@@ -76,7 +76,7 @@ export function AHJManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         <table className="w-full text-xs">
           <thead className="sticky top-0 bg-gray-900 border-b border-gray-800">
             <tr>
-              {['Name', 'Phone', 'Website', 'Max Days', 'Electric Code', 'Portal Login'].map(h => (
+              {['Name', 'Permit', 'Phone', 'Website', 'Max Days', 'Electric Code', 'Portal Login'].map(h => (
                 <th key={h} className="text-left px-3 py-2.5 text-gray-400 font-medium whitespace-nowrap">{h}</th>
               ))}
               <th className="px-3 py-2.5 w-10" />
@@ -88,6 +88,10 @@ export function AHJManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                 className={`border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors cursor-pointer ${i % 2 === 0 ? '' : 'bg-gray-900/20'}`}
                 onClick={() => openEdit(a)}>
                 <td className="px-3 py-2 text-white font-medium max-w-[200px] truncate">{a.name}</td>
+                <td className="px-3 py-2">
+                  <span className={`w-3 h-3 rounded-full inline-block ${(a as any).permit_required !== false ? 'bg-amber-500' : 'bg-green-500'}`}
+                    title={(a as any).permit_required !== false ? 'Permit Required' : 'No Permit'} />
+                </td>
                 <td className="px-3 py-2 text-gray-400">{a.permit_phone || '—'}</td>
                 <td className="px-3 py-2 text-gray-400 max-w-[160px] truncate">
                   {a.permit_website

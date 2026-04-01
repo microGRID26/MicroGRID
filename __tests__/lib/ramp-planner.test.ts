@@ -9,8 +9,16 @@ import {
 // ── Tier Classification ──────────────────────────────────────────────────────
 
 describe('classifyTier', () => {
-  it('county + non-ecoflow = tier 1', () => {
+  it('county + non-ecoflow = tier 1 (fallback)', () => {
     expect(classifyTier('Harris County', 'Q.PEAK DUO', 'SolarEdge', null)).toBe(1)
+  })
+
+  it('permit_required=false + non-ecoflow = tier 1 (explicit)', () => {
+    expect(classifyTier('Some AHJ', 'Q.PEAK', 'SolarEdge', null, false)).toBe(1)
+  })
+
+  it('permit_required=true + non-ecoflow = tier 3 (explicit)', () => {
+    expect(classifyTier('Harris County', 'Q.PEAK', 'SolarEdge', null, true)).toBe(3)
   })
 
   it('county + ecoflow inverter = tier 2', () => {

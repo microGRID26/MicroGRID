@@ -91,6 +91,13 @@ export default function RampUpPage() {
 
     if (!rawProjects || !cfg) { setLoading(false); return }
 
+    // Load AHJ permit_required data
+    const { data: ahjs } = await db().from('ahjs').select('name, permit_required').limit(2000)
+    const ahjPermitMap = new Map<string, boolean>()
+    for (const a of (ahjs ?? []) as any[]) {
+      ahjPermitMap.set(a.name, a.permit_required ?? true)
+    }
+
     // Geocode all zips
     const zips = [...new Set((rawProjects as any[]).map(p => p.zip).filter(Boolean))]
     await Promise.all(zips.map(z => geocodeZip(z)))
@@ -105,11 +112,12 @@ export default function RampUpPage() {
       const coords = zipCache.get(p.zip)
       if (!coords) continue
 
-      const tier = classifyTier(p.ahj, p.module, p.inverter, p.battery)
+      const permitRequired = p.ahj ? ahjPermitMap.get(p.ahj) : undefined
+      const tier = classifyTier(p.ahj, p.module, p.inverter, p.battery, permitRequired)
       const dist = haversineDistance(cfg.warehouse_lat, cfg.warehouse_lng, coords[0], coords[1])
       // Use DB readiness if exists, otherwise auto-compute from project properties
       const dbReadiness = readinessMap.get(p.id)
-      const autoR = autoReadiness(p.ahj, p.module, p.inverter, p.battery)
+      const autoR = autoReadiness(p.ahj, p.module, p.inverter, p.battery, permitRequired)
       const readiness = dbReadiness ?? autoR as any
       const readinessScore = computeReadinessScore(readiness)
 
