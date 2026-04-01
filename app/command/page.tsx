@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { loadProjectsByIds } from '@/lib/api'
+import { loadProjectsByIds, loadTickets } from '@/lib/api'
 import { loadCrewsByIds } from '@/lib/api'
 import { daysAgo, fmt$, fmtDate, STAGE_LABELS, STAGE_ORDER, STAGE_TASKS } from '@/lib/utils'
 import { exportProjectsCSV, ALL_EXPORT_FIELDS, DEFAULT_EXPORT_KEYS } from '@/lib/export-utils'
@@ -626,6 +626,16 @@ export default function CommandPage() {
     }).length
   }, [filtered])
 
+  // ── Ticket counts ────────────────────────────────────────────────────────
+  const [myTicketCount, setMyTicketCount] = useState(0)
+  useEffect(() => {
+    if (!currentUser?.name) return
+    loadTickets({}).then(tix => {
+      const mine = tix.filter(t => t.assigned_to === currentUser.name && !['resolved', 'closed'].includes(t.status))
+      setMyTicketCount(mine.length)
+    }).catch(() => {})
+  }, [currentUser?.name])
+
   // For classify (still used for overdue/pending detection)
   const { overduePids, pendingPids } = useMemo(() => {
     const overdue = new Set<string>()
@@ -799,7 +809,7 @@ export default function CommandPage() {
 
       {/* ── PERSONAL STATS ROW ─────────────────────────────────────────── */}
       <div className="bg-gray-900 border-b border-gray-800 px-4 py-3">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
           <MetricCard
             label="My Active"
             value={activeProjects.length}
@@ -816,6 +826,12 @@ export default function CommandPage() {
             value={followUpsDue.length}
             accent={followUpsDue.length > 0 ? 'border-amber-500' : 'border-gray-700'}
             onClick={() => router.push('/queue?section=followups')}
+          />
+          <MetricCard
+            label="My Tickets"
+            value={myTicketCount}
+            accent={myTicketCount > 0 ? 'border-orange-500' : 'border-gray-700'}
+            onClick={() => router.push('/tickets')}
           />
           <MetricCard
             label="Installs This Month"

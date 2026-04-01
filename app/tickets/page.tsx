@@ -19,6 +19,7 @@ import {
 import type { Ticket, TicketComment, TicketHistory, TicketCategory, TicketResolutionCode } from '@/lib/api/tickets'
 import type { Project } from '@/types/database'
 import { ProjectPanel } from '@/components/project/ProjectPanel'
+import { MentionNoteInput } from '@/components/project/MentionNoteInput'
 import { useRealtimeSubscription } from '@/lib/hooks'
 import { Plus, Search, X, Send, Download, Pencil } from 'lucide-react'
 
@@ -47,6 +48,7 @@ export default function TicketsPage() {
   const [sortAsc, setSortAsc] = useState(false)
   const [filterSLA, setFilterSLA] = useState(false)
   const [filterResolved, setFilterResolved] = useState(false)
+  const [showAnalytics, setShowAnalytics] = useState(false)
 
   // UI state
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -328,6 +330,123 @@ export default function TicketsPage() {
           </div>
         </div>
 
+        {/* Analytics Toggle + Panel */}
+        <div className="flex justify-end">
+          <button onClick={() => setShowAnalytics(!showAnalytics)}
+            className="text-[10px] text-gray-400 hover:text-white">
+            {showAnalytics ? 'Hide Analytics' : 'Show Analytics'}
+          </button>
+        </div>
+        {showAnalytics && (() => {
+          const resolved = tickets.filter(t => t.status === 'resolved' || t.status === 'closed')
+          const avgResponseHrs = resolved.filter(t => t.first_response_at).length > 0
+            ? resolved.filter(t => t.first_response_at).reduce((sum, t) => sum + (new Date(t.first_response_at!).getTime() - new Date(t.created_at).getTime()) / 3600000, 0) / resolved.filter(t => t.first_response_at).length
+            : 0
+          const avgResolutionHrs = resolved.filter(t => t.resolved_at).length > 0
+            ? resolved.filter(t => t.resolved_at).reduce((sum, t) => sum + (new Date(t.resolved_at!).getTime() - new Date(t.created_at).getTime()) / 3600000, 0) / resolved.filter(t => t.resolved_at).length
+            : 0
+
+          // By category
+          const byCat = new Map<string, { total: number; open: number; resolved: number }>()
+          for (const t of tickets) {
+            const c = byCat.get(t.category) ?? { total: 0, open: 0, resolved: 0 }
+            c.total++
+            if (['resolved', 'closed'].includes(t.status)) c.resolved++
+            else c.open++
+            byCat.set(t.category, c)
+          }
+
+          // By resolution
+          const byRes = new Map<string, number>()
+          for (const t of resolved) {
+            if (t.resolution_category) byRes.set(t.resolution_category, (byRes.get(t.resolution_category) ?? 0) + 1)
+          }
+
+          // By assignee
+          const byAssignee = new Map<string, { total: number; open: number }>()
+          for (const t of tickets) {
+            const name = t.assigned_to ?? 'Unassigned'
+            const a = byAssignee.get(name) ?? { total: 0, open: 0 }
+            a.total++
+            if (!['resolved', 'closed'].includes(t.status)) a.open++
+            byAssignee.set(name, a)
+          }
+
+          return (
+            <div className="bg-gray-800 rounded-lg p-4 space-y-4">
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Ticket Analytics</h3>
+
+              {/* KPI Row */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-gray-900 rounded-lg p-3 text-center">
+                  <div className="text-[10px] text-gray-500 uppercase">Avg Response Time</div>
+                  <div className="text-lg font-bold text-blue-400">{avgResponseHrs > 0 ? `${Math.round(avgResponseHrs)}h` : '\u2014'}</div>
+                </div>
+                <div className="bg-gray-900 rounded-lg p-3 text-center">
+                  <div className="text-[10px] text-gray-500 uppercase">Avg Resolution Time</div>
+                  <div className="text-lg font-bold text-green-400">{avgResolutionHrs > 0 ? `${Math.round(avgResolutionHrs)}h` : '\u2014'}</div>
+                </div>
+                <div className="bg-gray-900 rounded-lg p-3 text-center">
+                  <div className="text-[10px] text-gray-500 uppercase">Resolution Rate</div>
+                  <div className="text-lg font-bold text-emerald-400">{tickets.length > 0 ? `${Math.round(resolved.length / tickets.length * 100)}%` : '\u2014'}</div>
+                </div>
+                <div className="bg-gray-900 rounded-lg p-3 text-center">
+                  <div className="text-[10px] text-gray-500 uppercase">SLA Compliance</div>
+                  <div className="text-lg font-bold text-amber-400">
+                    {(() => {
+                      const checked = tickets.filter(t => t.first_response_at)
+                      if (checked.length === 0) return '\u2014'
+                      const compliant = checked.filter(t => {
+                        const hrs = (new Date(t.first_response_at!).getTime() - new Date(t.created_at).getTime()) / 3600000
+                        return hrs <= t.sla_response_hours
+                      })
+                      return `${Math.round(compliant.length / checked.length * 100)}%`
+                    })()}
+                  </div>
+                </div>
+              </div>
+
+              {/* By Category + By Resolution + By Assignee */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <div className="text-[10px] text-gray-500 uppercase font-medium mb-2">By Category</div>
+                  <div className="space-y-1">
+                    {[...byCat.entries()].sort((a, b) => b[1].total - a[1].total).map(([cat, v]) => (
+                      <div key={cat} className="flex items-center justify-between text-xs">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${TICKET_CATEGORY_COLORS[cat] ?? 'bg-gray-700 text-gray-400'}`}>{cat}</span>
+                        <span className="text-gray-300">{v.open} open / {v.resolved} resolved</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-gray-500 uppercase font-medium mb-2">Top Resolutions</div>
+                  <div className="space-y-1">
+                    {[...byRes.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([code, count]) => (
+                      <div key={code} className="flex items-center justify-between text-xs">
+                        <span className="text-gray-300 capitalize">{code.replace(/_/g, ' ')}</span>
+                        <span className="text-gray-400">{count}</span>
+                      </div>
+                    ))}
+                    {byRes.size === 0 && <span className="text-gray-500 text-[10px]">No resolutions yet</span>}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-gray-500 uppercase font-medium mb-2">By Assignee</div>
+                  <div className="space-y-1">
+                    {[...byAssignee.entries()].sort((a, b) => b[1].open - a[1].open).slice(0, 6).map(([name, v]) => (
+                      <div key={name} className="flex items-center justify-between text-xs">
+                        <span className="text-gray-300">{name}</span>
+                        <span className={v.open > 0 ? 'text-amber-400' : 'text-gray-400'}>{v.open} open</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
+
         {/* Filters */}
         <div className="flex flex-wrap gap-3 items-center">
           <div className="relative flex-1 min-w-[200px] max-w-md">
@@ -562,15 +681,18 @@ export default function TicketsPage() {
                                       {c.is_internal && <span className="text-[9px] text-amber-400 font-medium mt-1 block">INTERNAL NOTE</span>}
                                     </div>
                                   ))}
-                                  <div className="flex gap-2 mt-2">
-                                    <input value={newComment} onChange={e => setNewComment(e.target.value)}
-                                      placeholder="Add a comment..."
-                                      onKeyDown={e => e.key === 'Enter' && handleAddComment()}
-                                      className="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
-                                    <button onClick={handleAddComment} disabled={!newComment.trim()}
-                                      className="px-3 py-1.5 bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white text-xs rounded">
-                                      <Send className="w-3 h-3" />
-                                    </button>
+                                  <div className="mt-2">
+                                    <MentionNoteInput
+                                      compact
+                                      placeholder="Add a comment... Type @ to mention someone"
+                                      projectId={t.project_id ?? ''}
+                                      currentUserName={userName ?? 'Unknown'}
+                                      onSubmit={async (text) => {
+                                        await addTicketComment(t.id, userName ?? 'Unknown', user?.id, text)
+                                        const c = await loadTicketComments(t.id)
+                                        setComments(c)
+                                      }}
+                                    />
                                   </div>
                                 </div>
                               )}

@@ -23,6 +23,7 @@ import { EngineeringConfigManager } from '@/components/admin/EngineeringConfigMa
 import { InvoiceRulesManager } from '@/components/admin/InvoiceRulesManager'
 import { PayScaleManager } from '@/components/admin/PayScaleManager'
 import { PayDistributionManager } from '@/components/admin/PayDistributionManager'
+import { TicketConfigManager } from '@/components/admin/TicketConfigManager'
 
 export default function AdminPage() {
   const { user: authUser, loading } = useCurrentUser()
@@ -145,6 +146,7 @@ export default function AdminPage() {
             {activeModule === 'invoice_rules' && <InvoiceRulesManager isSuperAdmin={isSuperAdmin} />}
             {activeModule === 'pay_scales' && <PayScaleManager isSuperAdmin={isSuperAdmin} />}
             {activeModule === 'pay_distribution' && <PayDistributionManager isSuperAdmin={isSuperAdmin} />}
+            {activeModule === 'ticket_config' && <TicketConfigManager />}
           </div>
         </main>
       </div>

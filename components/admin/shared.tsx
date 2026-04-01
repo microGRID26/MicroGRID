@@ -45,7 +45,7 @@ export interface CRMStats {
   serviceCalls: number
 }
 
-export type Module = 'ahj' | 'utility' | 'hoa' | 'financier' | 'equipment' | 'vendors' | 'users' | 'crews' | 'sla' | 'info' | 'releases' | 'feedback' | 'audit' | 'permissions' | 'notifications' | 'queue_config' | 'reasons' | 'doc_requirements' | 'edge_integration' | 'email_onboarding' | 'custom_fields' | 'calendar_sync' | 'feature_flags' | 'organizations' | 'commissions' | 'engineering_config' | 'invoice_rules' | 'pay_scales' | 'pay_distribution'
+export type Module = 'ahj' | 'utility' | 'hoa' | 'financier' | 'equipment' | 'vendors' | 'users' | 'crews' | 'sla' | 'info' | 'releases' | 'feedback' | 'audit' | 'permissions' | 'notifications' | 'queue_config' | 'reasons' | 'doc_requirements' | 'edge_integration' | 'email_onboarding' | 'custom_fields' | 'calendar_sync' | 'feature_flags' | 'organizations' | 'commissions' | 'engineering_config' | 'invoice_rules' | 'pay_scales' | 'pay_distribution' | 'ticket_config'
 
 export const DEPARTMENTS = [
   'Inside Operations', 'Sales', 'Executive', 'Field Operations',
@@ -309,6 +309,10 @@ export const ADMIN_SIDEBAR_ITEMS: SidebarItem[] = [
   {
     id: 'permissions', label: 'Permissions', desc: 'Role access matrix',
     icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>,
+  },
+  {
+    id: 'ticket_config' as Module, label: 'Ticket Config', desc: 'Categories & resolution codes',
+    icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>,
   },
 ]
 
