@@ -2,7 +2,6 @@
 // Data-driven: every action generates queryable records
 
 import { db } from '@/lib/db'
-import { createClient } from '@/lib/supabase/client'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

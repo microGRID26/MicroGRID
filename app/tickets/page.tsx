@@ -5,12 +5,12 @@ import { Nav } from '@/components/Nav'
 import { Pagination } from '@/components/Pagination'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import { useOrg } from '@/lib/hooks'
-import { fmtDate, fmt$, cn, escapeIlike } from '@/lib/utils'
-import { loadProjectById } from '@/lib/api'
+import { fmtDate, cn } from '@/lib/utils'
+import { loadProjectById, loadUsers } from '@/lib/api'
 import {
   loadTickets, createTicket, updateTicket, updateTicketStatus,
   loadTicketComments, addTicketComment, loadTicketHistory, addTicketHistory,
-  loadTicketCategories, loadResolutionCodes, generateTicketNumber,
+  loadTicketCategories, loadResolutionCodes,
   getValidTransitions, getSLAStatus,
   TICKET_STATUSES, TICKET_STATUS_LABELS, TICKET_STATUS_COLORS,
   TICKET_PRIORITIES, TICKET_PRIORITY_COLORS,
@@ -19,10 +19,8 @@ import {
 import type { Ticket, TicketComment, TicketHistory, TicketCategory, TicketResolutionCode } from '@/lib/api/tickets'
 import type { Project } from '@/types/database'
 import { ProjectPanel } from '@/components/project/ProjectPanel'
-import {
-  Plus, Search, X, ChevronDown, ChevronUp, Clock, AlertTriangle,
-  MessageSquare, Send, Filter, Download, ExternalLink, Tag,
-} from 'lucide-react'
+import { useRealtimeSubscription } from '@/lib/hooks'
+import { Plus, Search, X, Send, Download, Pencil } from 'lucide-react'
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
@@ -59,6 +57,18 @@ export default function TicketsPage() {
   const [newComment, setNewComment] = useState('')
   const [detailTab, setDetailTab] = useState<'comments' | 'history' | 'details'>('comments')
 
+  // Resolution modal
+  const [resolveModal, setResolveModal] = useState<{ ticketId: string; targetStatus: string } | null>(null)
+  const [resolveCategory, setResolveCategory] = useState('')
+  const [resolveNotes, setResolveNotes] = useState('')
+
+  // Edit mode
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editDraft, setEditDraft] = useState<Partial<Ticket>>({})
+
+  // Users for assignment dropdown
+  const [users, setUsers] = useState<{ id: string; name: string }[]>([])
+
   // Project panel
   const [panelProject, setPanelProject] = useState<Project | null>(null)
 
@@ -82,6 +92,10 @@ export default function TicketsPage() {
   }, [orgId])
 
   useEffect(() => { loadAll() }, [loadAll])
+  useEffect(() => { loadUsers().then(r => setUsers((r.data ?? []).map((x: any) => ({ id: x.id, name: x.name })))) }, [])
+
+  // Realtime — auto-refresh on ticket changes
+  useRealtimeSubscription('tickets' as any, { onChange: loadAll, debounceMs: 500 })
 
   // Expand a ticket → load comments + history
   const expandTicket = useCallback(async (id: string) => {
@@ -117,8 +131,14 @@ export default function TicketsPage() {
     }
   }, [createForm, orgId, userName, user, loadAll])
 
-  // Status change
+  // Status change — show resolution modal for 'resolved'
   const handleStatusChange = useCallback(async (ticketId: string, newStatus: string) => {
+    if (newStatus === 'resolved') {
+      setResolveModal({ ticketId, targetStatus: newStatus })
+      setResolveCategory('')
+      setResolveNotes('')
+      return
+    }
     await updateTicketStatus(ticketId, newStatus, userName ?? 'System', user?.id)
     loadAll()
     if (expandedId === ticketId) {
@@ -126,6 +146,41 @@ export default function TicketsPage() {
       setHistory(h)
     }
   }, [userName, user, loadAll, expandedId])
+
+  const handleResolve = useCallback(async () => {
+    if (!resolveModal) return
+    await updateTicketStatus(resolveModal.ticketId, 'resolved', userName ?? 'System', user?.id, resolveCategory || undefined, resolveNotes || undefined)
+    setResolveModal(null)
+    loadAll()
+    if (expandedId === resolveModal.ticketId) {
+      const h = await loadTicketHistory(resolveModal.ticketId)
+      setHistory(h)
+    }
+  }, [resolveModal, resolveCategory, resolveNotes, userName, user, loadAll, expandedId])
+
+  // Edit ticket fields
+  const startEdit = useCallback((t: Ticket) => {
+    setEditingId(t.id)
+    setEditDraft({ title: t.title, description: t.description, priority: t.priority, category: t.category, subcategory: t.subcategory, assigned_to: t.assigned_to, assigned_team: t.assigned_team })
+  }, [])
+
+  const saveEdit = useCallback(async () => {
+    if (!editingId) return
+    const ticket = tickets.find(t => t.id === editingId)
+    if (!ticket) return
+    // Log changes to history
+    const fields = ['title', 'priority', 'category', 'assigned_to', 'assigned_team'] as const
+    for (const f of fields) {
+      const oldVal = ticket[f] ?? null
+      const newVal = (editDraft as any)[f] ?? null
+      if (oldVal !== newVal) {
+        await addTicketHistory(editingId, f, oldVal, newVal, userName ?? 'System', user?.id)
+      }
+    }
+    await updateTicket(editingId, editDraft)
+    setEditingId(null)
+    loadAll()
+  }, [editingId, editDraft, tickets, userName, user, loadAll])
 
   // Add comment
   const handleAddComment = useCallback(async () => {
@@ -145,6 +200,7 @@ export default function TicketsPage() {
         t.ticket_number.toLowerCase().includes(q) ||
         t.title.toLowerCase().includes(q) ||
         (t.project_id ?? '').toLowerCase().includes(q) ||
+        (t.assigned_to ?? '').toLowerCase().includes(q) ||
         (t.description ?? '').toLowerCase().includes(q)
       )
     }
@@ -177,6 +233,7 @@ export default function TicketsPage() {
   const escalatedCount = tickets.filter(t => t.status === 'escalated').length
   const criticalCount = tickets.filter(t => ['urgent', 'critical'].includes(t.priority) && !['resolved', 'closed'].includes(t.status)).length
   const resolvedToday = tickets.filter(t => t.resolved_at && t.resolved_at.slice(0, 10) === new Date().toISOString().slice(0, 10)).length
+  const slaBreachedCount = tickets.filter(t => { const s = getSLAStatus(t); return !['resolved', 'closed'].includes(t.status) && (s.response === 'breached' || s.resolution === 'breached') }).length
 
   // Subcategories for selected category
   const subcategories = useMemo(() => {
@@ -236,8 +293,8 @@ export default function TicketsPage() {
         </div>
 
         {/* Stat cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className={cn('bg-gray-800 rounded-lg p-3 cursor-pointer border', filterStatus === '' ? 'border-green-500/50' : 'border-transparent hover:border-gray-600')} onClick={() => setFilterStatus('')}>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className={cn('bg-gray-800 rounded-lg p-3 cursor-pointer border', filterStatus === '' && !filterPriority ? 'border-green-500/50' : 'border-transparent hover:border-gray-600')} onClick={() => { setFilterStatus(''); setFilterPriority('') }}>
             <div className="text-xs text-gray-400">Total Open</div>
             <div className="text-2xl font-bold text-white mt-1">{openCount}</div>
           </div>
@@ -248,6 +305,10 @@ export default function TicketsPage() {
           <div className={cn('bg-gray-800 rounded-lg p-3 cursor-pointer border', filterPriority === 'urgent' ? 'border-amber-500/50' : 'border-transparent hover:border-gray-600')} onClick={() => setFilterPriority(filterPriority ? '' : 'urgent')}>
             <div className="text-xs text-gray-400">Critical / Urgent</div>
             <div className={cn('text-2xl font-bold mt-1', criticalCount > 0 ? 'text-amber-400' : 'text-white')}>{criticalCount}</div>
+          </div>
+          <div className="bg-gray-800 rounded-lg p-3">
+            <div className="text-xs text-gray-400">SLA Breached</div>
+            <div className={cn('text-2xl font-bold mt-1', slaBreachedCount > 0 ? 'text-red-400' : 'text-white')}>{slaBreachedCount}</div>
           </div>
           <div className="bg-gray-800 rounded-lg p-3">
             <div className="text-xs text-gray-400">Resolved Today</div>
@@ -408,7 +469,7 @@ export default function TicketsPage() {
                                 </div>
                               )}
 
-                              {/* Status actions */}
+                              {/* Status actions + edit */}
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="text-[10px] text-gray-500 uppercase font-medium mr-1">Actions:</span>
                                 {getValidTransitions(t.status).map(s => (
@@ -417,7 +478,50 @@ export default function TicketsPage() {
                                     → {TICKET_STATUS_LABELS[s]}
                                   </button>
                                 ))}
+                                <button onClick={() => startEdit(t)} className="px-2.5 py-1 rounded text-[11px] font-medium bg-gray-700 text-gray-300 hover:text-white ml-auto">
+                                  <Pencil className="w-3 h-3 inline mr-1" />Edit
+                                </button>
                               </div>
+
+                              {/* Inline edit form */}
+                              {editingId === t.id && (
+                                <div className="bg-gray-800 rounded-lg p-3 space-y-2" onClick={e => e.stopPropagation()}>
+                                  <div className="text-[10px] text-gray-500 uppercase font-medium">Edit Ticket</div>
+                                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                                    <div className="col-span-full">
+                                      <label className="text-[10px] text-gray-500">Title</label>
+                                      <input value={editDraft.title ?? ''} onChange={e => setEditDraft(d => ({ ...d, title: e.target.value }))}
+                                        className="w-full mt-0.5 px-2 py-1 bg-gray-900 border border-gray-700 rounded text-xs text-white" />
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] text-gray-500">Priority</label>
+                                      <select value={editDraft.priority ?? ''} onChange={e => setEditDraft(d => ({ ...d, priority: e.target.value }))}
+                                        className="w-full mt-0.5 px-2 py-1 bg-gray-900 border border-gray-700 rounded text-xs text-white">
+                                        {TICKET_PRIORITIES.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] text-gray-500">Category</label>
+                                      <select value={editDraft.category ?? ''} onChange={e => setEditDraft(d => ({ ...d, category: e.target.value }))}
+                                        className="w-full mt-0.5 px-2 py-1 bg-gray-900 border border-gray-700 rounded text-xs text-white">
+                                        {TICKET_CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] text-gray-500">Assigned To</label>
+                                      <select value={editDraft.assigned_to ?? ''} onChange={e => setEditDraft(d => ({ ...d, assigned_to: e.target.value }))}
+                                        className="w-full mt-0.5 px-2 py-1 bg-gray-900 border border-gray-700 rounded text-xs text-white">
+                                        <option value="">Unassigned</option>
+                                        {users.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+                                      </select>
+                                    </div>
+                                  </div>
+                                  <div className="flex gap-2 pt-1">
+                                    <button onClick={saveEdit} className="px-3 py-1 bg-green-600 hover:bg-green-500 rounded text-[10px] text-white font-medium">Save</button>
+                                    <button onClick={() => setEditingId(null)} className="px-3 py-1 text-gray-400 hover:text-white text-[10px]">Cancel</button>
+                                  </div>
+                                </div>
+                              )}
 
                               {/* Tab bar */}
                               <div className="flex gap-4 border-b border-gray-700 pb-0">
@@ -576,12 +680,56 @@ export default function TicketsPage() {
                   placeholder="PROJ-XXXXX"
                   className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white font-mono focus:outline-none focus:border-blue-500" />
               </div>
+              <div>
+                <label className="text-xs text-gray-400 font-medium block mb-1">Assign To</label>
+                <select value={createForm.assigned_to} onChange={e => setCreateForm(f => ({ ...f, assigned_to: e.target.value }))}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white">
+                  <option value="">Unassigned</option>
+                  {users.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+                </select>
+              </div>
             </div>
             <div className="px-5 py-3 border-t border-gray-800 flex justify-end gap-2">
               <button onClick={() => setShowCreate(false)} className="px-3 py-1.5 text-xs text-gray-400 hover:text-white">Cancel</button>
               <button onClick={handleCreate} disabled={!createForm.title.trim()}
                 className="px-4 py-1.5 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white text-xs font-medium rounded-md">
                 Create Ticket
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Resolution Modal */}
+      {resolveModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setResolveModal(null)} />
+          <div className="relative bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-md mx-4">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
+              <h2 className="text-sm font-semibold text-white">Resolve Ticket</h2>
+              <button onClick={() => setResolveModal(null)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="px-5 py-4 space-y-3">
+              <div>
+                <label className="text-xs text-gray-400 font-medium block mb-1">Resolution Category *</label>
+                <select value={resolveCategory} onChange={e => setResolveCategory(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white">
+                  <option value="">Select resolution...</option>
+                  {resolutionCodes.map(r => <option key={r.id} value={r.code}>{r.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 font-medium block mb-1">Resolution Notes</label>
+                <textarea value={resolveNotes} onChange={e => setResolveNotes(e.target.value)}
+                  rows={3} placeholder="Describe what was done to resolve this ticket..."
+                  className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white resize-none focus:outline-none focus:border-blue-500" />
+              </div>
+            </div>
+            <div className="px-5 py-3 border-t border-gray-800 flex justify-end gap-2">
+              <button onClick={() => setResolveModal(null)} className="px-3 py-1.5 text-xs text-gray-400 hover:text-white">Cancel</button>
+              <button onClick={handleResolve} disabled={!resolveCategory}
+                className="px-4 py-1.5 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white text-xs font-medium rounded-md">
+                Resolve Ticket
               </button>
             </div>
           </div>
