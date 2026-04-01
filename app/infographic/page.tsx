@@ -7,7 +7,7 @@ import { db } from '@/lib/db'
 import { fmt$ } from '@/lib/utils'
 import { Printer } from 'lucide-react'
 
-type Tab = 'leadership' | 'operations' | 'sales' | 'journey' | 'technical'
+type Tab = 'leadership' | 'sales' | 'inside_ops' | 'field_ops' | 'journey' | 'technical'
 
 interface PipelineStage { stage: string; count: number; value: number; label: string; color: string }
 interface LiveStats {
@@ -41,6 +41,9 @@ const DEFAULTS: LiveStats = {
 export default function InfographicPage() {
   const { user } = useCurrentUser()
   const isSales = user?.isSales ?? false
+  const isAdmin = user?.isAdmin ?? false
+  const isSuperAdmin = user?.isSuperAdmin ?? false
+  const canSeeTechnical = isAdmin || isSuperAdmin
   const [tab, setTab] = useState<Tab>(isSales ? 'sales' : 'leadership')
   const [stats, setStats] = useState<LiveStats>(DEFAULTS)
 
@@ -102,9 +105,10 @@ export default function InfographicPage() {
               {!isSales && ([
                 { key: 'leadership' as Tab, label: 'Leadership' },
                 { key: 'sales' as Tab, label: 'Sales' },
-                { key: 'operations' as Tab, label: 'Operations' },
+                { key: 'inside_ops' as Tab, label: 'Inside Ops' },
+                { key: 'field_ops' as Tab, label: 'Field Ops' },
                 { key: 'journey' as Tab, label: 'Customer Journey' },
-                { key: 'technical' as Tab, label: 'Technical' },
+                ...(canSeeTechnical ? [{ key: 'technical' as Tab, label: 'Technical' }] : []),
               ]).map(t => (
                 <button key={t.key} onClick={() => setTab(t.key)} className={`px-4 py-1.5 text-xs font-medium rounded-md transition-colors ${tab === t.key ? 'bg-green-700 text-white' : 'text-gray-400 hover:text-white'}`}>{t.label}</button>
               ))}
@@ -249,19 +253,24 @@ export default function InfographicPage() {
           </div>
         )}
 
-        {/* ═══ OPERATIONS ═══ */}
-        {tab === 'operations' && (
+        {/* ═══ INSIDE OPS ═══ */}
+        {tab === 'inside_ops' && (
           <div className="space-y-12">
-            {/* Daily workflow — bigger steps */}
+            <div className="text-center py-2">
+              <h2 className="text-2xl font-bold">Inside Operations</h2>
+              <p className="text-sm text-gray-500 mt-1">For PMs, ops managers, and inside coordinators</p>
+            </div>
+
+            {/* Daily workflow */}
             <div>
               <h2 className="text-xl font-bold mb-4">Your Daily Workflow</h2>
               <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                 {[
-                  { step: '1', name: 'Command Center', desc: 'Check action items, stuck tasks, follow-ups, schedule', color: '#1D9E75' },
-                  { step: '2', name: 'Queue', desc: 'Work through your prioritized project list', color: '#3b82f6' },
-                  { step: '3', name: 'Update Tasks', desc: 'Change status, add notes, set follow-ups', color: '#f59e0b' },
-                  { step: '4', name: 'Schedule', desc: 'Confirm jobs, assign crews, batch complete', color: '#8b5cf6' },
-                  { step: '5', name: 'Tickets', desc: 'Handle issues, track SLA, resolve', color: '#ec4899' },
+                  { step: '1', name: 'Command Center', desc: 'Action items, stuck tasks, follow-ups, today\'s schedule', color: '#1D9E75' },
+                  { step: '2', name: 'Queue', desc: 'Prioritized worklist — smart filters, inline actions', color: '#3b82f6' },
+                  { step: '3', name: 'Update Tasks', desc: 'Change status, add notes, set follow-ups, resolve blockers', color: '#f59e0b' },
+                  { step: '4', name: 'Schedule', desc: 'Confirm jobs, assign crews, batch complete installs', color: '#8b5cf6' },
+                  { step: '5', name: 'Tickets', desc: 'Handle issues, track SLA, resolve complaints', color: '#ec4899' },
                 ].map(s => (
                   <div key={s.step} className="rounded-xl p-5 text-center border" style={{ backgroundColor: `${s.color}08`, borderColor: `${s.color}30` }}>
                     <div className="text-3xl font-black" style={{ color: s.color }}>{s.step}</div>
@@ -272,7 +281,7 @@ export default function InfographicPage() {
               </div>
             </div>
 
-            {/* Automations — grouped by category */}
+            {/* Automations */}
             <div>
               <h2 className="text-xl font-bold mb-4">Automation Saves You Time</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -314,11 +323,11 @@ export default function InfographicPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {[
                   { shortcut: '⌘K', desc: 'Global search — find any project from any page' },
-                  { shortcut: '···', desc: 'Quick Actions on Queue — blocker, note, follow-up without opening project' },
+                  { shortcut: '···', desc: 'Quick Actions on Queue cards — set blocker, add note, follow-up' },
                   { shortcut: 'Select', desc: 'Batch select on Queue/Pipeline/Tasks — bulk update multiple items' },
                   { shortcut: 'Auto-Fill', desc: 'Ramp planner fills all crew slots with best-fit projects' },
-                  { shortcut: '@name', desc: 'Mention anyone in notes — instant bell notification' },
-                  { shortcut: 'Print', desc: 'Crew sheets from ramp planner — field-ready install schedule' },
+                  { shortcut: '@name', desc: 'Mention anyone in notes or tickets — instant bell notification' },
+                  { shortcut: 'CSV', desc: 'Export any page to spreadsheet — projects, tickets, analytics' },
                 ].map((t, i) => (
                   <div key={i} className="bg-gray-800 rounded-lg px-4 py-3 border border-gray-700 flex items-start gap-3">
                     <span className="text-[10px] bg-gray-700 text-green-400 px-2 py-0.5 rounded font-mono flex-shrink-0">{t.shortcut}</span>
@@ -330,11 +339,101 @@ export default function InfographicPage() {
 
             {/* Quick start */}
             <div>
-              <h2 className="text-xl font-bold mb-4">New Team Member Quick Start</h2>
+              <h2 className="text-xl font-bold mb-4">New PM Quick Start</h2>
               <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
-                {['Log in with Google (@gomicrogridenergy.com)', 'Command Center loads — check your action items', 'Queue shows your projects filtered by default', 'Click any project → Tasks tab to update status', 'Questions? Help page or @mention someone in Notes'].map((step, i) => (
+                {['Log in with Google (@gomicrogridenergy.com)', 'Command Center loads — check your action items and stuck tasks', 'Queue shows your assigned projects filtered by default', 'Click any project → Tasks tab to update statuses and add notes', 'Questions? Help page or @mention someone in Notes'].map((step, i) => (
                   <div key={i} className="flex items-start gap-3 py-2">
                     <div className="w-6 h-6 rounded-full bg-green-700 flex items-center justify-center flex-shrink-0 text-xs font-bold">{i + 1}</div>
+                    <span className="text-sm text-gray-300 pt-0.5">{step}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ FIELD OPS ═══ */}
+        {tab === 'field_ops' && (
+          <div className="space-y-12">
+            <div className="text-center py-2">
+              <h2 className="text-2xl font-bold">Field Operations</h2>
+              <p className="text-sm text-gray-500 mt-1">For crew leads, installers, and field technicians</p>
+            </div>
+
+            {/* Field day workflow */}
+            <div>
+              <h2 className="text-xl font-bold mb-4">Your Day in the Field</h2>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                {[
+                  { step: '1', name: 'Check Schedule', desc: 'Open crew view on your phone. See today\'s jobs with addresses and customer info.', color: '#1D9E75', icon: '📱' },
+                  { step: '2', name: 'Navigate to Site', desc: 'Tap the address for Google Maps directions. Customer phone is one tap away.', color: '#3b82f6', icon: '🗺️' },
+                  { step: '3', name: 'Complete Checklist', desc: 'Follow the job-type checklist. Mark items done as you go. Add photos and notes.', color: '#f59e0b', icon: '✅' },
+                  { step: '4', name: 'Mark Complete', desc: 'Hit Complete. Tasks auto-update. Funding milestones trigger. Next job loads.', color: '#22c55e', icon: '🎉' },
+                ].map(s => (
+                  <div key={s.step} className="rounded-xl p-5 text-center border" style={{ backgroundColor: `${s.color}08`, borderColor: `${s.color}30` }}>
+                    <div className="text-2xl mb-1">{s.icon}</div>
+                    <div className="text-2xl font-black" style={{ color: s.color }}>{s.step}</div>
+                    <div className="text-sm font-bold text-white mt-1">{s.name}</div>
+                    <div className="text-[10px] text-gray-500 mt-1">{s.desc}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Mobile tools */}
+            <div>
+              <h2 className="text-xl font-bold mb-4">Your Mobile Tools</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[
+                  { name: 'Crew View', desc: 'See your scheduled jobs for the week. Customer name, address, phone, equipment specs, job type. Sorted by date.', color: '#1D9E75' },
+                  { name: 'One-Tap Navigation', desc: 'Tap any address to open Google Maps with driving directions. Tap phone to call the customer.', color: '#3b82f6' },
+                  { name: 'Job Checklists', desc: '5 checklist templates: Install (9 items), Inspection (5), Service (4), Survey (4), Repair (6). Check items as you complete them.', color: '#f59e0b' },
+                  { name: 'Clock In/Out', desc: 'GPS-tracked time tracking. Clock in when you arrive, clock out when done. Hours automatically logged.', color: '#8b5cf6' },
+                  { name: 'Barcode Scanner', desc: 'Scan warehouse stock barcodes with your phone camera. Check out equipment to a project. Check in returns.', color: '#ec4899' },
+                  { name: 'Report Issues', desc: 'Create a ticket from the field. Photo attachment, priority, category. Ops gets notified immediately.', color: '#ef4444' },
+                ].map(t => (
+                  <div key={t.name} className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+                    <h3 className="text-sm font-bold" style={{ color: t.color }}>{t.name}</h3>
+                    <p className="text-xs text-gray-400 mt-1">{t.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Work order types */}
+            <div>
+              <h2 className="text-xl font-bold mb-4">Job Types & Checklists</h2>
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                {[
+                  { type: 'Install', items: 9, desc: 'Panels, wiring, inverter, battery, testing, cleanup', color: '#f97316' },
+                  { type: 'Survey', items: 4, desc: 'Roof measurement, electrical panel, photos, shade', color: '#3b82f6' },
+                  { type: 'Inspection', items: 5, desc: 'Permit verify, visual, electrical test, photos', color: '#06b6d4' },
+                  { type: 'Service', items: 4, desc: 'Diagnose, repair, test, customer sign-off', color: '#22c55e' },
+                  { type: 'Repair', items: 6, desc: 'Diagnose, parts, repair, test, cleanup, sign-off', color: '#ef4444' },
+                ].map(t => (
+                  <div key={t.type} className="bg-gray-800 rounded-lg p-4 text-center border border-gray-700">
+                    <div className="text-sm font-bold" style={{ color: t.color }}>{t.type}</div>
+                    <div className="text-2xl font-black text-white mt-1">{t.items}</div>
+                    <div className="text-[9px] text-gray-500">checklist items</div>
+                    <div className="text-[10px] text-gray-400 mt-1">{t.desc}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick start for field */}
+            <div>
+              <h2 className="text-xl font-bold mb-4">Field Quick Start</h2>
+              <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+                {[
+                  'Open MicroGRID on your phone browser (microgrid-crm.vercel.app)',
+                  'Log in with Google — your crew schedule loads automatically',
+                  'Tap today\'s job to see customer info, address, and equipment',
+                  'Tap address for Google Maps directions, tap phone to call',
+                  'After the job: complete the checklist, add notes, mark done',
+                ].map((step, i) => (
+                  <div key={i} className="flex items-start gap-3 py-2">
+                    <div className="w-6 h-6 rounded-full bg-blue-700 flex items-center justify-center flex-shrink-0 text-xs font-bold">{i + 1}</div>
                     <span className="text-sm text-gray-300 pt-0.5">{step}</span>
                   </div>
                 ))}
