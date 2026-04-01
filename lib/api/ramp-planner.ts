@@ -168,7 +168,7 @@ export function autoReadiness(ahj: string | null, module: string | null, inverte
     utility_approved: false,
     hoa_approved: true,            // Default true — most projects don't have HOA issues
     redesign_complete: false,      // Nothing redesigned yet under MicroGRID transition
-    crew_available: true,
+    crew_available: false,         // No crews assigned yet — must be manually confirmed
   }
 }
 
