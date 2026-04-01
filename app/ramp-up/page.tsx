@@ -20,7 +20,7 @@ import {
 } from '@/lib/api/ramp-planner'
 import type { Tier, RampConfig, ProjectReadiness, RampScheduleEntry, RoutePoint } from '@/lib/api/ramp-planner'
 import dynamic from 'next/dynamic'
-import { Calendar, MapPin, Truck, ChevronLeft, ChevronRight, Check, X, Zap, AlertTriangle, Target } from 'lucide-react'
+import { Calendar, MapPin, Truck, ChevronLeft, ChevronRight, Check, X, Zap, AlertTriangle, Target, Printer } from 'lucide-react'
 
 const MapContainer = dynamic(() => import('react-leaflet').then(m => m.MapContainer), { ssr: false })
 const TileLayer = dynamic(() => import('react-leaflet').then(m => m.TileLayer), { ssr: false })
@@ -86,6 +86,8 @@ export default function RampUpPage() {
   const [tierFilter, setTierFilter] = useState<Tier | null>(null)
   const [queueSearch, setQueueSearch] = useState('')
   const [expandedProject, setExpandedProject] = useState<string | null>(null)
+  const [stageFilter, setStageFilter] = useState('')
+  const [financierFilter, setFinancierFilter] = useState('')
 
   // Load everything
   const loadAll = useCallback(async () => {
@@ -295,6 +297,11 @@ export default function RampUpPage() {
   const handleSchedule = async (projectId: string, crewName: string, slot: number) => {
     const project = projects.find(p => p.id === projectId)
     if (!project) return
+    // Conflict detection — warn if already scheduled elsewhere
+    if (scheduledIds.has(projectId)) {
+      const existing = schedule.find(s => s.project_id === projectId && s.status !== 'cancelled')
+      if (existing && !confirm(`${project.name} is already scheduled for ${getWeekLabel(existing.scheduled_week)}. Schedule again?`)) return
+    }
     const result = await scheduleProject({
       project_id: projectId,
       crew_name: crewName,
@@ -410,6 +417,72 @@ export default function RampUpPage() {
       const newScore = computeReadinessScore(newReadiness)
       return { ...p, readiness: newReadiness, readinessScore: newScore }
     }))
+  }
+
+  // Auto-fill week — assign top clustered suggestions to all empty slots
+  const handleAutoFill = async () => {
+    if (!config) return
+    let filled = 0
+    for (const [crew, crewProjects] of crewSuggestions.entries()) {
+      const crewSlots = weekSchedule.filter(s => s.crew_name === crew).length
+      const maxSlots = config.installs_per_crew_per_week ?? 2
+      for (let i = 0; i < Math.min(crewProjects.length, maxSlots - crewSlots); i++) {
+        const p = crewProjects[i]
+        await scheduleProject({
+          project_id: p.id,
+          crew_name: crew,
+          scheduled_week: selectedWeek,
+          slot: crewSlots + i + 1,
+          status: 'planned',
+          priority_score: p.priorityScore ?? 0,
+          distance_miles: p.distanceMiles ?? null,
+          drive_minutes: p.driveMinutes ?? null,
+          created_by: user?.name,
+        })
+        filled++
+      }
+    }
+    if (filled > 0) loadAll()
+  }
+
+  // Week revenue
+  const weekRevenue = useMemo(() => {
+    return weekSchedule.reduce((sum, s) => {
+      const p = projects.find(pr => pr.id === s.project_id)
+      return sum + (Number(p?.contract) || 0)
+    }, 0)
+  }, [weekSchedule, projects])
+
+  // Print crew sheet
+  const handlePrint = () => {
+    const printData = crewNames.map(crew => {
+      const jobs = weekSchedule.filter(s => s.crew_name === crew)
+      return {
+        crew,
+        jobs: jobs.map(j => {
+          const p = projects.find(pr => pr.id === j.project_id)
+          return p ? { name: p.name, id: p.id, address: p.address, city: p.city, phone: (p as any).phone, systemkw: p.systemkw, date: j.scheduled_day } : null
+        }).filter(Boolean),
+      }
+    })
+    const html = `<html><head><title>Crew Schedule — ${getWeekLabel(selectedWeek)}</title>
+    <style>body{font-family:Arial,sans-serif;padding:20px}h1{font-size:18px}h2{font-size:14px;margin-top:20px;border-bottom:2px solid #000;padding-bottom:4px}
+    .job{margin:10px 0;padding:10px;border:1px solid #ccc;border-radius:6px}
+    .label{color:#666;font-size:11px}.value{font-size:13px;font-weight:600}
+    @media print{body{padding:0}}</style></head><body>
+    <h1>MicroGRID — Install Schedule: ${getWeekLabel(selectedWeek)}</h1>
+    <p style="color:#666;font-size:12px">Warehouse: ${config?.warehouse_address ?? ''}</p>
+    ${printData.map(c => `<h2>${c.crew} (${c.jobs.length} jobs)</h2>
+    ${c.jobs.map((j: any, i: number) => `<div class="job">
+      <div><span class="label">Job ${i + 1}:</span> <span class="value">${j.name}</span> <span style="color:#666">(${j.id})</span></div>
+      <div><span class="label">Date:</span> ${j.date ? new Date(j.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }) : 'TBD'}</div>
+      <div><span class="label">Address:</span> <span class="value">${j.address ?? '—'}, ${j.city ?? ''}</span></div>
+      <div><span class="label">Phone:</span> ${j.phone ?? '—'}</div>
+      <div><span class="label">System:</span> ${j.systemkw ?? '—'} kW</div>
+    </div>`).join('')}`).join('')}
+    </body></html>`
+    const win = window.open('', '_blank')
+    if (win) { win.document.write(html); win.document.close(); win.print() }
   }
 
   const openProject = async (id: string) => {
@@ -568,7 +641,20 @@ export default function RampUpPage() {
               <span className="text-sm font-semibold text-white min-w-[180px] text-center">{getWeekLabel(selectedWeek)}</span>
               <button onClick={nextWeek} disabled={weekIdx >= weeks.length - 1} className="p-1 text-gray-400 hover:text-white disabled:opacity-30"><ChevronRight className="w-4 h-4" /></button>
               <span className="text-[10px] text-gray-500">Week {weekIdx + 1} of {weeks.length}</span>
-              <span className="text-[10px] text-gray-500 ml-auto">{weekSchedule.length} / {crewNames.length * (config?.installs_per_crew_per_week ?? 2)} slots filled · {crewNames.length} crews active</span>
+              <span className="text-[10px] text-gray-500 ml-auto">
+                {weekSchedule.length} / {crewNames.length * (config?.installs_per_crew_per_week ?? 2)} slots filled · {crewNames.length} crews
+                {weekRevenue > 0 && <span className="text-green-400 font-medium ml-2">{fmt$(weekRevenue)}</span>}
+              </span>
+              {crewSuggestions.size > 0 && weekSchedule.length < crewNames.length * (config?.installs_per_crew_per_week ?? 2) && (
+                <button onClick={handleAutoFill} className="text-[10px] px-3 py-1 bg-green-700 hover:bg-green-600 text-white rounded-md font-medium ml-2">
+                  Auto-Fill Week
+                </button>
+              )}
+              {weekSchedule.length > 0 && (
+                <button onClick={handlePrint} className="text-[10px] px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-md font-medium ml-1">
+                  <Printer className="w-3 h-3 inline mr-1" />Print
+                </button>
+              )}
             </div>
 
             {/* Crew schedules */}
@@ -825,6 +911,20 @@ export default function RampUpPage() {
                   placeholder="Search name, city, project ID..."
                   className="w-full pl-3 pr-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
               </div>
+              <select value={stageFilter} onChange={e => setStageFilter(e.target.value)}
+                className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-[10px] text-white">
+                <option value="">All Stages</option>
+                {['evaluation', 'survey', 'design', 'permit', 'install', 'inspection'].map(s => (
+                  <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                ))}
+              </select>
+              <select value={financierFilter} onChange={e => setFinancierFilter(e.target.value)}
+                className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-[10px] text-white">
+                <option value="">All Financiers</option>
+                {[...new Set(projects.map(p => p.financier).filter(Boolean))].sort().map(f => (
+                  <option key={f} value={f!}>{f}</option>
+                ))}
+              </select>
               <div className="flex gap-1">
                 {([1, 2, 3, 4] as Tier[]).map(t => (
                   <button key={t} onClick={() => setTierFilter(tierFilter === t ? null : t)}
@@ -832,14 +932,22 @@ export default function RampUpPage() {
                     T{t} ({tierCounts[t].count})
                   </button>
                 ))}
-                {tierFilter && <button onClick={() => setTierFilter(null)} className="text-[10px] text-gray-400 ml-1">All</button>}
+                {(tierFilter || stageFilter || financierFilter) && <button onClick={() => { setTierFilter(null); setStageFilter(''); setFinancierFilter('') }} className="text-[10px] text-gray-400 ml-1">Clear</button>}
               </div>
               <span className="text-[10px] text-gray-500 ml-auto">
-                {unscheduled.filter(p => (!tierFilter || p.tier === tierFilter) && (!queueSearch || p.name.toLowerCase().includes(queueSearch.toLowerCase()) || p.id.toLowerCase().includes(queueSearch.toLowerCase()) || (p.city ?? '').toLowerCase().includes(queueSearch.toLowerCase()))).length} projects
+                {unscheduled.filter(p => {
+                  if (tierFilter && p.tier !== tierFilter) return false
+                  if (stageFilter && p.stage !== stageFilter) return false
+                  if (financierFilter && p.financier !== financierFilter) return false
+                  if (queueSearch) { const q = queueSearch.toLowerCase(); if (!p.name.toLowerCase().includes(q) && !p.id.toLowerCase().includes(q) && !(p.city ?? '').toLowerCase().includes(q)) return false }
+                  return true
+                }).length} projects
               </span>
             </div>
             {unscheduled.filter(p => {
               if (tierFilter && p.tier !== tierFilter) return false
+              if (stageFilter && p.stage !== stageFilter) return false
+              if (financierFilter && p.financier !== financierFilter) return false
               if (queueSearch) {
                 const q = queueSearch.toLowerCase()
                 if (!p.name.toLowerCase().includes(q) && !p.id.toLowerCase().includes(q) && !(p.city ?? '').toLowerCase().includes(q)) return false
