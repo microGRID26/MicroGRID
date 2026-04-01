@@ -16,7 +16,7 @@ export function isInternalEmail(email: string | null | undefined): boolean {
 
 export function fmt$(n: number | null | undefined): string {
   if (!n) return '$0'
-  return '$' + Number(n).toLocaleString()
+  return '$' + Math.round(Number(n)).toLocaleString()
 }
 
 export function fmtDate(d: string | null | undefined): string {
