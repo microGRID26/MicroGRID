@@ -52,21 +52,15 @@ export const DEPARTMENTS = [
   'Funding', 'Payroll', 'HR', 'Accounting', 'Dealer',
 ]
 
-export const STAGE_ORDER = ['evaluation', 'survey', 'design', 'permit', 'install', 'inspection', 'complete']
-export const STAGE_LABELS: Record<string, string> = {
-  evaluation: 'Evaluation', survey: 'Site Survey', design: 'Design',
-  permit: 'Permitting', install: 'Installation', inspection: 'Inspection', complete: 'Complete',
-}
+export { STAGE_ORDER, STAGE_LABELS, SLA_THRESHOLDS } from '@/lib/utils'
+import { STAGE_ORDER as _SO, SLA_THRESHOLDS } from '@/lib/utils'
 
-export const DEFAULT_SLA: SLAThreshold[] = [
-  { stage: 'evaluation', target: 3,  risk: 4,  crit: 6  },
-  { stage: 'survey',     target: 3,  risk: 5,  crit: 10 },
-  { stage: 'design',     target: 3,  risk: 5,  crit: 10 },
-  { stage: 'permit',     target: 21, risk: 30, crit: 45 },
-  { stage: 'install',    target: 5,  risk: 7,  crit: 10 },
-  { stage: 'inspection', target: 14, risk: 21, crit: 30 },
-  { stage: 'complete',   target: 3,  risk: 5,  crit: 7  },
-]
+export const DEFAULT_SLA: SLAThreshold[] = _SO.map(stage => ({
+  stage,
+  target: SLA_THRESHOLDS[stage]?.target ?? 3,
+  risk: SLA_THRESHOLDS[stage]?.risk ?? 5,
+  crit: SLA_THRESHOLDS[stage]?.crit ?? 7,
+}))
 
 export const AVATAR_COLORS = [
   '#ef4444','#f97316','#eab308','#22c55e','#14b8a6',
