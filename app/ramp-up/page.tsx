@@ -44,6 +44,21 @@ function getTierKey(miles: number): TierKey | null {
   if (miles <= 24) return 'D'
   return null
 }
+
+// Map stages to field activity types (Mark's language)
+const FIELD_ACTIVITIES = [
+  { key: 'all', label: 'All' },
+  { key: 'survey', label: 'Surveys', stages: ['evaluation', 'survey'] },
+  { key: 'install', label: 'Installs', stages: ['install'] },
+  { key: 'inspection', label: 'Inspections', stages: ['inspection'] },
+  { key: 'permit', label: 'Permitting', stages: ['permit'] },
+  { key: 'design', label: 'Design', stages: ['design'] },
+]
+function stageMatchesActivity(stage: string, activityKey: string): boolean {
+  if (activityKey === 'all') return true
+  const activity = FIELD_ACTIVITIES.find(a => a.key === activityKey)
+  return activity?.stages?.includes(stage) ?? false
+}
 const TIER_COLOR_MAP: Record<TierKey, string> = { A: '#22c55e', B: '#3b82f6', C: '#f59e0b', D: '#6b7280' }
 
 const CREW_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ec4899'] // green, blue, amber, pink
@@ -101,6 +116,7 @@ export default function RampUpPage() {
   const [clusterFocusId, setClusterFocusId] = useState<string | null>(null)
   const [clusterRouteIds, setClusterRouteIds] = useState<Set<string>>(new Set())
   const [showClusterRoute, setShowClusterRoute] = useState(false)
+  const [clusterJobFilter, setClusterJobFilter] = useState<string>('all')
   const [showGuide, setShowGuide] = useState(() => {
     if (typeof window === 'undefined') return true
     return localStorage.getItem('mg_rampup_guide_dismissed') !== 'true'
@@ -561,13 +577,14 @@ export default function RampUpPage() {
     const result: any[] = []
     for (const p of projects) {
       if (p.id === clusterFocusProject.id) continue
+      if (!stageMatchesActivity(p.stage, clusterJobFilter)) continue
       const distance = haversineDistance(clusterFocusProject.lat, clusterFocusProject.lng, p.lat, p.lng)
       const tier = getTierKey(distance)
       if (tier) result.push({ ...p, distance, tier })
     }
     result.sort((a: any, b: any) => a.distance - b.distance)
     return result
-  }, [clusterFocusProject, projects])
+  }, [clusterFocusProject, projects, clusterJobFilter])
   const clusterTierCounts = useMemo(() => {
     const c: Record<TierKey, number> = { A: 0, B: 0, C: 0, D: 0 }
     for (const p of clusterNearby) c[p.tier as TierKey]++
@@ -989,6 +1006,26 @@ export default function RampUpPage() {
                           </div>
                         ))}
                       </div>
+                      {/* Job type filter */}
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {FIELD_ACTIVITIES.map(a => (
+                          <button key={a.key} onClick={() => { setClusterJobFilter(a.key); setClusterRouteIds(new Set()); setShowClusterRoute(false) }}
+                            className={cn('text-[9px] px-1.5 py-0.5 rounded', clusterJobFilter === a.key ? 'bg-green-900 text-green-300' : 'bg-gray-800 text-gray-500')}>
+                            {a.label}
+                          </button>
+                        ))}
+                      </div>
+                      {/* Best Bundle auto-select */}
+                      {clusterNearby.length > 0 && (
+                        <button onClick={() => {
+                          const best = clusterNearby.filter(p => p.tier === 'A' || p.tier === 'B').slice(0, 6)
+                          if (best.length === 0) { const fallback = clusterNearby.slice(0, 4); setClusterRouteIds(new Set(fallback.map(p => p.id))) }
+                          else setClusterRouteIds(new Set(best.map(p => p.id)))
+                          setShowClusterRoute(true)
+                        }} className="w-full mt-2 text-[10px] px-2 py-1 bg-green-900/40 text-green-400 rounded hover:bg-green-900/60 font-medium">
+                          Best Bundle ({clusterNearby.filter(p => p.tier === 'A' || p.tier === 'B').length || Math.min(clusterNearby.length, 4)} closest)
+                        </button>
+                      )}
                     </div>
                     {clusterRouteIds.size > 0 && (
                       <div className="p-2 border-b border-gray-700 flex-shrink-0 space-y-1">
@@ -1023,7 +1060,7 @@ export default function RampUpPage() {
                                 <input type="checkbox" checked={clusterRouteIds.has(p.id)} readOnly className="mt-0.5 rounded border-gray-600 text-green-500 focus:ring-0 flex-shrink-0" />
                                 <div className="flex-1 min-w-0">
                                   <div className="text-[11px] text-white font-medium truncate">{p.name}</div>
-                                  <div className="text-[9px] text-gray-500">{p.id} · {p.distance.toFixed(1)} mi · {p.systemkw ?? '—'} kW</div>
+                                  <div className="text-[9px] text-gray-500">{p.id} · {p.distance.toFixed(1)} mi · {STAGE_LABELS[p.stage] ?? p.stage} · {p.systemkw ?? '—'} kW</div>
                                 </div>
                                 {showClusterRoute && clusterRouteIds.has(p.id) && (
                                   <span className="text-[10px] font-bold text-green-400">#{clusterRoutePoints.findIndex(r => r.id === p.id) + 1}</span>
