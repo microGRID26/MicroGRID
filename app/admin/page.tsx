@@ -136,7 +136,7 @@ export default function AdminPage() {
             {activeModule === 'users'   && <UsersManager currentUserRole={authUser?.role ?? 'user'} />}
             {activeModule === 'crews'   && <CrewsManager />}
             {activeModule === 'sla'     && <SLAManager />}
-            {activeModule === 'permissions' && <PermissionMatrix />}
+            {activeModule === 'permissions' && <PermissionMatrix isSuperAdmin={isSuperAdmin} />}
             {activeModule === 'queue_config' && <QueueConfigManager />}
             {activeModule === 'doc_requirements' && <DocumentRequirementsManager isSuperAdmin={isSuperAdmin} />}
             {activeModule === 'email_onboarding' && <EmailManager isSuperAdmin={isSuperAdmin} currentUserEmail={authUser?.email ?? undefined} currentUserName={authUser?.name ?? undefined} />}
