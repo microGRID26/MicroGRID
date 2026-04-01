@@ -47,6 +47,8 @@ export { loadPayScales, addPayScale, updatePayScale, deletePayScale, loadPayDist
 export type { PayScale, PayDistribution, SalesTeam, SalesRep, OnboardingRequirement, OnboardingDocument, RepStatus, OnboardingDocStatus, SalesRepFilters, OverrideBreakdown, DistributionLine } from './sales-teams'
 export { loadCommissionConfig, updateCommissionConfig, calculateProjectCommission, loadAdvances, createAdvance, updateAdvance, clawbackAdvance, loadPendingClawbacks, calculateDaysSinceSale, isClawbackEligible, ADVANCE_STATUSES, ADVANCE_STATUS_LABELS, ADVANCE_STATUS_BADGE, EC_DEFAULTS } from './commission-advanced'
 export type { CommissionConfig, CommissionAdvance, AdvanceStatus, ProjectCommissionInput, RoleDistribution, CommissionLineItem, ProjectCommissionBreakdown, AdvanceFilters } from './commission-advanced'
+export { loadTickets, loadTicket, loadProjectTickets, createTicket, updateTicket, updateTicketStatus, loadTicketComments, addTicketComment, loadTicketHistory, addTicketHistory, loadTicketCategories, loadResolutionCodes, generateTicketNumber, getValidTransitions as getValidTicketTransitions, getSLAStatus, TICKET_STATUSES, TICKET_STATUS_LABELS, TICKET_STATUS_COLORS, TICKET_PRIORITIES, TICKET_PRIORITY_COLORS, TICKET_CATEGORIES, TICKET_CATEGORY_COLORS, TICKET_SOURCES } from './tickets'
+export type { Ticket, TicketComment, TicketHistory, TicketCategory, TicketResolutionCode, TicketStatus } from './tickets'
 export { loadTimeEntries, getOpenEntry, clockIn, clockOut, loadTodayEntries, sumDuration } from './time-entries'
 export type { TimeEntry } from './time-entries'
 export { loadSavedQueries, saveQuery, updateSavedQuery, deleteSavedQuery, recordQueryRun } from './saved-queries'

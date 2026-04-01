@@ -68,15 +68,15 @@ describe('getSLA with real thresholds', () => {
     expect(result.status).toBe('ok')
   })
 
-  it('evaluation at 3 days = warn', async () => {
+  it('evaluation at 4 days = warn', async () => {
     const { getSLA } = await import('@/lib/classify')
-    const result = getSLA({ stage: 'evaluation', stage_date: daysAgoDate(3) } as any)
+    const result = getSLA({ stage: 'evaluation', stage_date: daysAgoDate(4) } as any)
     expect(result.status).toBe('warn')
   })
 
-  it('evaluation at 6 days = crit', async () => {
+  it('evaluation at 7 days = crit', async () => {
     const { getSLA } = await import('@/lib/classify')
-    const result = getSLA({ stage: 'evaluation', stage_date: daysAgoDate(6) } as any)
+    const result = getSLA({ stage: 'evaluation', stage_date: daysAgoDate(7) } as any)
     expect(result.status).toBe('crit')
   })
 

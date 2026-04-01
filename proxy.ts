@@ -24,6 +24,7 @@ const ROUTE_ROLE_REQUIREMENTS: { prefix: string; minLevel: number; label: string
   { prefix: '/funding', minLevel: 2, label: 'manager' },
   { prefix: '/ntp', minLevel: 2, label: 'manager' },
   { prefix: '/inventory', minLevel: 2, label: 'manager' },
+  { prefix: '/tickets', minLevel: 2, label: 'manager' },
   { prefix: '/service', minLevel: 2, label: 'manager' },
   { prefix: '/work-orders', minLevel: 2, label: 'manager' },
   { prefix: '/warranty', minLevel: 2, label: 'manager' },
