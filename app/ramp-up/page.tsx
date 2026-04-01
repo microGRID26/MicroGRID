@@ -930,8 +930,8 @@ export default function RampUpPage() {
                       </CircleMarker>
                     )
                   })}
-                  {/* Suggested projects — clickable for clustering */}
-                  {suggestions.filter(p => !scheduledIds.has(p.id)).map(p => {
+                  {/* All projects as background dots — clickable for clustering */}
+                  {projects.filter(p => !scheduledIds.has(p.id) && p.lat !== 0).map(p => {
                     const nearbyInfo = clusterNearby.find(n => n.id === p.id)
                     const isClusterFocus = p.id === clusterFocusId
                     const inClusterRoute = clusterRouteIds.has(p.id)
