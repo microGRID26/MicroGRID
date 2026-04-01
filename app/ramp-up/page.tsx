@@ -381,6 +381,15 @@ export default function RampUpPage() {
                               <div className="text-[10px] text-gray-500 mt-0.5">
                                 {project.systemkw}kW · {fmt$(Number(project.contract) || 0)} · Tier {project.tier}
                               </div>
+                              {/* Install date picker */}
+                              <div className="flex items-center gap-2 mt-2">
+                                <label className="text-[10px] text-gray-500">Install Date:</label>
+                                <input type="date" value={job.scheduled_day ?? ''}
+                                  onChange={e => updateScheduleEntry(job.id, { scheduled_day: e.target.value || null } as any).then(loadAll)}
+                                  min={selectedWeek}
+                                  className="bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-[10px] text-white focus:outline-none focus:border-green-500" />
+                                {job.scheduled_day && <span className="text-[10px] text-green-400">{fmtDate(job.scheduled_day)}</span>}
+                              </div>
                               <div className="flex gap-2 mt-2">
                                 {job.status === 'planned' && (
                                   <button onClick={() => updateScheduleEntry(job.id, { status: 'confirmed' }).then(loadAll)}
@@ -412,7 +421,7 @@ export default function RampUpPage() {
               <div className="bg-gray-800 rounded-lg p-4">
                 <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> Week Route Summary</h4>
                 <div className="flex gap-6 text-xs">
-                  <div><span className="text-gray-500">Total Distance:</span> <span className="text-white font-medium">{weekRoute.totalMiles} mi</span></div>
+                  <div><span className="text-gray-500">Total Distance:</span> <span className="text-white font-medium">{Math.round(weekRoute.totalMiles * 10) / 10} mi</span></div>
                   <div><span className="text-gray-500">Total Drive Time:</span> <span className="text-white font-medium">{Math.round(weekRoute.totalMinutes / 60 * 10) / 10} hrs</span></div>
                   <div><span className="text-gray-500">Stops:</span> <span className="text-white font-medium">{weekRoute.ordered.length}</span></div>
                 </div>
@@ -420,7 +429,7 @@ export default function RampUpPage() {
                   {weekRoute.legs.map((leg, i) => (
                     <React.Fragment key={i}>
                       <span className={leg.from === 'Warehouse' || leg.to === 'Warehouse' ? 'text-amber-400' : 'text-gray-300'}>{leg.from === 'Warehouse' ? '🏭' : ''}{leg.from.slice(0, 20)}</span>
-                      <span className="text-gray-600">→ {leg.miles}mi</span>
+                      <span className="text-gray-600">→ {Math.round(leg.miles * 10) / 10}mi</span>
                     </React.Fragment>
                   ))}
                   <span className="text-amber-400">🏭 Warehouse</span>
