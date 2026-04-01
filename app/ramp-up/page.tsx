@@ -397,16 +397,24 @@ export default function RampUpPage() {
   const prevWeek = () => { if (weekIdx > 0) setSelectedWeek(weeks[weekIdx - 1]) }
   const nextWeek = () => { if (weekIdx < weeks.length - 1) setSelectedWeek(weeks[weekIdx + 1]) }
 
-  // Route for the week
-  const weekRoute = useMemo(() => {
-    if (!config || weekSchedule.length === 0) return null
-    const points: RoutePoint[] = weekSchedule.map(s => {
-      const p = projects.find(pr => pr.id === s.project_id)
-      return p ? { id: p.id, lat: p.lat, lng: p.lng, label: `${p.name} (${p.id})` } : null
-    }).filter(Boolean) as RoutePoint[]
-    if (points.length === 0) return null
-    return optimizeRoute({ lat: config.warehouse_lat, lng: config.warehouse_lng }, points)
-  }, [weekSchedule, projects, config])
+  // Route for the week — per crew
+  const weekRoutes = useMemo(() => {
+    if (!config || weekSchedule.length === 0) return new Map<string, ReturnType<typeof optimizeRoute>>()
+    const routes = new Map<string, ReturnType<typeof optimizeRoute>>()
+    const warehouse = { lat: config.warehouse_lat, lng: config.warehouse_lng }
+    for (const crew of crewNames) {
+      const crewJobs = weekSchedule.filter(s => s.crew_name === crew)
+      const points: RoutePoint[] = crewJobs.map(s => {
+        const p = projects.find(pr => pr.id === s.project_id)
+        return p ? { id: p.id, lat: p.lat, lng: p.lng, label: `${p.name} (${p.id})` } : null
+      }).filter(Boolean) as RoutePoint[]
+      if (points.length > 0) routes.set(crew, optimizeRoute(warehouse, points))
+    }
+    return routes
+  }, [weekSchedule, projects, config, crewNames])
+
+  const totalWeekMiles = [...weekRoutes.values()].reduce((sum, r) => sum + r.totalMiles, 0)
+  const totalWeekMinutes = [...weekRoutes.values()].reduce((sum, r) => sum + r.totalMinutes, 0)
 
   if (authLoading) return <div className="min-h-screen bg-gray-950"><Nav active="Ramp-Up" /></div>
   if (!isManager) return <div className="min-h-screen bg-gray-950"><Nav active="Ramp-Up" /><div className="max-w-7xl mx-auto px-4 py-20 text-center text-gray-500">Not authorized.</div></div>
@@ -595,24 +603,34 @@ export default function RampUpPage() {
               })}
             </div>
 
-            {/* Route Summary */}
-            {weekRoute && (
-              <div className="bg-gray-800 rounded-lg p-4">
-                <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> Week Route Summary</h4>
-                <div className="flex gap-6 text-xs">
-                  <div><span className="text-gray-500">Total Distance:</span> <span className="text-white font-medium">{Math.round(weekRoute.totalMiles * 10) / 10} mi</span></div>
-                  <div><span className="text-gray-500">Total Drive Time:</span> <span className="text-white font-medium">{Math.round(weekRoute.totalMinutes / 60 * 10) / 10} hrs</span></div>
-                  <div><span className="text-gray-500">Stops:</span> <span className="text-white font-medium">{weekRoute.ordered.length}</span></div>
+            {/* Route Summary — per crew */}
+            {weekRoutes.size > 0 && (
+              <div className="bg-gray-800 rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> Week Route Summary</h4>
+                  <div className="flex gap-4 text-xs">
+                    <span className="text-gray-500">Total: <span className="text-white font-medium">{Math.round(totalWeekMiles * 10) / 10} mi</span></span>
+                    <span className="text-gray-500">Drive: <span className="text-white font-medium">{Math.round(totalWeekMinutes / 60 * 10) / 10} hrs</span></span>
+                  </div>
                 </div>
-                <div className="mt-2 flex items-center gap-1 text-[10px] text-gray-500 flex-wrap">
-                  {weekRoute.legs.map((leg, i) => (
-                    <React.Fragment key={i}>
-                      <span className={leg.from === 'Warehouse' || leg.to === 'Warehouse' ? 'text-amber-400' : 'text-gray-300'}>{leg.from === 'Warehouse' ? '🏭' : ''}{leg.from.slice(0, 20)}</span>
-                      <span className="text-gray-600">→ {Math.round(leg.miles * 10) / 10}mi</span>
-                    </React.Fragment>
-                  ))}
-                  <span className="text-amber-400">🏭 Warehouse</span>
-                </div>
+                {[...weekRoutes.entries()].map(([crew, route], ci) => (
+                  <div key={crew} className="border-t border-gray-700 pt-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CREW_COLORS[ci] ?? '#6b7280' }} />
+                      <span className="text-xs font-medium text-white">{crew}</span>
+                      <span className="text-[10px] text-gray-500">{Math.round(route.totalMiles * 10) / 10} mi · {Math.round(route.totalMinutes)} min · {route.ordered.length} stops</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-[10px] text-gray-500 flex-wrap">
+                      {route.legs.map((leg, i) => (
+                        <React.Fragment key={i}>
+                          <span className={leg.from === 'Warehouse' || leg.to === 'Warehouse' ? 'text-amber-400' : 'text-gray-300'}>{leg.from === 'Warehouse' ? '🏭 ' : ''}{leg.from.slice(0, 25)}</span>
+                          <span className="text-gray-600">→ {Math.round(leg.miles * 10) / 10}mi</span>
+                        </React.Fragment>
+                      ))}
+                      <span className="text-amber-400">🏭</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
