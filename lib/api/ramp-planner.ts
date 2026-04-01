@@ -144,12 +144,12 @@ export function estimateDriveMinutes(miles: number): number {
 // 0-100 based on checklist items. Each item has a weight.
 
 export const READINESS_WEIGHTS = [
-  { field: 'ntp_approved', label: 'NTP Approved', weight: 25, hardBlocker: true },
+  { field: 'ntp_approved', label: 'NTP Approved', weight: 20, hardBlocker: true },
   { field: 'redesign_complete', label: 'Redesign Done', weight: 20, hardBlocker: true },
-  { field: 'ext_scope_clear', label: 'Ext Scope Clear', weight: 15, hardBlocker: true },
-  { field: 'permit_clear', label: 'Permit Clear', weight: 15, hardBlocker: false },
-  { field: 'equipment_ready', label: 'Equipment', weight: 15, hardBlocker: false },
-  { field: 'utility_approved', label: 'Utility', weight: 5, hardBlocker: false },
+  { field: 'ext_scope_clear', label: 'Ext Scope Clear', weight: 20, hardBlocker: true },
+  { field: 'equipment_ready', label: 'Equipment', weight: 20, hardBlocker: true },
+  { field: 'utility_approved', label: 'Utility', weight: 10, hardBlocker: false },
+  { field: 'permit_clear', label: 'Permit Clear', weight: 5, hardBlocker: false },
   { field: 'hoa_approved', label: 'HOA', weight: 5, hardBlocker: false },
 ] as const
 
@@ -217,8 +217,8 @@ export async function loadRampConfig(): Promise<RampConfig> {
     warehouse_address: map.get('warehouse_address') ?? '600 Northpark Central Dr, Houston TX 77073',
     crews_count: parseInt(map.get('crews_count') ?? '2'),
     installs_per_crew_per_week: parseInt(map.get('installs_per_crew_per_week') ?? '2'),
-    weight_readiness: parseFloat(map.get('weight_readiness') ?? '0.40'),
-    weight_proximity: parseFloat(map.get('weight_proximity') ?? '0.30'),
+    weight_readiness: parseFloat(map.get('weight_readiness') ?? '0.50'),
+    weight_proximity: parseFloat(map.get('weight_proximity') ?? '0.20'),
     weight_cluster: parseFloat(map.get('weight_cluster') ?? '0.15'),
     weight_value: parseFloat(map.get('weight_value') ?? '0.15'),
     primary_market: map.get('primary_market') ?? 'Houston',
