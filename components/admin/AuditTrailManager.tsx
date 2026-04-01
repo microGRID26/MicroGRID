@@ -8,12 +8,16 @@ import { AuditChange, AuditTab, DateRange, formatDuration, isOnline, getDateRang
 
 type AuditSession = UserSession
 
+type SessionSortCol = 'status' | 'user_name' | 'user_email' | 'logged_in_at' | 'last_active_at' | 'duration' | 'page'
+
 function SessionsTab() {
   const supabase = db()
   const [sessions, setSessions] = useState<AuditSession[]>([])
   const [userFilter, setUserFilter] = useState('')
   const [dateRange, setDateRange] = useState<DateRange>('today')
   const [userNames, setUserNames] = useState<string[]>([])
+  const [sortCol, setSortCol] = useState<SessionSortCol>('logged_in_at')
+  const [sortAsc, setSortAsc] = useState(false)
 
   const load = useCallback(async () => {
     let q = supabase
@@ -53,6 +57,37 @@ function SessionsTab() {
 
   const onlineCount = sessions.filter(s => isOnline(s.last_active_at)).length
 
+  const handleSort = (col: SessionSortCol) => {
+    if (sortCol === col) setSortAsc(!sortAsc)
+    else { setSortCol(col); setSortAsc(col === 'user_name') }
+  }
+
+  const getDuration = (s: AuditSession) => new Date(s.last_active_at).getTime() - new Date(s.logged_in_at).getTime()
+
+  const sorted = [...sessions].sort((a, b) => {
+    let cmp = 0
+    switch (sortCol) {
+      case 'status': cmp = (isOnline(a.last_active_at) ? 0 : 1) - (isOnline(b.last_active_at) ? 0 : 1); break
+      case 'user_name': cmp = (a.user_name ?? '').localeCompare(b.user_name ?? ''); break
+      case 'user_email': cmp = (a.user_email ?? '').localeCompare(b.user_email ?? ''); break
+      case 'logged_in_at': cmp = a.logged_in_at.localeCompare(b.logged_in_at); break
+      case 'last_active_at': cmp = a.last_active_at.localeCompare(b.last_active_at); break
+      case 'duration': cmp = getDuration(a) - getDuration(b); break
+      case 'page': cmp = (a.page ?? '').localeCompare(b.page ?? ''); break
+    }
+    return sortAsc ? cmp : -cmp
+  })
+
+  const COLS: { key: SessionSortCol; label: string }[] = [
+    { key: 'status', label: 'Status' },
+    { key: 'user_name', label: 'User' },
+    { key: 'user_email', label: 'Email' },
+    { key: 'logged_in_at', label: 'Logged In' },
+    { key: 'last_active_at', label: 'Last Active' },
+    { key: 'duration', label: 'Duration' },
+    { key: 'page', label: 'Page' },
+  ]
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between mb-3">
@@ -89,13 +124,17 @@ function SessionsTab() {
         <table className="w-full text-xs">
           <thead className="sticky top-0 bg-gray-900 border-b border-gray-800">
             <tr>
-              {['Status', 'User', 'Email', 'Logged In', 'Last Active', 'Duration', 'Page'].map(h => (
-                <th key={h} className="text-left px-3 py-2.5 text-gray-400 font-medium whitespace-nowrap">{h}</th>
+              {COLS.map(col => (
+                <th key={col.key}
+                  onClick={() => handleSort(col.key)}
+                  className="text-left px-3 py-2.5 text-gray-400 font-medium whitespace-nowrap cursor-pointer hover:text-white select-none">
+                  {col.label} {sortCol === col.key && (sortAsc ? '↑' : '↓')}
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {sessions.map((s, i) => (
+            {sorted.map((s, i) => (
               <tr key={s.id} className={cn(
                 'border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors',
                 i % 2 !== 0 && 'bg-gray-900/20'
