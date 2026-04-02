@@ -9,11 +9,18 @@ import { Leadership, PipelineHealth, ByPM, FundingTab, CycleTimes, Dealers, PERI
 import type { Period, AnalyticsData } from '@/components/analytics'
 import type { ProjectFunding } from '@/types/database'
 
-type Tab = 'leadership' | 'pipeline' | 'pm' | 'funding_analytics' | 'cycle' | 'dealers'
+import dynamic from 'next/dynamic'
+const OpsTab = dynamic(() => import('@/app/ops/page').then(m => {
+  // Wrap the page component to render without Nav
+  const Comp = (m as any).OpsTabContent ?? m.default
+  return { default: Comp }
+}), { ssr: false, loading: () => <div className="text-center py-10 text-gray-500">Loading operations...</div> })
+
+type Tab = 'leadership' | 'pipeline' | 'pm' | 'funding_analytics' | 'cycle' | 'dealers' | 'ops'
 
 const TAB_LABELS: Record<Tab, string> = {
   leadership: 'Leadership', pipeline: 'Pipeline Health', pm: 'By PM',
-  funding_analytics: 'Funding', cycle: 'Cycle Times', dealers: 'Dealers',
+  funding_analytics: 'Funding', cycle: 'Cycle Times', dealers: 'Dealers', ops: 'Operations',
 }
 
 export default function AnalyticsPage() {
@@ -141,6 +148,7 @@ export default function AnalyticsPage() {
         {tab === 'funding_analytics' && <FundingTab data={analyticsData} />}
         {tab === 'cycle' && <CycleTimes data={analyticsData} />}
         {tab === 'dealers' && <Dealers data={analyticsData} />}
+        {tab === 'ops' && <OpsTab />}
       </div>
     </div>
   )
