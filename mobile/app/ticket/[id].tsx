@@ -192,7 +192,7 @@ export default function TicketDetailScreen() {
     const ext = asset.name.split('.').pop() ?? 'file'
     const isImage = asset.mimeType?.startsWith('image/') ?? false
 
-    const imageUrl = await uploadTicketPhoto(asset.uri, id)
+    const imageUrl = await uploadTicketPhoto(asset.uri, id, asset.mimeType ?? undefined, ext)
     if (imageUrl) {
       const label = isImage ? '📷 Photo' : `📎 ${asset.name}`
       await addComment(id, label, customerName, imageUrl)

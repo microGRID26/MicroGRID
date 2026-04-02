@@ -61,7 +61,11 @@ export default function ChatScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: 16, paddingTop: 56, paddingBottom: 16 }}
       >
-        {messages.length === 0 && customerName ? (
+        {messages.length === 0 && !customerName ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator color={colors.accent} />
+          </View>
+        ) : messages.length === 0 && customerName ? (
           /* Welcome */
           <View style={{ alignItems: 'center', justifyContent: 'center', paddingTop: 80 }}>
             <View style={{

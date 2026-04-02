@@ -58,39 +58,3 @@ export function clearCache(): void {
   Object.keys(memCache).forEach(k => delete memCache[k])
 }
 
-/**
- * Stale-while-revalidate pattern:
- * 1. Return cached data immediately (if available)
- * 2. Fetch fresh data in background
- * 3. Update cache and call onUpdate with new data
- */
-export async function cachedFetch<T>(
-  key: string,
-  fetcher: () => Promise<T>,
-  onUpdate: (data: T) => void,
-): Promise<T | null> {
-  const cached = getCache<T>(key)
-
-  if (cached && !isCacheStale(key)) {
-    // Fresh cache — use it, no fetch needed
-    return cached
-  }
-
-  if (cached) {
-    // Stale cache — return it immediately, fetch in background
-    fetcher().then(fresh => {
-      setCache(key, fresh)
-      onUpdate(fresh)
-    }).catch(() => {})
-    return cached
-  }
-
-  // No cache — fetch and wait
-  try {
-    const fresh = await fetcher()
-    setCache(key, fresh)
-    return fresh
-  } catch {
-    return null
-  }
-}

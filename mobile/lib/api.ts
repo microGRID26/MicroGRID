@@ -152,10 +152,10 @@ const MIME_MAP: Record<string, string> = {
   csv: 'text/csv', txt: 'text/plain',
 }
 
-export async function uploadTicketPhoto(uri: string, ticketId: string): Promise<string | null> {
+export async function uploadTicketPhoto(uri: string, ticketId: string, overrideMime?: string, overrideExt?: string): Promise<string | null> {
   try {
-    const ext = uri.split('.').pop()?.toLowerCase() ?? 'jpg'
-    const mimeType = MIME_MAP[ext] ?? 'application/octet-stream'
+    const ext = overrideExt ?? uri.split('.').pop()?.toLowerCase() ?? 'jpg'
+    const mimeType = overrideMime ?? MIME_MAP[ext] ?? 'application/octet-stream'
     const fileName = `${ticketId}/${Date.now()}.${ext}`
 
     // Read file as base64 via fetch + arraybuffer (works on iOS/Android)
