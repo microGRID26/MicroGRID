@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { View, Text, ScrollView, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native'
+import { View, Text, ScrollView, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, Image } from 'react-native'
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router'
 import { Feather } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import * as SecureStore from 'expo-secure-store'
+import * as ImagePicker from 'expo-image-picker'
 import { theme, useThemeColors } from '../../lib/theme'
 import { supabase } from '../../lib/supabase'
-import { loadComments, addComment, getCustomerAccount } from '../../lib/api'
+import { loadComments, addComment, getCustomerAccount, uploadTicketPhoto } from '../../lib/api'
 import type { TicketComment } from '../../lib/types'
 
 const STATUS_LABELS: Record<string, string> = {
@@ -41,6 +42,7 @@ export default function TicketDetailScreen() {
   const [comments, setComments] = useState<TicketComment[]>([])
   const [newComment, setNewComment] = useState('')
   const [sending, setSending] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [customerName, setCustomerName] = useState('Customer')
   const [currentStatus, setCurrentStatus] = useState(status ?? 'open')
@@ -126,6 +128,52 @@ export default function TicketDetailScreen() {
     setFeedbackGiven(true)
     const c = await loadComments(id)
     setComments(c)
+  }
+
+  const handlePhoto = async () => {
+    if (!id) return
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.7,
+      allowsEditing: true,
+    })
+
+    if (result.canceled || !result.assets?.[0]) return
+    setUploading(true)
+
+    const imageUrl = await uploadTicketPhoto(result.assets[0].uri, id)
+    if (imageUrl) {
+      await addComment(id, `[Photo attached]`, customerName)
+      const c = await loadComments(id)
+      setComments(c)
+    }
+    setUploading(false)
+  }
+
+  const handleCamera = async () => {
+    if (!id) return
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+
+    const permission = await ImagePicker.requestCameraPermissionsAsync()
+    if (!permission.granted) return
+
+    const result = await ImagePicker.launchCameraAsync({
+      quality: 0.7,
+      allowsEditing: true,
+    })
+
+    if (result.canceled || !result.assets?.[0]) return
+    setUploading(true)
+
+    const imageUrl = await uploadTicketPhoto(result.assets[0].uri, id)
+    if (imageUrl) {
+      await addComment(id, `[Photo attached]`, customerName)
+      const c = await loadComments(id)
+      setComments(c)
+    }
+    setUploading(false)
   }
 
   const isResolved = currentStatus === 'resolved' || currentStatus === 'closed'
@@ -271,14 +319,32 @@ export default function TicketDetailScreen() {
           )}
         </ScrollView>
 
+        {/* Uploading indicator */}
+        {uploading && (
+          <View style={{ backgroundColor: colors.accentLight, padding: 8, alignItems: 'center' }}>
+            <Text style={{ fontSize: 12, color: colors.accent, fontFamily: 'Inter_500Medium' }}>Uploading photo...</Text>
+          </View>
+        )}
+
         {/* Reply input — hidden if resolved */}
         {!isResolved && (
           <View style={{
-            flexDirection: 'row', gap: 8,
-            paddingHorizontal: 16, paddingVertical: 12,
+            flexDirection: 'row', gap: 6,
+            paddingHorizontal: 12, paddingVertical: 12,
             backgroundColor: colors.surface,
             borderTopWidth: 1, borderTopColor: colors.borderLight,
+            alignItems: 'center',
           }}>
+            {/* Camera button */}
+            <TouchableOpacity onPress={handleCamera} activeOpacity={0.6} disabled={uploading}
+              style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', opacity: uploading ? 0.3 : 1 }}>
+              <Feather name="camera" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+            {/* Photo library button */}
+            <TouchableOpacity onPress={handlePhoto} activeOpacity={0.6} disabled={uploading}
+              style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', opacity: uploading ? 0.3 : 1 }}>
+              <Feather name="image" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
             <TextInput
               value={newComment}
               onChangeText={setNewComment}

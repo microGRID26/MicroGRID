@@ -139,6 +139,33 @@ export async function addComment(ticketId: string, message: string, author: stri
   return !error
 }
 
+// ── Photo Upload ────────────────────────────────────────────────────────────
+
+export async function uploadTicketPhoto(uri: string, ticketId: string): Promise<string | null> {
+  try {
+    // Read the file and convert to blob
+    const response = await fetch(uri)
+    const blob = await response.blob()
+    const ext = uri.split('.').pop()?.toLowerCase() ?? 'jpg'
+    const fileName = `${ticketId}/${Date.now()}.${ext}`
+
+    const { error } = await supabase.storage
+      .from('ticket-attachments')
+      .upload(fileName, blob, { contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}` })
+
+    if (error) { console.error('[upload]', error); return null }
+
+    const { data: urlData } = supabase.storage
+      .from('ticket-attachments')
+      .getPublicUrl(fileName)
+
+    return urlData.publicUrl
+  } catch (err) {
+    console.error('[upload] failed:', err)
+    return null
+  }
+}
+
 // ── Atlas Chat ──────────────────────────────────────────────────────────────
 // Uses the Vercel API route (needs ANTHROPIC_API_KEY server-side)
 
