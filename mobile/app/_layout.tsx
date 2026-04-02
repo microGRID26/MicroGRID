@@ -7,6 +7,7 @@ import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_7
 import { supabase } from '../lib/supabase'
 import { ThemeContext, getThemeColors } from '../lib/theme'
 import { registerForPushNotifications } from '../lib/notifications'
+import { loadPersistentCache } from '../lib/cache'
 import type { Session } from '@supabase/supabase-js'
 
 SplashScreen.preventAutoHideAsync()
@@ -26,6 +27,9 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   })
+
+  // Load cached data for instant render
+  useEffect(() => { loadPersistentCache() }, [])
 
   // Listen for auth state changes
   useEffect(() => {
