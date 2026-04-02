@@ -45,7 +45,7 @@ export interface CRMStats {
   serviceCalls: number
 }
 
-export type Module = 'ahj' | 'utility' | 'hoa' | 'financier' | 'equipment' | 'vendors' | 'users' | 'crews' | 'sla' | 'info' | 'releases' | 'feedback' | 'audit' | 'permissions' | 'notifications' | 'queue_config' | 'reasons' | 'doc_requirements' | 'edge_integration' | 'email_onboarding' | 'custom_fields' | 'calendar_sync' | 'feature_flags' | 'organizations' | 'commissions' | 'engineering_config' | 'invoice_rules' | 'pay_scales' | 'pay_distribution' | 'ticket_config'
+export type Module = 'ahj' | 'utility' | 'hoa' | 'financier' | 'equipment' | 'vendors' | 'users' | 'crews' | 'sla' | 'info' | 'releases' | 'feedback' | 'audit' | 'permissions' | 'notifications' | 'queue_config' | 'reasons' | 'doc_requirements' | 'edge_integration' | 'email_onboarding' | 'custom_fields' | 'calendar_sync' | 'feature_flags' | 'organizations' | 'commissions' | 'engineering_config' | 'invoice_rules' | 'pay_scales' | 'pay_distribution' | 'ticket_config' | 'customer_portal'
 
 export const DEPARTMENTS = [
   'Inside Operations', 'Sales', 'Executive', 'Field Operations',
@@ -313,6 +313,10 @@ export const ADMIN_SIDEBAR_ITEMS: SidebarItem[] = [
 // ── System sidebar items (super_admin only) ──────────────────────────────────
 
 export const SYSTEM_SIDEBAR_ITEMS: SidebarItem[] = [
+  {
+    id: 'customer_portal' as Module, label: 'Customer Portal', desc: 'Manage customer accounts',
+    icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>,
+  },
   {
     id: 'organizations' as Module, label: 'Organizations', desc: 'Multi-tenant orgs',
     icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>,

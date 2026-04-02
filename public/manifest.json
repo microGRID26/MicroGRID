@@ -1,0 +1,30 @@
+{
+  "name": "MicroGRID Portal",
+  "short_name": "MicroGRID",
+  "description": "Track your solar installation project — MicroGRID, powered by EDGE",
+  "start_url": "/portal/dashboard",
+  "scope": "/portal/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FAFAF7",
+  "theme_color": "#1D7A5F",
+  "icons": [
+    {
+      "src": "/portal-icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/portal-icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/portal-icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["utilities", "lifestyle"]
+}

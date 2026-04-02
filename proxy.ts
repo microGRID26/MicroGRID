@@ -2,8 +2,8 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // Routes that require no authentication
-const PUBLIC_ROUTES = ['/login', '/auth']
-const PUBLIC_PREFIXES = ['/api/webhooks/', '/api/email/send-daily', '/api/email/onboarding-reminder', '/api/email/digest', '/api/calendar/webhook', '/_next/', '/favicon.ico']
+const PUBLIC_ROUTES = ['/login', '/auth', '/portal/login', '/portal/auth']
+const PUBLIC_PREFIXES = ['/api/webhooks/', '/api/email/send-daily', '/api/email/onboarding-reminder', '/api/email/digest', '/api/calendar/webhook', '/api/portal/', '/_next/', '/favicon.ico']
 
 // Role hierarchy levels (must match lib/useCurrentUser.ts ROLE_LEVEL)
 const ROLE_LEVEL: Record<string, number> = {
@@ -104,12 +104,23 @@ export async function proxy(request: NextRequest) {
   const { data: { user }, error: authError } = await supabase.auth.getUser()
 
   if (authError || !user) {
-    const loginUrl = new URL('/login', request.url)
-    if (pathname !== '/') {
+    // Portal users get redirected to portal login, CRM users to CRM login
+    const isPortalRoute = pathname.startsWith('/portal')
+    const loginUrl = new URL(isPortalRoute ? '/portal/login' : '/login', request.url)
+    if (pathname !== '/' && !isPortalRoute) {
       loginUrl.searchParams.set('redirect', pathname)
     }
     return NextResponse.redirect(loginUrl)
   }
+
+  // Portal routes: authenticated but bypass CRM role check
+  // Portal auth callback already verified customer_accounts row
+  if (pathname.startsWith('/portal')) {
+    return response
+  }
+
+  // CRM routes: prevent portal-only users from accessing CRM
+  // (portal users won't have a users table row)
 
   // Check if this route requires a specific role
   const requirement = getRequiredLevel(pathname)

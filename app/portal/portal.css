@@ -1,0 +1,44 @@
+/* Customer Portal Theme — Earth Tones
+   Brand direction: Pixar meets Tesla — cinematic, polished, premium, warm
+   Colors: earth tones, lighter green accents, softer greys, warm neutrals */
+
+[data-theme="portal"] {
+  --portal-bg: #FAFAF7;
+  --portal-surface: #FFFFFF;
+  --portal-surface-alt: #F5F3EE;
+  --portal-surface-hover: #EDEAE3;
+  --portal-border: #E2DFD6;
+  --portal-border-light: #F0EDE6;
+  --portal-text: #1A1A18;
+  --portal-text-secondary: #5C5A52;
+  --portal-text-muted: #8A877D;
+  --portal-accent: #1D7A5F;
+  --portal-accent-light: #E8F5EE;
+  --portal-accent-dark: #145C47;
+  --portal-accent-text: #FFFFFF;
+  --portal-warm: #C4922A;
+  --portal-warm-light: #FFF8E7;
+  --portal-error: #C53030;
+  --portal-error-light: #FFF5F5;
+  --portal-info: #2563EB;
+  --portal-info-light: #EFF6FF;
+
+  /* Stage colors */
+  --portal-stage-complete: #1D7A5F;
+  --portal-stage-active: #2563EB;
+  --portal-stage-upcoming: #D1CFC8;
+  --portal-stage-active-pulse: #93C5FD;
+}
+
+/* App-native overrides */
+[data-theme="portal"] body {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
+}
+
+[data-theme="portal"] input,
+[data-theme="portal"] textarea,
+[data-theme="portal"] select {
+  font-size: 16px; /* prevents iOS zoom on focus */
+}

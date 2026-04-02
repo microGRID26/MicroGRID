@@ -14,6 +14,7 @@ import { EdgeIntegrationManager } from '@/components/admin/EdgeIntegrationManage
 import { CalendarSyncManager } from '@/components/admin/CalendarSyncManager'
 import { FeatureFlagManager } from '@/components/admin/FeatureFlagManager'
 import { OrgManager } from '@/components/admin/OrgManager'
+import { CustomerPortalManager } from '@/components/admin/CustomerPortalManager'
 
 export default function SystemPage() {
   const { user: authUser, loading } = useCurrentUser()
@@ -114,6 +115,7 @@ export default function SystemPage() {
             <h1 className="text-sm font-semibold text-white">{activeItem?.label}</h1>
           </div>
           <div className="flex-1 overflow-hidden p-6">
+            {activeModule === 'customer_portal' && <CustomerPortalManager />}
             {activeModule === 'organizations' && <OrgManager isSuperAdmin={isSuperAdmin} />}
             {activeModule === 'feature_flags' && <FeatureFlagManager isSuperAdmin={isSuperAdmin} />}
             {activeModule === 'calendar_sync' && <CalendarSyncManager />}
