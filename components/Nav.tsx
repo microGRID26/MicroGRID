@@ -204,12 +204,18 @@ export function Nav({ active, right, onNewProject }: NavProps) {
   const navLinks = isSales ? SALES_LINKS : PRIMARY_LINKS
 
   // Load customer portal ticket count for badge
+  // Badge: customer portal tickets needing attention (open or waiting_on_customer)
   useEffect(() => {
     if (loading || !currentUser?.isManager) return
-    db().from('tickets').select('id', { count: 'exact', head: true })
-      .eq('source', 'customer_portal')
-      .not('status', 'in', '("resolved","closed")')
-      .then(({ count }: { count: number | null }) => { if (count) setCustomerTicketCount(count) })
+    const loadBadge = () => {
+      db().from('tickets').select('id', { count: 'exact', head: true })
+        .eq('source', 'customer_portal')
+        .in('status', ['open', 'assigned'])
+        .then(({ count }: { count: number | null }) => setCustomerTicketCount(count ?? 0))
+    }
+    loadBadge()
+    const interval = setInterval(loadBadge, 30000)
+    return () => clearInterval(interval)
   }, [loading, currentUser?.isManager])
 
   async function signOut() {

@@ -4,6 +4,7 @@ import { Feather } from '@expo/vector-icons'
 import { theme, useThemeColors } from '../../lib/theme'
 import { getCustomerAccount, loadProject, loadTimeline, loadSchedule } from '../../lib/api'
 import { STAGE_ORDER, STAGE_LABELS, STAGE_DESCRIPTIONS, JOB_TYPE_LABELS } from '../../lib/constants'
+import { getCache, setCache } from '../../lib/cache'
 import type { CustomerAccount, CustomerProject, StageHistoryEntry, CustomerScheduleEntry } from '../../lib/types'
 
 const formatDate = (d: string | null) => {
@@ -21,9 +22,24 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false)
 
   const load = useCallback(async () => {
+    // Try cache first for instant render
+    const cachedProject = getCache<any>('project')
+    const cachedTimeline = getCache<any[]>('timeline')
+    const cachedSchedule = getCache<any[]>('schedule')
+    const cachedAccount = getCache<any>('account')
+    if (cachedProject && cachedAccount) {
+      setAccount(cachedAccount)
+      setProject(cachedProject)
+      setTimeline(cachedTimeline ?? [])
+      setSchedule(cachedSchedule ?? [])
+      setLoading(false)
+    }
+
+    // Fetch fresh data
     const acct = await getCustomerAccount()
     if (!acct) return
     setAccount(acct)
+    setCache('account', acct)
     const [proj, tl, sched] = await Promise.all([
       loadProject(acct.project_id),
       loadTimeline(acct.project_id),
@@ -32,6 +48,9 @@ export default function DashboardScreen() {
     setProject(proj)
     setTimeline(tl)
     setSchedule(sched)
+    setCache('project', proj)
+    setCache('timeline', tl)
+    setCache('schedule', sched)
     setLoading(false)
   }, [])
 
