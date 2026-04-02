@@ -131,7 +131,11 @@ function OpsContent({ embedded }: { embedded: boolean }) {
   }, [drill, sold, projects])
 
   const openProject = async (id: string) => { const p = await loadProjectById(id); if (p) setPanelProject(p) }
-  const setDrillDown = (label: string, fn: (p: OpsProject) => boolean) => setDrill({ label, fn })
+  const setDrillDown = (label: string, fn: (p: OpsProject) => boolean) => {
+    setDrill({ label, fn })
+    // Auto-scroll to project list
+    setTimeout(() => document.getElementById('ops-project-list')?.scrollIntoView({ behavior: 'smooth' }), 100)
+  }
   const clearDrill = () => setDrill(null)
 
   if (!embedded && authLoading) return <div className="min-h-screen bg-gray-950"><Nav active="Ops" /></div>
@@ -162,13 +166,18 @@ function OpsContent({ embedded }: { embedded: boolean }) {
             onClick={() => setDrillDown(`All ${category}`, p => arr.some(a => a.id === p.id))} />
           <Cell v={batteryCount} l="Batteries"
             onClick={() => setDrillDown(`${category} w/ Battery`, p => arr.some(a => a.id === p.id) && !!p.battery)} />
-          <Cell v={fmtN(estProd)} l="Est Annual Prod" />
-          <Cell v={`${Math.round(totalKw)}`} l="PV kW" />
-          <Cell v={batteryKwh.toLocaleString()} l="Battery kWh" />
+          <Cell v={fmtN(estProd)} l="Est Annual Prod"
+            onClick={() => setDrillDown(`All ${category}`, p => arr.some(a => a.id === p.id))} />
+          <Cell v={`${Math.round(totalKw)}`} l="PV kW"
+            onClick={() => setDrillDown(`All ${category}`, p => arr.some(a => a.id === p.id))} />
+          <Cell v={batteryKwh.toLocaleString()} l="Battery kWh"
+            onClick={() => setDrillDown(`${category} w/ Battery`, p => arr.some(a => a.id === p.id) && !!p.battery)} />
           <Cell v={fmt$(totalVal)} l="Total Value" color="text-green-400"
             onClick={() => setDrillDown(`All ${category}`, p => arr.some(a => a.id === p.id))} />
-          <Cell v={fmt$(Math.round(avg(arr, p => Number(p.contract) || 0)))} l="Avg Value" />
-          <Cell v={`${Math.round(avg(arr, p => Number(p.systemkw) || 0))}`} l="Avg kW" />
+          <Cell v={fmt$(Math.round(avg(arr, p => Number(p.contract) || 0)))} l="Avg Value"
+            onClick={() => setDrillDown(`All ${category}`, p => arr.some(a => a.id === p.id))} />
+          <Cell v={`${Math.round(avg(arr, p => Number(p.systemkw) || 0))}`} l="Avg kW"
+            onClick={() => setDrillDown(`All ${category}`, p => arr.some(a => a.id === p.id))} />
         </div>
       </div>
     )
@@ -340,7 +349,7 @@ function OpsContent({ embedded }: { embedded: boolean }) {
             )}
 
             {/* Project list */}
-            <div className="bg-gray-800 rounded-lg overflow-hidden">
+            <div id="ops-project-list" className="bg-gray-800 rounded-lg overflow-hidden">
               <div className="px-3 py-2 border-b border-gray-700 flex items-center justify-between">
                 <span className="text-[10px] font-bold uppercase text-gray-400">
                   {drill ? drill.label : 'Sales in Period'} ({drillProjects.length})
