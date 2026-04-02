@@ -143,15 +143,18 @@ export async function addComment(ticketId: string, message: string, author: stri
 
 export async function uploadTicketPhoto(uri: string, ticketId: string): Promise<string | null> {
   try {
-    // Read the file and convert to blob
-    const response = await fetch(uri)
-    const blob = await response.blob()
     const ext = uri.split('.').pop()?.toLowerCase() ?? 'jpg'
+    const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg'
     const fileName = `${ticketId}/${Date.now()}.${ext}`
+
+    // Read file as base64 via fetch + arraybuffer (works on iOS/Android)
+    const response = await fetch(uri)
+    const arrayBuffer = await response.arrayBuffer()
+    const uint8 = new Uint8Array(arrayBuffer)
 
     const { error } = await supabase.storage
       .from('ticket-attachments')
-      .upload(fileName, blob, { contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}` })
+      .upload(fileName, uint8, { contentType: mimeType, upsert: true })
 
     if (error) { console.error('[upload]', error); return null }
 
