@@ -120,8 +120,18 @@ function TicketsPageInner() {
       }).catch(() => {})
   }, [])
 
-  // Realtime — auto-refresh on ticket changes
+  // Realtime — auto-refresh on ticket and comment changes
   useRealtimeSubscription('tickets' as any, { onChange: loadAll, debounceMs: 500 })
+  useRealtimeSubscription('ticket_comments' as any, {
+    onChange: () => {
+      loadAll()
+      // Also refresh comments if a ticket is expanded
+      if (expandedId) {
+        loadTicketComments(expandedId).then(setComments)
+      }
+    },
+    debounceMs: 500,
+  })
 
   // Expand a ticket → load comments + history
   const expandTicket = useCallback(async (id: string) => {
