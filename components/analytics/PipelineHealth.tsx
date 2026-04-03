@@ -159,7 +159,79 @@ export function PipelineHealth({ data }: { data: AnalyticsData }) {
         </div>
       </div>
 
-      {/* Original Stage Distribution */}
+      {/* Blocker Analysis */}
+      {blocked.length > 0 && (
+        <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+          <div className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-4">Blocker Analysis — What&apos;s Stopping Projects</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Blockers by stage */}
+            <div>
+              <div className="text-xs text-gray-500 mb-2">Blocked by Stage</div>
+              {(() => {
+                const blockedByStage = STAGE_ORDER.filter(s => s !== 'complete').map(stage => ({
+                  stage, label: STAGE_LABELS[stage],
+                  count: blocked.filter(p => p.stage === stage).length,
+                  value: blocked.filter(p => p.stage === stage).reduce((s, p) => s + (Number(p.contract) || 0), 0),
+                })).filter(s => s.count > 0)
+                const maxBlocked = Math.max(...blockedByStage.map(s => s.count), 1)
+                return blockedByStage.map(s => (
+                  <div key={s.stage} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-gray-700/30 rounded px-1 -mx-1"
+                    onClick={() => setDrillDown({ title: `Blocked in ${s.label}`, projects: blocked.filter(p => p.stage === s.stage) })}>
+                    <span className="text-xs w-20 text-right" style={{ color: STAGE_COLORS[s.stage] }}>{s.label}</span>
+                    <div className="flex-1 bg-gray-700/30 rounded-full h-4 overflow-hidden">
+                      <div className="h-4 bg-red-600/40 rounded-full flex items-center px-2"
+                        style={{ width: `${Math.max(s.count / maxBlocked * 100, 10)}%` }}>
+                        <span className="text-[10px] text-white font-bold">{s.count}</span>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-gray-500 font-mono w-16 text-right">{fmt$(s.value)}</span>
+                  </div>
+                ))
+              })()}
+            </div>
+            {/* Blocker text frequency */}
+            <div>
+              <div className="text-xs text-gray-500 mb-2">Top Blocker Reasons</div>
+              {(() => {
+                const reasons: Record<string, number> = {}
+                blocked.forEach(p => {
+                  const r = p.blocker?.trim()
+                  if (r) reasons[r] = (reasons[r] ?? 0) + 1
+                })
+                return Object.entries(reasons).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([reason, count]) => (
+                  <div key={reason} className="flex items-center justify-between py-1 text-xs border-b border-gray-700/30">
+                    <span className="text-gray-300 truncate max-w-[250px]">{reason}</span>
+                    <span className="text-red-400 font-mono ml-2 flex-shrink-0">{count}</span>
+                  </div>
+                ))
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Aging Risk — projects at risk of cancellation */}
+      {aging90.length > 0 && (
+        <div className="bg-red-950/20 border border-red-900/30 rounded-xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-xs text-red-400 font-semibold uppercase tracking-wider">Aging Risk</div>
+            <div className="text-sm text-red-400 font-mono">{fmt$(aging90.reduce((s, p) => s + (Number(p.contract) || 0), 0))} at risk</div>
+          </div>
+          <div className="grid grid-cols-2 gap-4 text-xs">
+            <div className="cursor-pointer hover:bg-red-950/30 rounded p-2 -m-2" onClick={() => setDrillDown({ title: '90+ Day Cycle', projects: aging90 })}>
+              <span className="text-amber-400 font-bold text-lg">{aging90.length}</span>
+              <span className="text-gray-500 ml-2">projects over 90 days since sale</span>
+            </div>
+            <div className="cursor-pointer hover:bg-red-950/30 rounded p-2 -m-2" onClick={() => setDrillDown({ title: '120+ Day Cycle', projects: aging120 })}>
+              <span className="text-red-400 font-bold text-lg">{aging120.length}</span>
+              <span className="text-gray-500 ml-2">projects over 120 days since sale</span>
+            </div>
+          </div>
+          <p className="text-[10px] text-gray-600 mt-2">Projects with extended cycle times are at higher risk of cancellation or customer escalation.</p>
+        </div>
+      )}
+
+      {/* Stage Distribution by Value */}
       <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
         <div className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-4">Stage Distribution by Value</div>
         {stageDist.map(s => (
