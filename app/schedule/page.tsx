@@ -277,6 +277,7 @@ export default function SchedulePage() {
       j.date === date && j.status !== 'complete' && j.status !== 'cancelled'
     )
     if (dayJobs.length === 0) return
+    if (!window.confirm(`Complete all ${dayJobs.length} job${dayJobs.length > 1 ? 's' : ''} for ${new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}? This will update tasks and advance pipelines.`)) return
     setCompleting(date)
 
     // Use centralized mappings from lib/tasks.ts
@@ -309,7 +310,7 @@ export default function SchedulePage() {
           const dateField = JOB_COMPLETE_DATE[taskId]
           if (dateField) {
             const { data: proj, error: projErr } = await supabase.from('projects').select(dateField).eq('id', job.project_id).single()
-            if (projErr || !proj) return
+            if (projErr || !proj) continue
             if (!(proj as Record<string, unknown>)[dateField]) {
               await db().from('projects').update({ [dateField]: today }).eq('id', job.project_id)
             }

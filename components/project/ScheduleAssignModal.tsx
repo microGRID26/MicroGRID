@@ -410,8 +410,8 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
                   <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${selectedProject.address ?? ''}, ${selectedProject.city ?? ''} TX`)}`}
                     target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-[10px] text-blue-400 hover:text-blue-300">Google Maps →</a>
                   <a href={`/pipeline?open=${selectedProject.id}`} target="_blank" className="text-[10px] text-purple-400 hover:text-purple-300">MicroGRID →</a>
-                  <a href={`/tickets`} target="_blank" className="text-[10px] text-amber-400 hover:text-amber-300">Create Ticket →</a>
-                  <a href={`/redesign`} target="_blank" className="text-[10px] text-cyan-400 hover:text-cyan-300">Redesign Tool →</a>
+                  <a href={`/tickets?project=${selectedProject.id}`} target="_blank" className="text-[10px] text-amber-400 hover:text-amber-300">Create Ticket →</a>
+                  <a href={`/redesign?project=${selectedProject.id}`} target="_blank" className="text-[10px] text-cyan-400 hover:text-cyan-300">Redesign Tool →</a>
                 </div>
               </div>
             ) : (
