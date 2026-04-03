@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { fmt$, daysAgo, STAGE_LABELS } from '@/lib/utils'
-import { MetricCard, inRange, ProjectListModal, ExportButton, downloadCSV, PERIOD_LABELS, type AnalyticsData } from './shared'
+import { MetricCard, PeriodBar, inRange, ProjectListModal, ExportButton, downloadCSV, PERIOD_LABELS, type AnalyticsData } from './shared'
 
 export function InstallVelocity({ data }: { data: AnalyticsData }) {
   const { projects, active, funding, taskMap, period } = data
@@ -117,7 +117,10 @@ export function InstallVelocity({ data }: { data: AnalyticsData }) {
 
   return (
     <div className="max-w-6xl space-y-8">
-      <div className="flex justify-end"><ExportButton onClick={handleExport} /></div>
+      <div className="flex items-center justify-between">
+        {data.onPeriodChange && <PeriodBar period={data.period} onPeriodChange={data.onPeriodChange} />}
+        <ExportButton onClick={handleExport} />
+      </div>
 
       {/* Headline metrics */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">

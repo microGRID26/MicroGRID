@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { fmt$ } from '@/lib/utils'
-import { ExportButton, downloadCSV, SortHeader, useSortable, type AnalyticsData } from './shared'
+import { PeriodBar, ExportButton, downloadCSV, SortHeader, useSortable, type AnalyticsData } from './shared'
 
 interface DealerRow {
   dealer: string
@@ -74,7 +74,7 @@ export function Dealers({ data }: { data: AnalyticsData }) {
 
   return (
     <div className="max-w-6xl space-y-8">
-      <div className="flex justify-end"><ExportButton onClick={handleExport} /></div>
+      <div className="flex items-center justify-between">{data.onPeriodChange && <PeriodBar period={data.period} onPeriodChange={data.onPeriodChange} />}<ExportButton onClick={handleExport} /></div>
 
       {/* Projects by dealer - bar chart */}
       <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">

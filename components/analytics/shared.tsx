@@ -74,6 +74,7 @@ export interface AnalyticsData {
   /** task_id -> status map per project: taskMap[project_id][task_id] = status */
   taskMap: Record<string, Record<string, string>>
   period: Period
+  onPeriodChange?: (p: Period) => void
 }
 
 // ── Shared components ───────────────────────────────────────────────────────
@@ -250,6 +251,21 @@ export function SortHeader<T>({ label, field, sortKey, sortDir, onSort }: {
 }
 
 // ── Tab CSV export button ───────────────────────────────────────────────────
+
+export function PeriodBar({ period, onPeriodChange }: { period: Period; onPeriodChange: (p: Period) => void }) {
+  return (
+    <div className="flex items-center gap-1 bg-gray-800 rounded-lg p-0.5">
+      {(Object.entries(PERIOD_LABELS) as [Period, string][]).map(([k, v]) => (
+        <button key={k} onClick={() => onPeriodChange(k)}
+          className={`text-xs px-2.5 py-1.5 rounded-md transition-colors whitespace-nowrap ${
+            period === k ? 'bg-green-700 text-white font-medium' : 'text-gray-400 hover:text-white'
+          }`}>
+          {v}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 export function ExportButton({ onClick }: { onClick: () => void }) {
   return (

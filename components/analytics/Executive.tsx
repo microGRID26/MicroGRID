@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { fmt$, daysAgo, STAGE_LABELS } from '@/lib/utils'
-import { MetricCard, inRange, STAGE_DAYS_REMAINING, type AnalyticsData } from './shared'
+import { MetricCard, PeriodBar, inRange, STAGE_DAYS_REMAINING, type AnalyticsData } from './shared'
 
 export function Executive({ data }: { data: AnalyticsData }) {
   const { projects, active, complete, funding, period } = data
@@ -84,6 +84,7 @@ export function Executive({ data }: { data: AnalyticsData }) {
 
   return (
     <div className="max-w-6xl space-y-8">
+      {data.onPeriodChange && <div className="flex justify-end"><PeriodBar period={data.period} onPeriodChange={data.onPeriodChange} /></div>}
 
       {/* Hero: 5 headline numbers */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">

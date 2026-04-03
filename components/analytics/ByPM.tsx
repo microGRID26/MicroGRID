@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { fmt$, daysAgo, SLA_THRESHOLDS, STAGE_LABELS, STAGE_ORDER } from '@/lib/utils'
 import {
-  MetricCard, MiniBar, ExportButton, downloadCSV, SortHeader, useSortable, ProjectListModal,
+  MetricCard, MiniBar, PeriodBar, ExportButton, downloadCSV, SortHeader, useSortable, ProjectListModal,
   inRange, PERIOD_LABELS, type AnalyticsData,
 } from './shared'
 import type { Project } from '@/types/database'
@@ -99,7 +99,7 @@ export function ByPM({ data }: { data: AnalyticsData }) {
         <MetricCard label="Avg SLA Compliance" value={`${avgSLA}%`} color={avgSLA >= 80 ? 'text-green-400' : avgSLA >= 50 ? 'text-amber-400' : 'text-red-400'} />
       </div>
 
-      <div className="flex justify-end"><ExportButton onClick={handleExport} /></div>
+      <div className="flex items-center justify-between">{data.onPeriodChange && <PeriodBar period={data.period} onPeriodChange={data.onPeriodChange} />}<ExportButton onClick={handleExport} /></div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs border-collapse min-w-[500px]">
           <thead>

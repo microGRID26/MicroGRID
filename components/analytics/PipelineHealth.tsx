@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { fmt$, daysAgo, STAGE_LABELS, STAGE_ORDER, SLA_THRESHOLDS } from '@/lib/utils'
 import {
-  MetricCard, MiniBar, ProjectListModal, ExportButton, downloadCSV,
+  MetricCard, MiniBar, PeriodBar, ProjectListModal, ExportButton, downloadCSV,
   STAGE_DAYS_REMAINING, type AnalyticsData,
 } from './shared'
 
@@ -69,7 +69,7 @@ export function PipelineHealth({ data }: { data: AnalyticsData }) {
 
   return (
     <div className="max-w-4xl space-y-6">
-      <div className="flex justify-end"><ExportButton onClick={handleExport} /></div>
+      <div className="flex items-center justify-between">{data.onPeriodChange && <PeriodBar period={data.period} onPeriodChange={data.onPeriodChange} />}<ExportButton onClick={handleExport} /></div>
 
       <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
         <div className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-4">Stage Distribution</div>
