@@ -141,7 +141,7 @@ export function FeedbackButton() {
                 className={cn(
                   'px-4 py-1.5 text-xs font-medium rounded-md transition-colors',
                   message.trim() && !submitting
-                    ? 'bg-green-700 hover:bg-green-600 text-white'
+                    ? 'bg-green-600 hover:bg-green-500 text-white'
                     : 'bg-gray-700 text-gray-500 cursor-not-allowed'
                 )}
               >

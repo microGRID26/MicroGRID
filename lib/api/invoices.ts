@@ -1,5 +1,6 @@
 // lib/api/invoices.ts — Invoice data access layer
 // Orgs create invoices to bill other orgs for engineering, materials, etc.
+// Org filtering: inherited via project_id FK — RLS policies enforce org scope
 
 import { db } from '@/lib/db'
 import type { Invoice, InvoiceLineItem, InvoiceStatus, InvoiceRule } from '@/types/database'
@@ -58,7 +59,7 @@ export async function loadInvoices(orgId?: string, status?: InvoiceStatus): Prom
   const supabase = db()
   let q = supabase
     .from('invoices')
-    .select('*')
+    .select('id, invoice_number, project_id, from_org, to_org, status, milestone, subtotal, tax, total, due_date, sent_at, paid_at, paid_amount, payment_method, payment_reference, notes, created_by, created_by_id, created_at, updated_at')
     .order('created_at', { ascending: false })
     .limit(500)
   if (orgId) q = q.or(`from_org.eq.${orgId},to_org.eq.${orgId}`)
@@ -74,8 +75,8 @@ export async function loadInvoices(orgId?: string, status?: InvoiceStatus): Prom
 export async function loadInvoice(invoiceId: string): Promise<{ invoice: Invoice; lineItems: InvoiceLineItem[] } | null> {
   const supabase = db()
   const [invResult, itemsResult] = await Promise.all([
-    supabase.from('invoices').select('*').eq('id', invoiceId).single(),
-    supabase.from('invoice_line_items').select('*').eq('invoice_id', invoiceId).order('sort_order', { ascending: true }).limit(500),
+    supabase.from('invoices').select('id, invoice_number, project_id, from_org, to_org, status, milestone, subtotal, tax, total, due_date, sent_at, paid_at, paid_amount, payment_method, payment_reference, notes, created_by, created_by_id, created_at, updated_at').eq('id', invoiceId).single(),
+    supabase.from('invoice_line_items').select('id, invoice_id, description, quantity, unit_price, total, category, sort_order, created_at').eq('invoice_id', invoiceId).order('sort_order', { ascending: true }).limit(500),
   ])
   if (invResult.error) {
     console.error('[loadInvoice]', invResult.error.message)
@@ -94,7 +95,7 @@ export async function loadProjectInvoices(projectId: string): Promise<Invoice[]>
   const supabase = db()
   const { data, error } = await supabase
     .from('invoices')
-    .select('*')
+    .select('id, invoice_number, project_id, from_org, to_org, status, milestone, subtotal, tax, total, due_date, sent_at, paid_at, paid_amount, payment_method, payment_reference, notes, created_by, created_by_id, created_at, updated_at')
     .eq('project_id', projectId)
     .order('created_at', { ascending: false })
     .limit(50)
@@ -375,7 +376,7 @@ export async function loadInvoiceRules(activeOnly?: boolean): Promise<InvoiceRul
   const supabase = db()
   let q = supabase
     .from('invoice_rules')
-    .select('*')
+    .select('id, name, milestone, from_org_type, to_org_type, line_items, active, created_at, updated_at')
     .order('name', { ascending: true })
     .limit(100)
   if (activeOnly) q = q.eq('active', true)

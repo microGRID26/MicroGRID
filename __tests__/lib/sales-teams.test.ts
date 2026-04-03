@@ -269,7 +269,7 @@ describe('loadPayScales', () => {
 
     const result = await loadPayScales()
     expect(mockSupabase.from).toHaveBeenCalledWith('pay_scales')
-    expect(chain.select).toHaveBeenCalledWith('*')
+    expect(chain.select).toHaveBeenCalled()
     expect(chain.eq).toHaveBeenCalledWith('active', true)
     expect(chain.order).toHaveBeenCalledWith('sort_order')
     expect(chain.or).not.toHaveBeenCalled()

@@ -101,7 +101,7 @@ export function EquipmentManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
           <select
             value={catFilter}
             onChange={e => setCatFilter(e.target.value)}
-            className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
+            className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:border-green-500"
           >
             <option value="all">All Categories</option>
             {EQUIPMENT_CATEGORIES.map(c => (
@@ -174,7 +174,7 @@ export function EquipmentManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
               <select
                 value={draft.category ?? 'module'}
                 onChange={e => setDraft(d => ({ ...d, category: e.target.value as EquipmentCategory }))}
-                className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-colors"
               >
                 {EQUIPMENT_CATEGORIES.map(c => (
                   <option key={c.value} value={c.value}>{c.label}</option>

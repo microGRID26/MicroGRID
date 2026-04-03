@@ -72,9 +72,9 @@ interface TasksTabProps {
   taskNotes: Record<string, TaskNote[]>
   taskFollowUps: Record<string, string>
   taskStatesRaw: { task_id: string; status: string; reason?: string; completed_date?: string | null; started_date?: string | null; notes?: string | null; follow_up_date?: string | null }[]
-  taskHistory: any[]
+  taskHistory: { id: string; task_id: string; status: string; changed_by: string | null; created_at: string; changed_at?: string | null; reason?: string | null }[]
   taskHistoryLoaded: boolean
-  stageHistory: any[]
+  stageHistory: { id: string; stage: string; entered: string; project_id: string }[]
   updateTaskStatus: (taskId: string, status: string) => void
   updateTaskReason: (taskId: string, reason: string) => void
   addTaskNote: (taskId: string, text: string) => void
@@ -218,12 +218,12 @@ export function TasksTab({
   // ── Days in the viewed stage ──────────────────────────────────────────────
   const viewedStageDays = useMemo(() => {
     if (viewStage === project.stage) return daysAgo(project.stage_date)
-    const entry = stageHistory.find((h: any) => h.stage === viewStage)
+    const entry = stageHistory.find(h => h.stage === viewStage)
     if (!entry) return 0
-    const sorted = [...stageHistory].sort((a: any, b: any) =>
+    const sorted = [...stageHistory].sort((a, b) =>
       new Date(a.entered).getTime() - new Date(b.entered).getTime()
     )
-    const idx = sorted.findIndex((h: any) => h.stage === viewStage)
+    const idx = sorted.findIndex(h => h.stage === viewStage)
     if (idx >= 0 && idx < sorted.length - 1) {
       const entered = new Date(sorted[idx].entered + 'T00:00:00').getTime()
       const exited = new Date(sorted[idx + 1].entered + 'T00:00:00').getTime()
@@ -327,7 +327,7 @@ export function TasksTab({
                     setBatchSelected(new Set())
                     setBatchMode(false)
                   }}
-                    className="text-[10px] px-2 py-0.5 bg-green-700 hover:bg-green-600 text-white rounded ml-1">
+                    className="text-[10px] px-2 py-0.5 bg-green-600 hover:bg-green-500 text-white rounded ml-1">
                     Mark {batchSelected.size} Complete
                   </button>
                 )}
@@ -602,7 +602,7 @@ export function TasksTab({
                             History ({history.length})
                           </div>
                           <div className="space-y-1">
-                            {history.map((entry: any, i: number) => {
+                            {history.map((entry, i) => {
                               const when = entry.changed_at
                                 ? new Date(entry.changed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                                 : ''

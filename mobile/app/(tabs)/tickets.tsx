@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, TextInput, RefreshControl, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, AppState } from 'react-native'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, AppState } from 'react-native'
 import { useRouter } from 'expo-router'
 import { Feather } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
@@ -62,11 +62,19 @@ export default function TicketsScreen() {
     return () => sub.remove()
   }, [account])
 
-  // Poll every 10 seconds for status changes (realtime requires REPLICA IDENTITY FULL)
+  // Poll every 30s for status changes — pause when app is backgrounded
+  const appActive = useRef(true)
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      appActive.current = state === 'active'
+    })
+    return () => sub.remove()
+  }, [])
+
   useEffect(() => {
     if (!account) return
     const interval = setInterval(() => {
-      loadTickets(account.project_id).then(setTickets)
+      if (appActive.current) loadTickets(account.project_id).then(setTickets)
     }, 30000)
     return () => clearInterval(interval)
   }, [account])
@@ -121,14 +129,16 @@ export default function TicketsScreen() {
   }
 
   const openCount = tickets.filter(t => !['resolved', 'closed'].includes(t.status)).length
-  const statusMap = getStatusConfig(colors)
+  const statusMap = useMemo(() => getStatusConfig(colors), [colors])
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <ScrollView
+      <FlatList
+        data={tickets}
+        keyExtractor={item => item.id}
         contentContainerStyle={{ padding: 16, paddingTop: 56, paddingBottom: 32 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
-      >
+        ListHeaderComponent={<>
         {/* Header */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <View>
@@ -183,69 +193,64 @@ export default function TicketsScreen() {
           </View>
         )}
 
-        {/* Ticket list */}
+        {/* Quick issues row when tickets exist */}
         {tickets.length > 0 && (
-          <View style={{ marginTop: 16, gap: 8 }}>
-            {/* Quick issues row when tickets exist */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
-              <View style={{ flexDirection: 'row', gap: 8, paddingRight: 16 }}>
-                {QUICK_ISSUES.slice(0, 3).map(qi => (
-                  <TouchableOpacity key={qi.title} activeOpacity={0.7}
-                    onPress={() => handleCreate(qi.title, qi.category)}
-                    disabled={creating}
-                    style={{
-                      flexDirection: 'row', alignItems: 'center', gap: 6,
-                      backgroundColor: colors.surface, borderRadius: theme.radius.pill,
-                      paddingHorizontal: 12, paddingVertical: 8,
-                      borderWidth: 1, borderColor: colors.borderLight,
-                    }}>
-                    <Feather name={qi.icon as any} size={12} color={qi.color} />
-                    <Text style={{ fontSize: 11, color: colors.textSecondary, fontFamily: 'Inter_500Medium' }}>
-                      {qi.title.length > 20 ? qi.title.slice(0, 20) + '...' : qi.title}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
-
-            {tickets.map(ticket => {
-              const status = statusMap[ticket.status] ?? statusMap.open
-              const isResolved = ticket.status === 'resolved' || ticket.status === 'closed'
-              return (
-                <TouchableOpacity key={ticket.id} activeOpacity={0.7} onPress={() => openTicket(ticket)}
-                  style={{
-                    backgroundColor: colors.surface, borderRadius: theme.radius.xl,
-                    padding: 16, borderWidth: 1, borderColor: colors.borderLight,
-                    opacity: isResolved ? 0.6 : 1,
-                    ...theme.shadow.card,
-                  }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text, fontFamily: 'Inter_500Medium' }} numberOfLines={1}>
-                        {ticket.title}
-                      </Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                        <View style={{
-                          backgroundColor: status.color + '20', paddingHorizontal: 8, paddingVertical: 2,
-                          borderRadius: theme.radius.pill,
-                        }}>
-                          <Text style={{ fontSize: 10, fontWeight: '500', color: status.color, fontFamily: 'Inter_500Medium' }}>
-                            {status.label}
-                          </Text>
-                        </View>
-                        <Text style={{ fontSize: 10, color: colors.textMuted }}>
-                          {new Date(ticket.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </Text>
-                      </View>
-                    </View>
-                    <Feather name="chevron-right" size={16} color={colors.textMuted} />
-                  </View>
-                </TouchableOpacity>
-              )
-            })}
+          <View style={{ marginTop: 16, marginBottom: 8, flexDirection: 'row', gap: 8 }}>
+            {QUICK_ISSUES.slice(0, 3).map(qi => (
+              <TouchableOpacity key={qi.title} activeOpacity={0.7}
+                onPress={() => handleCreate(qi.title, qi.category)}
+                disabled={creating}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 6,
+                  backgroundColor: colors.surface, borderRadius: theme.radius.pill,
+                  paddingHorizontal: 12, paddingVertical: 8,
+                  borderWidth: 1, borderColor: colors.borderLight,
+                }}>
+                <Feather name={qi.icon as any} size={12} color={qi.color} />
+                <Text style={{ fontSize: 11, color: colors.textSecondary, fontFamily: 'Inter_500Medium' }}>
+                  {qi.title.length > 20 ? qi.title.slice(0, 20) + '...' : qi.title}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
         )}
-      </ScrollView>
+        </>}
+        renderItem={({ item: ticket }) => {
+          const status = statusMap[ticket.status] ?? statusMap.open
+          const isResolved = ticket.status === 'resolved' || ticket.status === 'closed'
+          return (
+            <TouchableOpacity activeOpacity={0.7} onPress={() => openTicket(ticket)}
+              style={{
+                backgroundColor: colors.surface, borderRadius: theme.radius.xl,
+                padding: 16, borderWidth: 1, borderColor: colors.borderLight,
+                opacity: isResolved ? 0.6 : 1, marginBottom: 8,
+                ...theme.shadow.card,
+              }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text, fontFamily: 'Inter_500Medium' }} numberOfLines={1}>
+                    {ticket.title}
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                    <View style={{
+                      backgroundColor: status.color + '20', paddingHorizontal: 8, paddingVertical: 2,
+                      borderRadius: theme.radius.pill,
+                    }}>
+                      <Text style={{ fontSize: 10, fontWeight: '500', color: status.color, fontFamily: 'Inter_500Medium' }}>
+                        {status.label}
+                      </Text>
+                    </View>
+                    <Text style={{ fontSize: 10, color: colors.textMuted }}>
+                      {new Date(ticket.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </Text>
+                  </View>
+                </View>
+                <Feather name="chevron-right" size={16} color={colors.textMuted} />
+              </View>
+            </TouchableOpacity>
+          )
+        }}
+      />
 
       {/* Custom create modal */}
       <Modal visible={showCreate} animationType="slide" presentationStyle="pageSheet">

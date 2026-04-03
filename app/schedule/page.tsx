@@ -15,7 +15,7 @@ import { useCurrentUser } from '@/lib/useCurrentUser'
 import type { Schedule, Crew, Project } from '@/types/database'
 
 /** Schedule row with joined project data from Supabase */
-type ScheduleWithProject = Schedule & { project?: { name: string; city: string } | null }
+type ScheduleWithProject = Schedule & { project?: { name: string; city: string; address?: string | null; zip?: string | null; phone?: string | null; systemkw?: number | null } | null }
 
 import { JOB_COLORS, JOB_LABELS, JOB_COMPLETE_TASK, JOB_COMPLETE_DATE } from '@/lib/tasks'
 
@@ -151,7 +151,7 @@ export default function SchedulePage() {
 
   const loadSchedule = useCallback(async () => {
     const { data } = await loadScheduleByDateRange(weekStartDate, weekEndDate)
-    if (data) setSchedule(data as ScheduleWithProject[])
+    if (data) setSchedule(data as unknown as ScheduleWithProject[])
     setSchedLoading(false)
   }, [weekStartDate, weekEndDate])
 
@@ -332,10 +332,10 @@ export default function SchedulePage() {
         } />
 
       {/* Controls */}
-      <div className="no-print bg-gray-950 border-b border-gray-800 flex items-center gap-3 px-4 py-2 flex-shrink-0">
-        <button onClick={() => setWeekOffset(w => w - 1)} className="text-gray-400 hover:text-white text-sm px-2">◀</button>
+      <div className="no-print bg-gray-900 border-b border-gray-800 flex items-center gap-3 px-4 py-2 flex-shrink-0">
+        <button onClick={() => setWeekOffset(w => w - 1)} className="text-gray-400 hover:text-white text-sm px-2" aria-label="Previous week">◀</button>
         <span className="text-xs text-white font-medium">{weekLabel}</span>
-        <button onClick={() => setWeekOffset(w => w + 1)} className="text-gray-400 hover:text-white text-sm px-2">▶</button>
+        <button onClick={() => setWeekOffset(w => w + 1)} className="text-gray-400 hover:text-white text-sm px-2" aria-label="Next week">▶</button>
         {weekOffset !== 0 && (
           <button onClick={() => setWeekOffset(0)} className="text-xs text-green-400 hover:text-green-300">Today</button>
         )}
@@ -345,14 +345,17 @@ export default function SchedulePage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search projects..."
+            aria-label="Search projects"
             className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-3 py-1.5 w-40 focus:outline-none focus:border-green-500 placeholder-gray-500"
           />
           <select value={warehouseFilter} onChange={e => setWarehouseFilter(e.target.value)}
+            aria-label="Filter by warehouse"
             className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">
             <option value="all">All Warehouses</option>
             {warehouses.map(w => <option key={w} value={w}>{w}</option>)}
           </select>
           <select value={jobFilter} onChange={e => setJobFilter(e.target.value)}
+            aria-label="Filter by job type"
             className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">
             <option value="all">All Job Types</option>
             {Object.entries(JOB_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -367,7 +370,7 @@ export default function SchedulePage() {
             <span className="text-xs text-gray-500">Show cancelled</span>
           </label>
         </div>
-        <button onClick={() => window.print()} className="text-xs text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 rounded-md px-3 py-1.5 transition-colors flex items-center gap-1.5">
+        <button onClick={() => window.print()} className="text-xs text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 rounded-md px-3 py-1.5 transition-colors flex items-center gap-1.5" aria-label="Print schedule">
           Print
         </button>
         {hasAnySyncEnabled && (
@@ -398,7 +401,7 @@ export default function SchedulePage() {
       <div className="flex-1 overflow-auto">
         <table className="w-full border-collapse min-w-max">
           <thead>
-            <tr className="bg-gray-950 sticky top-0 z-10">
+            <tr className="bg-gray-900 sticky top-0 z-10">
               <th className="text-xs text-gray-400 font-medium text-left px-3 py-2 border-b border-r border-gray-800 w-32">Crew</th>
               {days.map((d, i) => {
                 const iso = isoDate(d)
@@ -494,18 +497,18 @@ export default function SchedulePage() {
                             <div className="text-xs opacity-70 uppercase tracking-wide">{JOB_LABELS[job.job_type] ?? job.job_type}</div>
                             {projectData?.city && (
                               <div className="text-xs opacity-60">
-                                {(projectData as any).address ? (
-                                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${(projectData as any).address}, ${projectData.city} TX ${(projectData as any).zip ?? ''}`)}`}
+                                {projectData.address ? (
+                                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${projectData.address}, ${projectData.city} TX ${projectData.zip ?? ''}`)}`}
                                     target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
                                     className="hover:underline">{projectData.city}</a>
                                 ) : projectData.city}
                               </div>
                             )}
-                            {(projectData as any)?.phone && (
-                              <a href={`tel:${(projectData as any).phone}`} onClick={e => e.stopPropagation()}
-                                className="text-[10px] opacity-60 hover:opacity-100 hover:underline block">{(projectData as any).phone}</a>
+                            {projectData?.phone && (
+                              <a href={`tel:${projectData.phone}`} onClick={e => e.stopPropagation()}
+                                className="text-[10px] opacity-60 hover:opacity-100 hover:underline block">{projectData.phone}</a>
                             )}
-                            {(projectData as any)?.systemkw && <div className="text-[10px] opacity-50">{(projectData as any).systemkw} kW</div>}
+                            {projectData?.systemkw && <div className="text-[10px] opacity-50">{projectData.systemkw} kW</div>}
                             {pmName && <div className="text-[10px] opacity-50 truncate">{pmName}</div>}
                             {job.notes && <div className="text-[10px] opacity-60 truncate italic">{job.notes}</div>}
                           </div>

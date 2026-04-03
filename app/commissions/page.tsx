@@ -251,7 +251,7 @@ function CalculatorTab({ rates }: { rates: CommissionRate[] }) {
         </div>
         <button
           onClick={calculate}
-          className="mt-4 px-6 py-2 bg-green-700 hover:bg-green-600 text-white text-sm font-medium rounded-md transition-colors"
+          className="mt-4 px-6 py-2 bg-green-600 hover:bg-green-500 text-white text-sm font-medium rounded-md transition-colors"
         >
           Calculate
         </button>
@@ -1299,19 +1299,19 @@ function RateCardTab({ rates, onReload, orgId }: { rates: CommissionRate[]; onRe
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-gray-400 font-medium">Role Key</label>
                   <input value={draft.role_key ?? ''} onChange={e => setDraft(d => ({ ...d, role_key: e.target.value }))}
-                    className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                    className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-gray-400 font-medium">Label</label>
                   <input value={draft.label ?? ''} onChange={e => setDraft(d => ({ ...d, label: e.target.value }))}
-                    className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                    className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-gray-400 font-medium">Rate Type</label>
                   <select value={draft.rate_type ?? 'per_watt'} onChange={e => setDraft(d => ({ ...d, rate_type: e.target.value as CommissionRate['rate_type'] }))}
-                    className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                    className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500">
                     <option value="per_watt">Per Watt</option>
                     <option value="percentage">Percentage</option>
                     <option value="flat">Flat Fee</option>
@@ -1322,19 +1322,19 @@ function RateCardTab({ rates, onReload, orgId }: { rates: CommissionRate[]; onRe
                     Rate {draft.rate_type === 'per_watt' ? '($/W)' : draft.rate_type === 'percentage' ? '(%)' : '($)'}
                   </label>
                   <input type="number" step="0.01" value={draft.rate ?? ''} onChange={e => setDraft(d => ({ ...d, rate: parseFloat(e.target.value) || 0 }))}
-                    className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                    className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" />
                 </div>
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-gray-400 font-medium">Description</label>
                 <input value={draft.description ?? ''} onChange={e => setDraft(d => ({ ...d, description: e.target.value }))}
-                  className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                  className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-gray-400 font-medium">Sort Order</label>
                   <input type="number" value={draft.sort_order ?? 0} onChange={e => setDraft(d => ({ ...d, sort_order: parseInt(e.target.value) || 0 }))}
-                    className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                    className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" />
                 </div>
                 <div className="flex items-end gap-2 pb-1">
                   <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
@@ -1676,7 +1676,7 @@ function AdvancesTab({ orgId }: { orgId: string | null }) {
                           </button>
                         )}
                         {a.status === 'approved' && (
-                          <button onClick={() => handlePay(a)} className="px-2 py-0.5 bg-green-700 hover:bg-green-600 text-white text-[10px] rounded transition-colors">
+                          <button onClick={() => handlePay(a)} className="px-2 py-0.5 bg-green-600 hover:bg-green-500 text-white text-[10px] rounded transition-colors">
                             Pay
                           </button>
                         )}
@@ -1816,7 +1816,7 @@ export default function CommissionsPage() {
   // Loading state
   if (userLoading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-gray-500 text-sm">Checking permissions...</div>
       </div>
     )
@@ -1825,7 +1825,7 @@ export default function CommissionsPage() {
   // Auth gate: Admin sees everything. Sales sees only their own data. Others blocked.
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-gray-500 text-sm">Please sign in to view commissions.</div>
       </div>
     )
@@ -1833,7 +1833,7 @@ export default function CommissionsPage() {
 
   if (!isAdmin && !isSales) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-gray-400 text-sm">You don&apos;t have permission to view this page.</div>
       </div>
     )
@@ -1848,7 +1848,7 @@ export default function CommissionsPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="min-h-screen bg-gray-900 text-white">
       <Nav active="Commissions" />
 
       <div className="max-w-7xl mx-auto px-4 py-6">

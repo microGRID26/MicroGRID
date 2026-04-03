@@ -150,6 +150,11 @@ export function BulkActionBar({
   const [bulkProgress, setBulkProgress] = useState<BulkProgress | null>(null)
   const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null)
   const [executing, setExecuting] = useState(false)
+  const [toast, setToast] = useState<{message: string, type: 'success'|'error'|'info'} | null>(null)
+  const showToast = (message: string, type: 'success'|'error'|'info' = 'error') => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 3000)
+  }
 
   // Form state
   const [bulkPmId, setBulkPmId] = useState('')
@@ -202,7 +207,7 @@ export function BulkActionBar({
     }
 
     if (failures.length > 0) {
-      alert(`${failures.length} projects failed to update: ${failures.join(', ')}`)
+      showToast(`${failures.length} projects failed to update: ${failures.join(', ')}`, 'error')
     }
 
     setBulkProgress(null)
@@ -239,7 +244,7 @@ export function BulkActionBar({
     }
 
     if (failures.length > 0) {
-      alert(`${failures.length} projects failed to update: ${failures.join(', ')}`)
+      showToast(`${failures.length} projects failed to update: ${failures.join(', ')}`, 'error')
     }
 
     setBulkProgress(null)
@@ -279,7 +284,7 @@ export function BulkActionBar({
     }
 
     if (failures.length > 0) {
-      alert(`${failures.length} projects failed to update: ${failures.join(', ')}`)
+      showToast(`${failures.length} projects failed to update: ${failures.join(', ')}`, 'error')
     }
 
     setBulkProgress(null)
@@ -315,7 +320,7 @@ export function BulkActionBar({
     }
 
     if (failures.length > 0) {
-      alert(`${failures.length} projects failed to update: ${failures.join(', ')}`)
+      showToast(`${failures.length} projects failed to update: ${failures.join(', ')}`, 'error')
     }
 
     setBulkProgress(null)
@@ -546,7 +551,7 @@ export function BulkActionBar({
                               setExecuting(false)
                             }
                             if (failures.length > 0) {
-                              alert(`${failures.length} projects failed to update: ${failures.join(', ')}`)
+                              showToast(`${failures.length} projects failed to update: ${failures.join(', ')}`, 'error')
                             }
                             setBulkProgress(null)
                             clearQueryCache()
@@ -598,6 +603,11 @@ export function BulkActionBar({
             </div>
           </div>
         </div>
+      )}
+      {toast && (
+        <div className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${
+          toast.type === 'error' ? 'bg-red-600 text-white' : toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'
+        }`}>{toast.message}</div>
       )}
     </>
   )

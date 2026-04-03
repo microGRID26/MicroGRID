@@ -20,7 +20,7 @@ export async function loadCrewsByIds(crewIds: string[], orgId?: string | null): 
 export async function loadActiveCrews(orgId?: string | null) {
   const supabase = createClient()
   let query = supabase.from('crews')
-    .select('*')
+    .select('id, name, warehouse, active, license_holder, electrician, solar_lead, battery_lead, installer1, installer2, battery_tech1, battery_tech2, battery_apprentice, mpu_electrician, org_id')
     .eq('active', 'TRUE')
     .order('name')
     .limit(500)

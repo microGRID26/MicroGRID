@@ -1,4 +1,5 @@
 // lib/api/time-entries.ts — Clock in/out for field crews
+// Org filtering: inherited via crew_id FK — RLS policies enforce org scope
 import { db } from '@/lib/db'
 
 export interface TimeEntry {
@@ -28,7 +29,7 @@ export async function loadTimeEntries(
 ): Promise<TimeEntry[]> {
   let q = db()
     .from('time_entries')
-    .select('*')
+    .select('id, user_id, user_name, project_id, schedule_id, work_order_id, clock_in, clock_out, clock_in_lat, clock_in_lng, clock_out_lat, clock_out_lng, duration_minutes, notes, job_type, created_at')
     .eq('user_id', userId)
     .order('clock_in', { ascending: false })
     .limit(200)
@@ -45,7 +46,7 @@ export async function loadTimeEntries(
 export async function getOpenEntry(userId: string): Promise<TimeEntry | null> {
   const { data, error } = await db()
     .from('time_entries')
-    .select('*')
+    .select('id, user_id, user_name, project_id, schedule_id, work_order_id, clock_in, clock_out, clock_in_lat, clock_in_lng, clock_out_lat, clock_out_lng, duration_minutes, notes, job_type, created_at')
     .eq('user_id', userId)
     .is('clock_out', null)
     .order('clock_in', { ascending: false })

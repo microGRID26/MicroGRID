@@ -17,12 +17,7 @@ export async function POST(request: NextRequest) {
 
   const validSecret = (cronSecret && token === cronSecret) || (adminSecret && token === adminSecret)
   if (!validSecret) {
-    // Allow same-origin requests from the admin panel
-    const origin = request.headers.get('origin') ?? ''
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-    if (!origin || (appUrl && !origin.startsWith(appUrl))) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {

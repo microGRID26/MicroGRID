@@ -174,7 +174,7 @@ export function CustomFieldsManager({ isSuperAdmin: _isSuperAdmin }: { isSuperAd
               field_name: isNew ? slugify(label) : d.field_name,
             }))
           }}
-          className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+          className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-colors"
           placeholder="e.g. Roof Type"
         />
       </div>
@@ -184,7 +184,7 @@ export function CustomFieldsManager({ isSuperAdmin: _isSuperAdmin }: { isSuperAd
         <input
           value={draft.field_name}
           onChange={e => setDraft(d => ({ ...d, field_name: e.target.value }))}
-          className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+          className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-colors"
           placeholder="auto-generated from label"
           disabled={!isNew}
         />
@@ -197,7 +197,7 @@ export function CustomFieldsManager({ isSuperAdmin: _isSuperAdmin }: { isSuperAd
           <select
             value={draft.field_type}
             onChange={e => setDraft(d => ({ ...d, field_type: e.target.value as CustomFieldType }))}
-            className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+            className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-colors"
           >
             {FIELD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
@@ -207,7 +207,7 @@ export function CustomFieldsManager({ isSuperAdmin: _isSuperAdmin }: { isSuperAd
           <input
             value={draft.section}
             onChange={e => setDraft(d => ({ ...d, section: e.target.value }))}
-            className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+            className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-colors"
             placeholder="custom"
           />
         </div>
@@ -221,7 +221,7 @@ export function CustomFieldsManager({ isSuperAdmin: _isSuperAdmin }: { isSuperAd
               value={optionInput}
               onChange={e => setOptionInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addOption() } }}
-              className="flex-1 bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+              className="flex-1 bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-colors"
               placeholder="Add option and press Enter"
             />
             <button onClick={addOption} className="px-3 py-1.5 text-xs bg-gray-700 text-white rounded-md hover:bg-gray-600">Add</button>
@@ -245,7 +245,7 @@ export function CustomFieldsManager({ isSuperAdmin: _isSuperAdmin }: { isSuperAd
           <input
             value={draft.default_value ?? ''}
             onChange={e => setDraft(d => ({ ...d, default_value: e.target.value || null }))}
-            className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+            className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-colors"
             placeholder={draft.field_type === 'boolean' ? 'true or false' : 'Optional default'}
           />
         </div>
@@ -255,7 +255,7 @@ export function CustomFieldsManager({ isSuperAdmin: _isSuperAdmin }: { isSuperAd
             type="number"
             value={draft.sort_order}
             onChange={e => setDraft(d => ({ ...d, sort_order: parseInt(e.target.value) || 0 }))}
-            className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+            className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-colors"
           />
         </div>
       </div>

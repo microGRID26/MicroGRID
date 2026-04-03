@@ -189,7 +189,7 @@ export function BomTab({ project }: Props) {
             ↓ CSV
           </button>
           <button onClick={saveBom} disabled={saving}
-            className="text-xs px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white rounded-lg transition-colors disabled:opacity-50">
+            className="text-xs px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors disabled:opacity-50">
             {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save BOM'}
           </button>
         </div>

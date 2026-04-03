@@ -33,7 +33,7 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-gray-500 text-sm">Checking permissions…</div>
       </div>
     )
@@ -41,7 +41,7 @@ export default function AdminPage() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-gray-950 flex flex-col">
+      <div className="min-h-screen bg-gray-900 flex flex-col">
         <Nav active="Admin" />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
@@ -64,7 +64,7 @@ export default function AdminPage() {
   const activeItem = ADMIN_SIDEBAR_ITEMS.find(s => s.id === activeModule)
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="min-h-screen bg-gray-900 text-white">
       <Nav active="Admin" />
 
       <div className="flex h-screen overflow-hidden">

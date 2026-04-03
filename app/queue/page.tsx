@@ -11,7 +11,7 @@ import { useSupabaseQuery, usePmFilter } from '@/lib/hooks'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import { useSearchParams } from 'next/navigation'
 import { BulkActionBar, useBulkSelect, SelectCheckbox } from '@/components/BulkActionBar'
-import { updateProject, addNote } from '@/lib/api'
+import { updateProject, addNote, insertAuditLog } from '@/lib/api'
 import { db } from '@/lib/db'
 import type { Project } from '@/types/database'
 import { Calendar, X, MessageSquare, ArrowUpDown } from 'lucide-react'
@@ -577,18 +577,20 @@ function QueuePage() {
       <Nav active="Queue" onNewProject={() => setShowNewProject(true)} />
 
       {/* ── Smart Filters Toolbar ─────────────────────────────────────── */}
-      <div className="bg-gray-950 border-b border-gray-800 px-4 py-2 space-y-2">
+      <div className="bg-gray-900 border-b border-gray-800 px-4 py-2 space-y-2">
         {/* Search, PM, count + stage chips */}
         <div className="flex items-center gap-2 flex-wrap">
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search..."
+            aria-label="Search projects"
             className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-3 py-1.5 w-40 focus:outline-none focus:border-green-500 placeholder-gray-500"
           />
           <select
             value={userPm}
             onChange={e => selectPm(e.target.value)}
+            aria-label="Filter by PM"
             className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-2 py-1"
           >
             <option value="">All PMs</option>
@@ -614,6 +616,7 @@ function QueuePage() {
           <select
             value={filters.financier}
             onChange={e => setFilters(prev => ({ ...prev, financier: e.target.value }))}
+            aria-label="Filter by financier"
             className="text-[11px] bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1 focus:outline-none focus:border-green-500"
           >
             <option value="">Financier: All</option>
@@ -623,6 +626,7 @@ function QueuePage() {
           <select
             value={filters.ahj}
             onChange={e => setFilters(prev => ({ ...prev, ahj: e.target.value }))}
+            aria-label="Filter by AHJ"
             className="text-[11px] bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1 focus:outline-none focus:border-green-500"
           >
             <option value="">AHJ: All</option>
@@ -681,7 +685,7 @@ function QueuePage() {
                 )}
               </>
             )}
-            <button onClick={() => setShowCardConfig(true)} className="text-gray-400 hover:text-white transition-colors p-1" title="Card fields">
+            <button onClick={() => setShowCardConfig(true)} className="text-gray-400 hover:text-white transition-colors p-1" title="Card fields" aria-label="Configure card fields">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
           </div>
@@ -1105,6 +1109,7 @@ function QueueCard({ p, taskMap, onOpen, cardFields, selectMode, isSelected, onT
   const [quickNote, setQuickNote] = useState('')
   const [quickNoteSubmitting, setQuickNoteSubmitting] = useState(false)
   const [clearingBlocker, setClearingBlocker] = useState(false)
+  const [toast, setToast] = useState<{message: string, type: 'success'|'error'|'info'} | null>(null)
 
   const handleSetFollowUp = useCallback(async (date: string) => {
     if (!date) return
@@ -1115,7 +1120,7 @@ function QueueCard({ p, taskMap, onOpen, cardFields, selectMode, isSelected, onT
       onRefresh()
     } catch (err) {
       console.error('Failed to set follow-up date:', err)
-      alert('Failed to set follow-up date. Please try again.')
+      setToast({ message: 'Failed to set follow-up date. Please try again.', type: 'error' }); setTimeout(() => setToast(null), 3000)
     }
   }, [p.id, onRefresh])
 
@@ -1125,7 +1130,7 @@ function QueueCard({ p, taskMap, onOpen, cardFields, selectMode, isSelected, onT
     setClearingBlocker(true)
     try {
       // Log to audit
-      await db().from('audit_log').insert({
+      await insertAuditLog({
         project_id: p.id,
         field: 'blocker',
         old_value: p.blocker,
@@ -1155,7 +1160,7 @@ function QueueCard({ p, taskMap, onOpen, cardFields, selectMode, isSelected, onT
       setShowQuickNote(false)
     } catch (err) {
       console.error('Failed to add note:', err)
-      alert('Failed to add note. Please try again.')
+      setToast({ message: 'Failed to add note. Please try again.', type: 'error' }); setTimeout(() => setToast(null), 3000)
       // Note text is preserved on failure — not cleared
     } finally {
       setQuickNoteSubmitting(false)
@@ -1343,6 +1348,12 @@ function QueueCard({ p, taskMap, onOpen, cardFields, selectMode, isSelected, onT
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
+      )}
+
+      {toast && (
+        <div className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${
+          toast.type === 'error' ? 'bg-red-600 text-white' : toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'
+        }`}>{toast.message}</div>
       )}
     </div>
   )

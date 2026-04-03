@@ -242,7 +242,7 @@ export default function ServicePage() {
       <Nav active="Service" />
 
       {/* Stats bar */}
-      <div className="bg-gray-950 border-b border-gray-800 px-4 py-2 flex items-center gap-4 flex-shrink-0" role="status" aria-label="Service call statistics">
+      <div className="bg-gray-900 border-b border-gray-800 px-4 py-2 flex items-center gap-4 flex-shrink-0" role="status" aria-label="Service call statistics">
         <div className="flex items-center gap-3">
           <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Cases:</span>
           {[
@@ -265,7 +265,7 @@ export default function ServicePage() {
       </div>
 
       {/* Status tabs + filters */}
-      <div className="bg-gray-950 border-b border-gray-800 flex items-center gap-1 px-4 py-2 flex-shrink-0 flex-wrap" role="toolbar" aria-label="Service call filters">
+      <div className="bg-gray-900 border-b border-gray-800 flex items-center gap-1 px-4 py-2 flex-shrink-0 flex-wrap" role="toolbar" aria-label="Service call filters">
         {/* Status tabs */}
         {[
           { key: 'all', label: `All (${counts.all})` },
@@ -355,7 +355,7 @@ export default function ServicePage() {
           </div>
         ) : (
           <table className="w-full border-collapse text-xs" role="table">
-            <thead className="bg-gray-950 sticky top-0">
+            <thead className="bg-gray-900 sticky top-0">
               <tr>
                 {COLUMN_DEFS.map(col => (
                   <th key={col.key}

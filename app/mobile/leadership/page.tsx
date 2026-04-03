@@ -258,7 +258,7 @@ export default function MobileLeadershipPage() {
 
   if (userLoading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-gray-400 text-sm">Loading...</div>
       </div>
     )
@@ -266,7 +266,7 @@ export default function MobileLeadershipPage() {
 
   if (!user || !user.isManager) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center px-6">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center px-6">
         <div className="text-center">
           <p className="text-lg text-gray-400">Access Restricted</p>
           <p className="text-sm text-gray-500 mt-2">This dashboard is available to Managers and above.</p>
@@ -281,9 +281,9 @@ export default function MobileLeadershipPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white pb-[max(2rem,env(safe-area-inset-bottom))]">
+    <div className="min-h-screen bg-gray-900 text-white pb-[max(2rem,env(safe-area-inset-bottom))]">
       {/* Top bar */}
-      <header className="sticky top-0 z-50 bg-gray-950/95 backdrop-blur border-b border-gray-800 px-4 py-3 flex items-center justify-between">
+      <header className="sticky top-0 z-50 bg-gray-900/95 backdrop-blur border-b border-gray-800 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <a href="/command" className="p-2 -ml-2 rounded-lg active:bg-gray-800 transition-colors" aria-label="Back">
             <ArrowLeft className="w-5 h-5 text-gray-400" />

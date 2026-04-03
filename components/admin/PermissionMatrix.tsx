@@ -98,7 +98,7 @@ export function PermissionMatrix({ isSuperAdmin }: { isSuperAdmin?: boolean }) {
           </p>
         </div>
         {isSuperAdmin && (
-          <button onClick={() => setShowAdd(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white text-xs font-medium rounded-md">
+          <button onClick={() => setShowAdd(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs font-medium rounded-md">
             <Plus className="w-3.5 h-3.5" /> Add Feature
           </button>
         )}
@@ -172,7 +172,7 @@ export function PermissionMatrix({ isSuperAdmin }: { isSuperAdmin?: boolean }) {
               <input value={newFeature} onChange={e => setNewFeature(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && addFeature()}
                 placeholder="e.g. Custom Reports"
-                className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500" />
+                className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500" />
               <p className="text-[10px] text-gray-500 mt-2">All roles will start with — (no access). Click cells to set permissions.</p>
             </div>
             <div className="px-5 py-3 border-t border-gray-800 flex justify-end gap-2">

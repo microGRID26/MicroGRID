@@ -126,6 +126,7 @@ export default function RampUpPage() {
   // expandedProject removed — was unused
   const [stageFilter, setStageFilter] = useState('')
   const [financierFilter, setFinancierFilter] = useState('')
+  const [toast, setToast] = useState<{message: string, type: 'success'|'error'|'info'} | null>(null)
 
   // Load everything
   const loadAll = useCallback(async () => {
@@ -157,7 +158,7 @@ export default function RampUpPage() {
       .in('task_id', ['install_done', 'sched_install', 'inventory', 'util_permit', 'city_permit', 'hoa', 'eng_approval', 'stamps', 'ntp', 'quote_ext_scope'])
       .limit(50000)
     const taskMap = new Map<string, Map<string, string>>()
-    for (const t of (taskStates ?? []) as any[]) {
+    for (const t of (taskStates ?? []) as { project_id: string; task_id: string; status: string }[]) {
       if (!taskMap.has(t.project_id)) taskMap.set(t.project_id, new Map())
       taskMap.get(t.project_id)!.set(t.task_id, t.status)
     }
@@ -165,20 +166,22 @@ export default function RampUpPage() {
     // Load AHJ permit_required data
     const { data: ahjs } = await db().from('ahjs').select('name, permit_required').limit(2000)
     const ahjPermitMap = new Map<string, boolean>()
-    for (const a of (ahjs ?? []) as any[]) {
+    for (const a of (ahjs ?? []) as { name: string; permit_required: boolean }[]) {
       ahjPermitMap.set(a.name, a.permit_required ?? true)
     }
 
     // Geocode all zips
-    const zips = [...new Set((rawProjects as any[]).map(p => p.zip).filter(Boolean))]
+    type RawProject = { id: string; name: string; city: string | null; address: string | null; zip: string | null; ahj: string | null; stage: string; module: string | null; inverter: string | null; battery: string | null; systemkw: number | null; contract: number | null; pm: string | null; blocker: string | null; financier: string | null }
+    const projects = rawProjects as RawProject[]
+    const zips = [...new Set(projects.map(p => p.zip).filter((z): z is string => !!z))]
     await Promise.all(zips.map(z => geocodeZip(z)))
 
     // Compute all fields
-    const maxContract = Math.max(...(rawProjects as any[]).map(p => Number(p.contract) || 0), 1)
+    const maxContract = Math.max(...projects.map(p => Number(p.contract) || 0), 1)
     const allMapped: RampProject[] = []
 
     // First pass: compute distances
-    for (const p of rawProjects as any[]) {
+    for (const p of projects) {
       // Skip projects where install is already complete
       const tasks = taskMap.get(p.id)
       if (tasks?.get('install_done') === 'Complete') continue
@@ -192,14 +195,14 @@ export default function RampUpPage() {
       const autoR = autoReadiness(p.ahj, p.module, p.inverter, p.battery, permitRequired)
       // Enhance auto-readiness with actual task completion data
       if (!dbReadiness && tasks) {
-        if (tasks.get('ntp') === 'Complete') (autoR as any).ntp_approved = true
-        if (tasks.get('inventory') === 'Complete') (autoR as any).equipment_ready = true
-        if (tasks.get('util_permit') === 'Complete') (autoR as any).utility_approved = true
-        if (tasks.get('hoa') === 'Complete') (autoR as any).hoa_approved = true
+        if (tasks.get('ntp') === 'Complete') autoR.ntp_approved = true
+        if (tasks.get('inventory') === 'Complete') autoR.equipment_ready = true
+        if (tasks.get('util_permit') === 'Complete') autoR.utility_approved = true
+        if (tasks.get('hoa') === 'Complete') autoR.hoa_approved = true
         // Extended scope: if status is anything other than 'Not Ready' or 'Complete', it's blocking
         const extScope = tasks.get('quote_ext_scope')
         if (extScope && extScope !== 'Not Ready' && extScope !== 'Complete') {
-          (autoR as any).ext_scope_clear = false
+          autoR.ext_scope_clear = false
         }
         // Redesign is NEVER auto-checked — must be manually confirmed
         // Old TriSMART engineering/stamps don't count under MicroGRID
@@ -357,7 +360,7 @@ export default function RampUpPage() {
       drive_minutes: project.driveMinutes ?? null,
       created_by: user?.name,
     })
-    if (!result) { alert('Failed to schedule project'); return }
+    if (!result) { setToast({ message: 'Failed to schedule project', type: 'error' }); setTimeout(() => setToast(null), 3000); return }
     loadAll()
   }
 
@@ -371,7 +374,7 @@ export default function RampUpPage() {
     const installDate = entry.scheduled_day ?? selectedWeek
 
     // Create schedule entry in the main schedule table
-    if (!crew) { alert(`Crew "${entry.crew_name}" not found in database`); return }
+    if (!crew) { setToast({ message: `Crew "${entry.crew_name}" not found in database`, type: 'error' }); setTimeout(() => setToast(null), 3000); return }
     const schedId = crypto.randomUUID()
     const { error: schedErr } = await db().from('schedule').insert({
       id: schedId,
@@ -383,7 +386,7 @@ export default function RampUpPage() {
       notes: `Ramp-up planner: ${entry.crew_name}, Week of ${getWeekLabel(entry.scheduled_week)}`,
       pm: project.pm,
     })
-    if (schedErr) { console.error('Schedule insert failed:', schedErr); alert('Failed to create schedule entry'); return }
+    if (schedErr) { console.error('Schedule insert failed:', schedErr); setToast({ message: 'Failed to create schedule entry', type: 'error' }); setTimeout(() => setToast(null), 3000); return }
 
     // Update ramp schedule status
     await updateScheduleEntry(entry.id, { status: 'confirmed', scheduled_day: installDate })
@@ -454,11 +457,11 @@ export default function RampUpPage() {
     // Build full readiness from either DB or auto-computed values
     const base = project.readiness ?? autoReadiness(project.ahj, project.module, project.inverter, project.battery)
     const updated = { ...base, [field]: !current }
-    await upsertReadiness(projectId, updated as any, user?.name)
+    await upsertReadiness(projectId, updated as Partial<ProjectReadiness>, user?.name)
     // Optimistic update — don't wait for full reload
     setProjects(prev => prev.map(p => {
       if (p.id !== projectId) return p
-      const newReadiness = { ...p.readiness, ...updated } as any
+      const newReadiness = { ...p.readiness, ...updated } as ProjectReadiness
       const newScore = computeReadinessScore(newReadiness)
       const newTier = tierFromScore(newScore, newReadiness)
       return { ...p, readiness: newReadiness, readinessScore: newScore, tier: newTier }
@@ -493,7 +496,7 @@ export default function RampUpPage() {
       }
     }
     setAutoFilling(false)
-    if (failed > 0) alert(`Filled ${filled} slots, ${failed} failed`)
+    if (failed > 0) { setToast({ message: `Filled ${filled} slots, ${failed} failed`, type: 'error' }); setTimeout(() => setToast(null), 3000) }
     if (filled > 0) loadAll()
   }
 
@@ -516,7 +519,7 @@ export default function RampUpPage() {
         crew,
         jobs: jobs.map(j => {
           const p = projects.find(pr => pr.id === j.project_id)
-          return p ? { name: p.name, id: p.id, address: p.address, city: p.city, phone: (p as any).phone, systemkw: p.systemkw, date: j.scheduled_day } : null
+          return p ? { name: p.name, id: p.id, address: p.address, city: p.city, phone: null as string | null, systemkw: p.systemkw, date: j.scheduled_day } : null
         }).filter(Boolean),
       }
     })
@@ -538,7 +541,7 @@ export default function RampUpPage() {
     </body></html>`
     const win = window.open('', '_blank')
     if (win) { win.document.write(html); win.document.close(); win.print() }
-    else alert('Popup blocked — please allow popups for this site to print crew sheets.')
+    else { setToast({ message: 'Popup blocked — please allow popups for this site to print crew sheets.', type: 'error' }); setTimeout(() => setToast(null), 3000) }
   }
 
   const openProject = async (id: string) => {
@@ -573,7 +576,7 @@ export default function RampUpPage() {
   // Proximity clustering computed data
   const clusterFocusProject = useMemo(() => projects.find(p => p.id === clusterFocusId) ?? null, [projects, clusterFocusId])
   const clusterNearby = useMemo(() => {
-    if (!clusterFocusProject) return [] as any[]
+    if (!clusterFocusProject) return [] as RampProject[]
     const result: any[] = []
     for (const p of projects) {
       if (p.id === clusterFocusProject.id) continue
@@ -627,15 +630,15 @@ export default function RampUpPage() {
     return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}${waypoints ? `&waypoints=${encodeURIComponent(waypoints)}` : ''}`
   }, [clusterFocusProject, clusterRoutePoints])
 
-  if (authLoading) return <div className="min-h-screen bg-gray-950"><Nav active="Ramp-Up" /></div>
-  if (!isManager) return <div className="min-h-screen bg-gray-950"><Nav active="Ramp-Up" /><div className="max-w-7xl mx-auto px-4 py-20 text-center text-gray-500">Not authorized.</div></div>
+  if (authLoading) return <div className="min-h-screen bg-gray-900"><Nav active="Ramp-Up" /></div>
+  if (!isManager) return <div className="min-h-screen bg-gray-900"><Nav active="Ramp-Up" /><div className="max-w-7xl mx-auto px-4 py-20 text-center text-gray-500">Not authorized.</div></div>
 
   const TIER_COLORS = { 1: 'border-green-500', 2: 'border-amber-500', 3: 'border-blue-500', 4: 'border-red-500' }
   const TIER_BG = { 1: 'bg-green-900/20', 2: 'bg-amber-900/20', 3: 'bg-blue-900/20', 4: 'bg-red-900/20' }
   const TIER_TEXT = { 1: 'text-green-400', 2: 'text-amber-400', 3: 'text-blue-400', 4: 'text-red-400' }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="min-h-screen bg-gray-900 text-white">
       <Nav active="Ramp-Up" />
 
       {/* Instructional Guide */}
@@ -762,7 +765,7 @@ export default function RampUpPage() {
                 {weekRevenue > 0 && <span className="text-green-400 font-medium ml-2">{fmt$(weekRevenue)}</span>}
               </span>
               {crewSuggestions.size > 0 && weekSchedule.length < crewNames.length * (config?.installs_per_crew_per_week ?? 2) && (
-                <button onClick={handleAutoFill} disabled={autoFilling} className="text-[10px] px-3 py-1 bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white rounded-md font-medium ml-2">
+                <button onClick={handleAutoFill} disabled={autoFilling} className="text-[10px] px-3 py-1 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white rounded-md font-medium ml-2">
                   {autoFilling ? 'Filling...' : 'Auto-Fill Week'}
                 </button>
               )}
@@ -805,7 +808,7 @@ export default function RampUpPage() {
                               <div className="flex items-center gap-2 mt-2">
                                 <label className="text-[10px] text-gray-500">Install Date:</label>
                                 <input type="date" value={job.scheduled_day ?? ''}
-                                  onChange={e => updateScheduleEntry(job.id, { scheduled_day: e.target.value || null } as any).then(loadAll)}
+                                  onChange={e => updateScheduleEntry(job.id, { scheduled_day: e.target.value || null } as Partial<RampScheduleEntry>).then(loadAll)}
                                   min={selectedWeek}
                                   className="bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-[10px] text-white focus:outline-none focus:border-green-500" />
                                 {job.scheduled_day && <span className="text-[10px] text-green-400">{fmtDate(job.scheduled_day)}</span>}
@@ -1156,7 +1159,7 @@ export default function RampUpPage() {
               <div className="relative flex-1 max-w-md">
                 <input value={queueSearch} onChange={e => setQueueSearch(e.target.value)}
                   placeholder="Search name, city, project ID..."
-                  className="w-full pl-3 pr-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+                  className="w-full pl-3 pr-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none focus:border-green-500" />
               </div>
               <select value={stageFilter} onChange={e => setStageFilter(e.target.value)}
                 className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-[10px] text-white">
@@ -1218,7 +1221,7 @@ export default function RampUpPage() {
                 {/* Readiness checklist */}
                 <div className="flex flex-wrap gap-2 mt-2">
                   {READINESS_WEIGHTS.map(item => {
-                    const checked = (p.readiness as any)?.[item.field] ?? false
+                    const checked = p.readiness ? (p.readiness as any)[item.field] === true : false
                     return (
                       <button key={item.field} onClick={(e) => { e.stopPropagation(); handleReadinessToggle(p.id, item.field, checked) }}
                         className={cn('text-[10px] px-2 py-0.5 rounded border transition-colors',
@@ -1314,6 +1317,12 @@ export default function RampUpPage() {
       {/* Project Panel */}
       {panelProject && (
         <ProjectPanel project={panelProject} onClose={() => setPanelProject(null)} onProjectUpdated={() => {}} />
+      )}
+
+      {toast && (
+        <div className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${
+          toast.type === 'error' ? 'bg-red-600 text-white' : toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'
+        }`}>{toast.message}</div>
       )}
     </div>
   )

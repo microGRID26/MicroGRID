@@ -125,8 +125,9 @@ function OpsContent({ embedded }: { embedded: boolean }) {
       db().from('ahjs').select('name, display_name').limit(2000),
     ]).then(([utilRes, ahjRes]) => {
       const map = new Map<string, string>()
-      for (const u of (utilRes.data ?? []) as any[]) { if (u.display_name) map.set(u.name, u.display_name) }
-      for (const a of (ahjRes.data ?? []) as any[]) { if (a.display_name) map.set(a.name, a.display_name) }
+      type NameDisplay = { name: string; display_name: string | null }
+      for (const u of (utilRes.data ?? []) as NameDisplay[]) { if (u.display_name) map.set(u.name, u.display_name) }
+      for (const a of (ahjRes.data ?? []) as NameDisplay[]) { if (a.display_name) map.set(a.name, a.display_name) }
       setDisplayNames(map)
     }).catch(err => console.error('[display_name] load failed:', err))
   }, [orgId])
@@ -139,8 +140,8 @@ function OpsContent({ embedded }: { embedded: boolean }) {
         .select('id, name, sale_date, install_date, pto_date, contract, systemkw, financier, utility, ahj, city, pm, consultant, battery, module, module_qty, dealer, disposition')
         .limit(15000)
       const activeIds = new Set(activeProjects.map(p => p.id))
-      const mapped = ((data ?? []) as any[])
-        .filter(p => !activeIds.has(p.id) && !isTestProject(p as OpsProject))
+      const mapped = ((data ?? []) as Array<Record<string, unknown> & { id: string; install_date?: string | null }>)
+        .filter(p => !activeIds.has(p.id) && !isTestProject(p as unknown as OpsProject))
         .map(p => ({
           ...p,
           stage: 'complete',
@@ -187,8 +188,8 @@ function OpsContent({ embedded }: { embedded: boolean }) {
   }
   const clearDrill = () => setDrill(null)
 
-  if (!embedded && authLoading) return <div className="min-h-screen bg-gray-950"><Nav active="Ops" /></div>
-  if (!embedded && !isManager) return <div className="min-h-screen bg-gray-950"><Nav active="Ops" /><div className="max-w-7xl mx-auto px-4 py-20 text-center text-gray-500">Not authorized.</div></div>
+  if (!embedded && authLoading) return <div className="min-h-screen bg-gray-900"><Nav active="Ops" /></div>
+  if (!embedded && !isManager) return <div className="min-h-screen bg-gray-900"><Nav active="Ops" /><div className="max-w-7xl mx-auto px-4 py-20 text-center text-gray-500">Not authorized.</div></div>
 
   // Clickable metric cell
   const Cell = ({ v, l, color, onClick }: { v: string | number; l: string; color?: string; onClick?: () => void }) => (
@@ -311,7 +312,7 @@ function OpsContent({ embedded }: { embedded: boolean }) {
   const installToPTO = avgDaysBetween(projects.filter(p => p.pto_date && p.install_complete_date), p => p.install_complete_date, p => p.pto_date)
 
   return (
-    <div className={embedded ? 'text-white' : 'min-h-screen bg-gray-950 text-white'}>
+    <div className={embedded ? 'text-white' : 'min-h-screen bg-gray-900 text-white'}>
       {!embedded && <Nav active="Analytics" />}
       <div className={embedded ? 'space-y-3' : 'max-w-[1600px] mx-auto px-3 md:px-4 py-3 space-y-3'}>
 

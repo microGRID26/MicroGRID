@@ -1,6 +1,7 @@
 // lib/api/engineering.ts — Engineering assignment data access layer
 // EPCs assign projects to engineering orgs (e.g., Rush Engineering) for design work.
 // Engineering orgs complete work and submit deliverables back.
+// Org filtering: inherited via project_id FK — RLS policies enforce org scope
 
 import { db } from '@/lib/db'
 
@@ -50,7 +51,7 @@ export async function loadAssignments(orgId?: string | null, status?: Assignment
   const supabase = db()
   let q = supabase
     .from('engineering_assignments')
-    .select('*')
+    .select('id, project_id, assigned_org, requesting_org, assignment_type, status, priority, assigned_to, assigned_at, started_at, completed_at, due_date, notes, deliverables, revision_count, created_by, created_by_id, created_at, updated_at')
     .order('created_at', { ascending: false })
     .limit(500)
   if (orgId) q = q.or(`requesting_org.eq.${orgId},assigned_org.eq.${orgId}`)
@@ -67,7 +68,7 @@ export async function loadAssignmentByProject(projectId: string): Promise<Engine
   const supabase = db()
   const { data, error } = await supabase
     .from('engineering_assignments')
-    .select('*')
+    .select('id, project_id, assigned_org, requesting_org, assignment_type, status, priority, assigned_to, assigned_at, started_at, completed_at, due_date, notes, deliverables, revision_count, created_by, created_by_id, created_at, updated_at')
     .eq('project_id', projectId)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -86,7 +87,7 @@ export async function loadAssignmentHistory(projectId: string): Promise<Engineer
   const supabase = db()
   const { data, error } = await supabase
     .from('engineering_assignments')
-    .select('*')
+    .select('id, project_id, assigned_org, requesting_org, assignment_type, status, priority, assigned_to, assigned_at, started_at, completed_at, due_date, notes, deliverables, revision_count, created_by, created_by_id, created_at, updated_at')
     .eq('project_id', projectId)
     .order('created_at', { ascending: false })
     .limit(50)
@@ -243,7 +244,7 @@ export async function loadAssignmentQueue(status?: AssignmentStatus | null): Pro
   const supabase = db()
   let q = supabase
     .from('engineering_assignments')
-    .select('*')
+    .select('id, project_id, assigned_org, requesting_org, assignment_type, status, priority, assigned_to, assigned_at, started_at, completed_at, due_date, notes, deliverables, revision_count, created_by, created_by_id, created_at, updated_at')
     .order('created_at', { ascending: false })
     .limit(500)
   if (status) {

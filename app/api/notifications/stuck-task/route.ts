@@ -11,6 +11,33 @@ import { sendEmail } from '@/lib/email'
  * Body: { projectId, projectName, taskName, status, reason, pmEmail, pmName }
  */
 export async function POST(req: Request) {
+  // Auth: require CRON_SECRET or ADMIN_API_SECRET (internal CRM calls pass this)
+  const authHeader = req.headers.get('authorization') ?? ''
+  const token = authHeader.replace(/^Bearer\s+/i, '')
+  const cronSecret = process.env.CRON_SECRET
+  const adminSecret = process.env.ADMIN_API_SECRET
+  const hasAuth = (cronSecret && token === cronSecret) || (adminSecret && token === adminSecret)
+
+  if (!hasAuth) {
+    // Fall back to session cookie check via Supabase
+    const cookieHeader = req.headers.get('cookie')
+    if (!cookieHeader) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    // Validate the session is real
+    const { createClient: createBrowserClient } = await import('@supabase/supabase-js')
+    // Use anon key — just validating the JWT, not doing privileged ops
+    const supabaseAuth = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { global: { headers: { cookie: cookieHeader } } }
+    )
+    const { data: { user } } = await supabaseAuth.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SECRET_KEY
   if (!supabaseUrl || !serviceKey) {

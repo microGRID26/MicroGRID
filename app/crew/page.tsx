@@ -220,7 +220,7 @@ function JobCard({ job, onStatusChange }: { job: JobWithProject; onStatusChange:
               'w-full py-3 rounded-lg font-semibold text-base transition-colors',
               status === 'scheduled'
                 ? 'bg-amber-700 hover:bg-amber-600 active:bg-amber-500 text-white'
-                : 'bg-green-700 hover:bg-green-600 active:bg-green-500 text-white'
+                : 'bg-green-600 hover:bg-green-500 active:bg-green-500 text-white'
             )}
           >
             {nextLabel}
@@ -485,7 +485,7 @@ export default function CrewPage() {
   // Auth gate: authenticated users only
   if (!userLoading && !currentUser) {
     return (
-      <div className="min-h-dvh bg-gray-950 flex items-center justify-center">
+      <div className="min-h-dvh bg-gray-900 flex items-center justify-center">
         <p className="text-gray-400 text-lg">Authentication required.</p>
       </div>
     )
@@ -493,16 +493,16 @@ export default function CrewPage() {
 
   if (loading) {
     return (
-      <div className="min-h-dvh bg-gray-950 flex items-center justify-center">
+      <div className="min-h-dvh bg-gray-900 flex items-center justify-center">
         <div className="text-green-400 text-base animate-pulse">Loading jobs...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-dvh bg-gray-950 flex flex-col" style={{ fontSize: '14px' }}>
+    <div className="min-h-dvh bg-gray-900 flex flex-col" style={{ fontSize: '14px' }}>
       {/* Simple mobile header */}
-      <header className="bg-gray-950 border-b border-gray-800 px-4 py-3 flex-shrink-0 sticky top-0 z-40">
+      <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex-shrink-0 sticky top-0 z-40">
         <div className="flex items-center justify-between">
           <span className="text-green-400 font-bold text-lg">MicroGRID</span>
           <a href="/schedule" className="text-sm text-gray-400 hover:text-white active:text-white px-3 py-1.5 rounded-lg">
@@ -513,7 +513,7 @@ export default function CrewPage() {
       </header>
 
       {/* Crew filter */}
-      <div className="bg-gray-950 border-b border-gray-800 px-4 py-2 flex-shrink-0">
+      <div className="bg-gray-900 border-b border-gray-800 px-4 py-2 flex-shrink-0">
         <select
           value={crewFilter}
           onChange={e => setCrewFilter(e.target.value)}

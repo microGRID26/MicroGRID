@@ -97,7 +97,7 @@ export async function getCustomerAccount(): Promise<CustomerAccount | null> {
 
   const { data, error } = await db()
     .from('customer_accounts')
-    .select('*')
+    .select('id, auth_user_id, email, name, phone, project_id, status, last_login_at, notification_prefs, created_at')
     .eq('auth_user_id', user.id)
     .eq('status', 'active')
     .single()
@@ -109,7 +109,7 @@ export async function getCustomerAccount(): Promise<CustomerAccount | null> {
 export async function getCustomerAccountByEmail(email: string): Promise<CustomerAccount | null> {
   const { data, error } = await db()
     .from('customer_accounts')
-    .select('*')
+    .select('id, auth_user_id, email, name, phone, project_id, status, last_login_at, notification_prefs, created_at')
     .eq('email', email.toLowerCase())
     .single()
 

@@ -7,10 +7,11 @@ import { Input, Textarea, Modal, SaveBtn, SearchBar } from './shared'
 
 export function HOAManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const supabase = db()
-  const [hoas, setHoas] = useState<any[]>([])
+  interface HOARecord { id: string; name: string; phone: string | null; website: string | null; contact_name: string | null; contact_email: string | null; notes: string | null }
+  const [hoas, setHoas] = useState<HOARecord[]>([])
   const [search, setSearch] = useState('')
-  const [editing, setEditing] = useState<any | null>(null)
-  const [draft, setDraft] = useState<any>({})
+  const [editing, setEditing] = useState<HOARecord | null>(null)
+  const [draft, setDraft] = useState<Record<string, string | null>>({})
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState('')
   const [showNew, setShowNew] = useState(false)
@@ -24,7 +25,7 @@ export function HOAManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 
   useEffect(() => { load() }, [load])
 
-  const openEdit = (h: any) => { setEditing(h); setDraft({ ...h }) }
+  const openEdit = (h: HOARecord) => { setEditing(h); setDraft({ ...h }) }
 
   const save = async () => {
     if (!editing) return
@@ -89,16 +90,16 @@ export function HOAManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       </div>
       {(editing || showNew) && (
         <Modal title={editing ? `Edit HOA — ${editing.name}` : 'New HOA'} onClose={() => { setEditing(null); setShowNew(false) }}>
-          <Input label="Name" value={draft.name ?? ''} onChange={v => setDraft((d: any) => ({ ...d, name: v }))} />
+          <Input label="Name" value={draft.name ?? ''} onChange={v => setDraft(d => ({ ...d, name: v }))} />
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Phone" value={draft.phone ?? ''} onChange={v => setDraft((d: any) => ({ ...d, phone: v }))} />
-            <Input label="Website" value={draft.website ?? ''} onChange={v => setDraft((d: any) => ({ ...d, website: v }))} />
+            <Input label="Phone" value={draft.phone ?? ''} onChange={v => setDraft(d => ({ ...d, phone: v }))} />
+            <Input label="Website" value={draft.website ?? ''} onChange={v => setDraft(d => ({ ...d, website: v }))} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Contact Name" value={draft.contact_name ?? ''} onChange={v => setDraft((d: any) => ({ ...d, contact_name: v }))} />
-            <Input label="Contact Email" value={draft.contact_email ?? ''} onChange={v => setDraft((d: any) => ({ ...d, contact_email: v }))} />
+            <Input label="Contact Name" value={draft.contact_name ?? ''} onChange={v => setDraft(d => ({ ...d, contact_name: v }))} />
+            <Input label="Contact Email" value={draft.contact_email ?? ''} onChange={v => setDraft(d => ({ ...d, contact_email: v }))} />
           </div>
-          <Textarea label="Notes" value={draft.notes ?? ''} onChange={v => setDraft((d: any) => ({ ...d, notes: v }))} />
+          <Textarea label="Notes" value={draft.notes ?? ''} onChange={v => setDraft(d => ({ ...d, notes: v }))} />
           <div className="flex justify-between pt-2">
             {editing && isSuperAdmin ? (
               <button onClick={async () => {

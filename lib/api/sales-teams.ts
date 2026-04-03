@@ -65,7 +65,7 @@ export async function loadPayScales(orgId?: string | null): Promise<PayScale[]> 
   const supabase = createClient()
   let query = supabase
     .from('pay_scales')
-    .select('*')
+    .select('id, name, description, per_watt_rate, adder_percentage, referral_bonus, sort_order, active, org_id, created_at, updated_at')
     .eq('active', true)
     .order('sort_order')
     .limit(200)
@@ -121,7 +121,7 @@ export async function loadPayDistribution(orgId?: string | null): Promise<PayDis
   const supabase = createClient()
   let query = supabase
     .from('pay_distribution')
-    .select('*')
+    .select('id, role_key, label, percentage, sort_order, active, org_id, created_at')
     .eq('active', true)
     .order('sort_order')
     .limit(200)
@@ -176,7 +176,7 @@ export async function loadSalesTeams(orgId?: string | null): Promise<SalesTeam[]
   const supabase = createClient()
   let query = supabase
     .from('sales_teams')
-    .select('*')
+    .select('id, name, vp_user_id, vp_name, regional_user_id, regional_name, manager_user_id, manager_name, assistant_manager_user_id, assistant_manager_name, stack_per_watt, active, org_id, created_at, updated_at')
     .order('name')
     .limit(200)
 
@@ -242,7 +242,7 @@ export async function loadSalesReps(filters?: SalesRepFilters): Promise<SalesRep
   const supabase = createClient()
   let query = supabase
     .from('sales_reps')
-    .select('*')
+    .select('id, user_id, auth_user_id, first_name, last_name, email, phone, team_id, pay_scale_id, role_key, hire_date, status, split_percentage, split_partner_id, notes, recheck_id, blacklisted, blacklist_reason, org_id, created_at, updated_at')
     .order('last_name')
     .limit(500)
 
@@ -313,7 +313,7 @@ export async function loadRepById(id: string): Promise<SalesRep | null> {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('sales_reps')
-    .select('*')
+    .select('id, user_id, auth_user_id, first_name, last_name, email, phone, team_id, pay_scale_id, role_key, hire_date, status, split_percentage, split_partner_id, notes, recheck_id, blacklisted, blacklist_reason, org_id, created_at, updated_at')
     .eq('id', id)
     .single()
   if (error) { console.error('loadRepById error:', error); return null }
@@ -326,7 +326,7 @@ export async function loadOnboardingRequirements(orgId?: string | null): Promise
   const supabase = createClient()
   let query = supabase
     .from('onboarding_requirements')
-    .select('*')
+    .select('id, name, description, required, sort_order, active, org_id, created_at')
     .eq('active', true)
     .order('sort_order')
     .limit(200)
@@ -346,7 +346,7 @@ export async function loadRepDocuments(repId: string): Promise<OnboardingDocumen
   const supabase = createClient()
   const { data, error } = await supabase
     .from('onboarding_documents')
-    .select('*')
+    .select('id, rep_id, requirement_id, status, sent_at, viewed_at, signed_at, uploaded_at, verified_at, verified_by, file_url, notes, created_at, updated_at')
     .eq('rep_id', repId)
     .order('created_at')
     .limit(200)
@@ -529,7 +529,7 @@ export interface RepNote {
 
 export async function loadRepNotes(repId: string): Promise<RepNote[]> {
   const { data, error } = await db().from('rep_notes')
-    .select('*')
+    .select('id, rep_id, text, author, author_id, created_at')
     .eq('rep_id', repId)
     .order('created_at', { ascending: false })
     .limit(200)
@@ -634,7 +634,7 @@ export interface TicketRepStats {
 }
 
 export async function loadTicketRepStats(): Promise<TicketRepStats[]> {
-  const { data, error } = await db().from('ticket_rep_stats').select('*').limit(500)
+  const { data, error } = await db().from('ticket_rep_stats').select('sales_rep_id, rep_name, team_id, total_tickets, open_tickets, resolved_tickets, service_tickets, sales_tickets, critical_tickets, escalated_tickets, avg_resolution_hours').limit(500)
   if (error) { console.error('[loadTicketRepStats]', error); return [] }
   return (data ?? []) as TicketRepStats[]
 }

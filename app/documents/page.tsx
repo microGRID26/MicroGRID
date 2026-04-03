@@ -130,7 +130,7 @@ export default function DocumentsPage() {
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
       <Nav active="Documents" />
-      <div className="bg-gray-950 border-b border-gray-800 px-4 py-2 flex flex-wrap items-center gap-2">
+      <div className="bg-gray-900 border-b border-gray-800 px-4 py-2 flex flex-wrap items-center gap-2">
         <div className="relative">
           <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500" />
           <input

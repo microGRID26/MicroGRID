@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import crypto from 'crypto'
 
 /**
  * POST /api/webhooks/subhub-vwc
@@ -23,7 +24,9 @@ export async function POST(req: Request) {
   if (webhookSecret) {
     const authHeader = req.headers.get('authorization') ?? req.headers.get('x-webhook-secret') ?? ''
     const candidate = authHeader.replace(/^Bearer\s+/i, '')
-    if (candidate !== webhookSecret) {
+    const a = Buffer.from(candidate)
+    const b = Buffer.from(webhookSecret)
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
       console.warn('[subhub-vwc] Invalid webhook secret')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

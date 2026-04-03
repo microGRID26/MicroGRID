@@ -99,7 +99,7 @@ export default function AnalyticsPage() {
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
       <Nav active="Analytics" />
-      <div className="bg-gray-950 border-b border-gray-800 px-4 py-2 flex flex-wrap items-center gap-2">
+      <div className="bg-gray-900 border-b border-gray-800 px-4 py-2 flex flex-wrap items-center gap-2">
         <button onClick={handleRefresh} disabled={refreshing}
           className="text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md px-2 py-1.5 transition-colors disabled:opacity-50 flex items-center gap-1"
           title="Refresh data"
@@ -126,7 +126,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Sub-tabs — wraps on mobile */}
-      <div className="bg-gray-950 border-b border-gray-800 flex flex-wrap px-4 flex-shrink-0" role="tablist" aria-label="Analytics tabs">
+      <div className="bg-gray-900 border-b border-gray-800 flex flex-wrap px-4 flex-shrink-0" role="tablist" aria-label="Analytics tabs">
         {(Object.keys(TAB_LABELS) as Tab[]).map(t => (
           <button key={t} onClick={() => setTab(t)}
             role="tab" aria-selected={tab === t} aria-controls={`panel-${t}`}

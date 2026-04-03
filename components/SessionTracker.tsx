@@ -17,6 +17,7 @@ export function SessionTracker() {
   useEffect(() => {
     if (loading) return
     if (initialized.current) return
+    initialized.current = true // Set immediately to prevent race condition re-entry
 
     const supabase = db()
 
@@ -53,7 +54,6 @@ export function SessionTracker() {
           .eq('id', existingSessionId)
           .single()
         if (existing) {
-          initialized.current = true
           startHeartbeat(supabase, existingSessionId)
           return
         }
@@ -67,7 +67,6 @@ export function SessionTracker() {
       const lastSessionTs = localStorage.getItem(SESSION_TS_KEY)
       if (lastSessionId && lastSessionTs && Date.now() - Number(lastSessionTs) < SESSION_TTL) {
         sessionStorage.setItem(SESSION_KEY, lastSessionId)
-        initialized.current = true
         startHeartbeat(supabase, lastSessionId)
         return
       }
@@ -97,7 +96,6 @@ export function SessionTracker() {
           sessionStorage.setItem(SESSION_KEY, sid)
           localStorage.setItem(SESSION_KEY, sid)
           localStorage.setItem(SESSION_TS_KEY, String(Date.now()))
-          initialized.current = true
           startHeartbeat(supabase, sid)
         }
       } catch (err) {

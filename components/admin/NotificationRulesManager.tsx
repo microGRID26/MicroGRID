@@ -76,7 +76,7 @@ export function NotificationRulesManager() {
       <div className="flex flex-col gap-1">
         <label className="text-xs text-gray-400 font-medium">Task</label>
         <select value={draft.task_id ?? ''} onChange={e => setDraft(d => ({ ...d, task_id: e.target.value }))}
-          className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
+          className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500">
           <option value="">Select task...</option>
           {taskOptions.map(t => <option key={t.id} value={t.id}>{t.name} ({t.id})</option>)}
         </select>
@@ -84,7 +84,7 @@ export function NotificationRulesManager() {
       <div className="flex flex-col gap-1">
         <label className="text-xs text-gray-400 font-medium">Trigger Status</label>
         <select value={draft.trigger_status ?? ''} onChange={e => setDraft(d => ({ ...d, trigger_status: e.target.value }))}
-          className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
+          className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500">
           <option value="">Select status...</option>
           {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
@@ -93,7 +93,7 @@ export function NotificationRulesManager() {
       <div className="flex flex-col gap-1">
         <label className="text-xs text-gray-400 font-medium">Action Type</label>
         <select value={draft.action_type ?? 'note'} onChange={e => setDraft(d => ({ ...d, action_type: e.target.value }))}
-          className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
+          className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500">
           <option value="note">Create Note</option>
           <option value="toast">Show Toast Only</option>
         </select>
@@ -102,7 +102,7 @@ export function NotificationRulesManager() {
       <div className="flex flex-col gap-1">
         <label className="text-xs text-gray-400 font-medium">Notify Role (optional)</label>
         <select value={draft.notify_role ?? ''} onChange={e => setDraft(d => ({ ...d, notify_role: e.target.value || null }))}
-          className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
+          className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500">
           <option value="">None</option>
           {roleOptions.map(r => <option key={r} value={r}>{r}</option>)}
         </select>

@@ -25,6 +25,7 @@ import {
 } from '@/lib/api'
 import { fmt$ } from '@/lib/utils'
 import type { PayScale, PayDistribution, SalesTeam, SalesRep, OnboardingRequirement, OnboardingDocument, RepStatus, OnboardingDocStatus, RepNote, RepScorecard } from '@/lib/api'
+import type { Project } from '@/types/database'
 import {
   Users, UserPlus, DollarSign, PieChart, ClipboardCheck, Shield,
   ChevronDown, ChevronUp, Plus, X, Pencil, Trash2, Download,
@@ -134,7 +135,7 @@ function AddTeamModal({ onClose, onSaved, orgId, users, editing }: {
           <div>
             <label className="text-xs text-gray-400 font-medium block mb-1">Team Name *</label>
             <input value={name} onChange={e => setName(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500" />
+              className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             {[
@@ -146,7 +147,7 @@ function AddTeamModal({ onClose, onSaved, orgId, users, editing }: {
               <div key={f.label}>
                 <label className="text-xs text-gray-400 font-medium block mb-1">{f.label}</label>
                 <select value={f.value} onChange={f.onChange}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
+                  className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500">
                   <option value="">-- None --</option>
                   {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>
@@ -156,7 +157,7 @@ function AddTeamModal({ onClose, onSaved, orgId, users, editing }: {
           <div>
             <label className="text-xs text-gray-400 font-medium block mb-1">Stack Rate ($/W)</label>
             <input type="number" step="0.01" value={stackPerWatt} onChange={e => setStackPerWatt(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500" />
+              className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500" />
           </div>
         </div>
         <div className="px-5 py-3 border-t border-gray-800 flex justify-end gap-2">
@@ -245,31 +246,31 @@ function AddRepModal({ onClose, onSaved, orgId, teams, payScales }: {
             <div>
               <label className="text-xs text-gray-400 font-medium block mb-1">First Name *</label>
               <input value={firstName} onChange={e => setFirstName(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500" />
+                className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500" />
             </div>
             <div>
               <label className="text-xs text-gray-400 font-medium block mb-1">Last Name *</label>
               <input value={lastName} onChange={e => setLastName(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500" />
+                className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-gray-400 font-medium block mb-1">Email *</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500" />
+                className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500" />
             </div>
             <div>
               <label className="text-xs text-gray-400 font-medium block mb-1">Phone</label>
               <input value={phone} onChange={e => setPhone(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500" />
+                className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-gray-400 font-medium block mb-1">Team</label>
               <select value={teamId} onChange={e => setTeamId(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
+                className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500">
                 <option value="">-- Unassigned --</option>
                 {teams.filter(t => t.active).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
@@ -277,7 +278,7 @@ function AddRepModal({ onClose, onSaved, orgId, teams, payScales }: {
             <div>
               <label className="text-xs text-gray-400 font-medium block mb-1">Pay Scale</label>
               <select value={payScaleId} onChange={e => setPayScaleId(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
+                className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500">
                 <option value="">-- Select --</option>
                 {payScales.filter(s => s.active).map(s => <option key={s.id} value={s.id}>{s.name} (${s.per_watt_rate}/W)</option>)}
               </select>
@@ -287,7 +288,7 @@ function AddRepModal({ onClose, onSaved, orgId, teams, payScales }: {
             <div>
               <label className="text-xs text-gray-400 font-medium block mb-1">Role</label>
               <select value={roleKey} onChange={e => handleRoleChange(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
+                className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500">
                 <option value="energy_consultant">Energy Consultant</option>
                 <option value="energy_advisor">Energy Advisor</option>
                 <option value="project_manager">Project Manager</option>
@@ -299,7 +300,7 @@ function AddRepModal({ onClose, onSaved, orgId, teams, payScales }: {
             <div>
               <label className="text-xs text-gray-400 font-medium block mb-1">Hire Date</label>
               <input type="date" value={hireDate} onChange={e => setHireDate(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500" />
+                className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500" />
             </div>
           </div>
         </div>
@@ -349,9 +350,9 @@ function TeamsTab({ teams, reps, payScales, users, orgId, onRefresh }: {
   useEffect(() => {
     Promise.all([loadCommissionRecords({ orgId: orgId ?? undefined }), loadProjects({ orgId: orgId ?? undefined })]).then(([records, projResult]) => {
       // Compute per-rep scorecards then aggregate by team
-      const projects = (Array.isArray(projResult) ? projResult : (projResult as any)?.data ?? []) as any[]
+      const projects = (Array.isArray(projResult) ? projResult : (projResult as { data?: unknown[] })?.data ?? []) as Project[]
       const activeReps_ = reps.filter(r => r.team_id)
-      const cards = computeRepScorecards(activeReps_, projects, records as any[])
+      const cards = computeRepScorecards(activeReps_, projects, records)
       const byTeam = new Map<string, { deals: number; total: number; paid: number; avgDaysSinceSale: number | null; avgDaysSinceInstall: number | null }>()
       for (const r of records) {
         if (r.status === 'cancelled') continue
@@ -392,7 +393,7 @@ function TeamsTab({ teams, reps, payScales, users, orgId, onRefresh }: {
       {/* Actions */}
       <div className="flex justify-end">
         <button onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white text-xs font-medium rounded-md transition-colors">
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs font-medium rounded-md transition-colors">
           <Plus className="w-3.5 h-3.5" /> Add Team
         </button>
       </div>
@@ -555,8 +556,8 @@ function PersonnelTab({ reps, teams, payScales, requirements, orgId, isAdmin, on
         loadProjects({ orgId: orgId ?? undefined }),
         loadCommissionRecords(),
       ])
-      const projects = (Array.isArray(projResult) ? projResult : (projResult as any)?.data ?? []) as any[]
-      const cards = computeRepScorecards(reps, projects, commRecords as any[])
+      const projects = (Array.isArray(projResult) ? projResult : (projResult as { data?: unknown[] })?.data ?? []) as Project[]
+      const cards = computeRepScorecards(reps, projects, commRecords)
       const map = new Map<string, RepScorecard>()
       cards.forEach(c => map.set(c.repId, c))
       setScorecards(map)
@@ -716,16 +717,16 @@ function PersonnelTab({ reps, teams, payScales, requirements, orgId, isAdmin, on
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1) }}
             placeholder="Search reps..."
-            className="w-full pl-9 pr-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            className="w-full pl-9 pr-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500"
           />
         </div>
         <select value={filterTeam} onChange={e => { setFilterTeam(e.target.value); setPage(1) }}
-          className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
+          className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500">
           <option value="">All Teams</option>
           {teams.filter(t => t.active).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
         <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1) }}
-          className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
+          className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500">
           <option value="">All Status</option>
           {REP_STATUSES.map(s => <option key={s} value={s}>{REP_STATUS_LABELS[s]}</option>)}
         </select>
@@ -733,7 +734,7 @@ function PersonnelTab({ reps, teams, payScales, requirements, orgId, isAdmin, on
           <Download className="w-3.5 h-3.5" /> CSV
         </button>
         <button onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white text-xs font-medium rounded-md">
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs font-medium rounded-md">
           <Plus className="w-3.5 h-3.5" /> Add Rep
         </button>
       </div>
@@ -1004,7 +1005,7 @@ function PersonnelTab({ reps, teams, payScales, requirements, orgId, isAdmin, on
                             <div className="mt-2 flex gap-2" onClick={e => e.stopPropagation()}>
                               <input
                                 placeholder="Add a note..."
-                                className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                                className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-green-500"
                                 onKeyDown={async (e) => {
                                   if (e.key === 'Enter' && (e.target as HTMLInputElement).value.trim()) {
                                     const input = e.target as HTMLInputElement
@@ -1139,24 +1140,24 @@ function PayScalesTab({ payScales, orgId, isAdmin, onRefresh }: {
               {isEditing ? (
                 <div className="space-y-2">
                   <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-                    className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500" />
+                    className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-green-500" />
                   <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Description"
-                    className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-gray-300 focus:outline-none focus:border-blue-500" />
+                    className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-gray-300 focus:outline-none focus:border-green-500" />
                   <div>
                     <label className="text-[10px] text-gray-500">Rate ($/W)</label>
                     <input type="number" step="0.01" value={form.per_watt_rate} onChange={e => setForm({ ...form, per_watt_rate: e.target.value })}
-                      className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500" />
+                      className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-green-500" />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="text-[10px] text-gray-500">Adder %</label>
                       <input type="number" value={form.adder_percentage} onChange={e => setForm({ ...form, adder_percentage: e.target.value })}
-                        className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-blue-500" />
+                        className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-green-500" />
                     </div>
                     <div>
                       <label className="text-[10px] text-gray-500">Referral $</label>
                       <input type="number" value={form.referral_bonus} onChange={e => setForm({ ...form, referral_bonus: e.target.value })}
-                        className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-blue-500" />
+                        className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-green-500" />
                     </div>
                   </div>
                   <div className="flex gap-1">
@@ -1209,29 +1210,29 @@ function PayScalesTab({ payScales, orgId, isAdmin, onRefresh }: {
           <div className="bg-gray-800 border border-green-700/50 rounded-xl p-5">
             <div className="space-y-2">
               <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Tier name"
-                className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500" />
+                className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-green-500" />
               <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Description"
-                className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-gray-300 focus:outline-none focus:border-blue-500" />
+                className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-gray-300 focus:outline-none focus:border-green-500" />
               <div>
                 <label className="text-[10px] text-gray-500">Rate ($/W)</label>
                 <input type="number" step="0.01" value={form.per_watt_rate} onChange={e => setForm({ ...form, per_watt_rate: e.target.value })}
-                  className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500" />
+                  className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-green-500" />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[10px] text-gray-500">Adder %</label>
                   <input type="number" value={form.adder_percentage} onChange={e => setForm({ ...form, adder_percentage: e.target.value })}
-                    className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-blue-500" />
+                    className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-green-500" />
                 </div>
                 <div>
                   <label className="text-[10px] text-gray-500">Referral $</label>
                   <input type="number" value={form.referral_bonus} onChange={e => setForm({ ...form, referral_bonus: e.target.value })}
-                    className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-blue-500" />
+                    className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-green-500" />
                 </div>
               </div>
               <div className="flex gap-1">
                 <button onClick={saveNew} disabled={saving || !form.name.trim() || !form.per_watt_rate}
-                  className="flex-1 px-2 py-1 bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white text-[10px] rounded">
+                  className="flex-1 px-2 py-1 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white text-[10px] rounded">
                   {saving ? 'Creating...' : 'Create'}
                 </button>
                 <button onClick={() => setShowAdd(false)} className="px-2 py-1 text-gray-400 hover:text-white text-[10px]">Cancel</button>
@@ -1365,7 +1366,7 @@ function DistributionTab({ distribution, orgId, isAdmin, onRefresh }: {
                   <td className="px-4 py-2">
                     {isEditing ? (
                       <input value={editLabel} onChange={e => setEditLabel(e.target.value)}
-                        className="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs text-white w-32 focus:outline-none focus:border-blue-500" />
+                        className="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs text-white w-32 focus:outline-none focus:border-green-500" />
                     ) : (
                       <span className="text-gray-300">{d.label}</span>
                     )}
@@ -1373,7 +1374,7 @@ function DistributionTab({ distribution, orgId, isAdmin, onRefresh }: {
                   <td className="px-4 py-2">
                     {isEditing ? (
                       <input type="number" step="0.5" value={editPct} onChange={e => setEditPct(e.target.value)}
-                        className="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs text-white w-20 focus:outline-none focus:border-blue-500" />
+                        className="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs text-white w-20 focus:outline-none focus:border-green-500" />
                     ) : (
                       <span className="text-white font-medium">{Number(d.percentage)}%</span>
                     )}
@@ -1431,20 +1432,20 @@ function DistributionTab({ distribution, orgId, isAdmin, onRefresh }: {
               <div>
                 <label className="text-[10px] text-gray-500 block mb-1">Role Key</label>
                 <input value={newRoleKey} onChange={e => setNewRoleKey(e.target.value)} placeholder="e.g. trainer"
-                  className="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs text-white w-28 focus:outline-none focus:border-blue-500" />
+                  className="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs text-white w-28 focus:outline-none focus:border-green-500" />
               </div>
               <div>
                 <label className="text-[10px] text-gray-500 block mb-1">Label</label>
                 <input value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder="e.g. Trainer"
-                  className="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs text-white w-28 focus:outline-none focus:border-blue-500" />
+                  className="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs text-white w-28 focus:outline-none focus:border-green-500" />
               </div>
               <div>
                 <label className="text-[10px] text-gray-500 block mb-1">%</label>
                 <input type="number" step="0.5" value={newPct} onChange={e => setNewPct(e.target.value)}
-                  className="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs text-white w-16 focus:outline-none focus:border-blue-500" />
+                  className="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs text-white w-16 focus:outline-none focus:border-green-500" />
               </div>
               <button onClick={handleAdd} disabled={saving || !newRoleKey.trim() || !newLabel.trim()}
-                className="px-3 py-1 bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white text-xs rounded">Add</button>
+                className="px-3 py-1 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white text-xs rounded">Add</button>
               <button onClick={() => setShowAdd(false)} className="px-3 py-1 text-gray-400 hover:text-white text-xs">Cancel</button>
             </div>
           ) : (
@@ -1589,7 +1590,7 @@ function OnboardingTab({ reps, teams, requirements, onRefresh }: {
                 {allVerified && (
                   <button
                     onClick={(e) => { e.stopPropagation(); activateRep(rep.id) }}
-                    className="px-2 py-1 bg-green-700 hover:bg-green-600 text-white text-[10px] font-medium rounded transition-colors"
+                    className="px-2 py-1 bg-green-600 hover:bg-green-500 text-white text-[10px] font-medium rounded transition-colors"
                   >
                     Ready to Activate
                   </button>
@@ -1839,7 +1840,7 @@ function ComplianceTab({ reps, isAdmin }: { reps: SalesRep[]; isAdmin: boolean }
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search rep name or license #..."
-            className="w-full pl-9 pr-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+            className="w-full pl-9 pr-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500" />
         </div>
         <select value={filterType} onChange={e => setFilterType(e.target.value)}
           className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-xs text-white">
@@ -1848,7 +1849,7 @@ function ComplianceTab({ reps, isAdmin }: { reps: SalesRep[]; isAdmin: boolean }
         </select>
         {isAdmin && (
           <button onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white text-xs font-medium rounded-md">
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs font-medium rounded-md">
             <Plus className="w-3.5 h-3.5" /> Add License
           </button>
         )}
@@ -2095,13 +2096,13 @@ export default function SalesPage() {
   useEffect(() => { loadAll() }, [loadAll])
 
   // Realtime subscriptions
-  useRealtimeSubscription('sales_reps' as any, { onChange: loadAll, debounceMs: 500 })
-  useRealtimeSubscription('onboarding_documents' as any, { onChange: loadAll, debounceMs: 500 })
+  useRealtimeSubscription('sales_reps' as unknown as Parameters<typeof useRealtimeSubscription>[0], { onChange: loadAll, debounceMs: 500 })
+  useRealtimeSubscription('onboarding_documents' as unknown as Parameters<typeof useRealtimeSubscription>[0], { onChange: loadAll, debounceMs: 500 })
 
   // Role gate
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-gray-500 text-sm">Loading...</div>
       </div>
     )
@@ -2109,7 +2110,7 @@ export default function SalesPage() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-gray-950 flex flex-col">
+      <div className="min-h-screen bg-gray-900 flex flex-col">
         <Nav active="Sales Teams" />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
@@ -2128,7 +2129,7 @@ export default function SalesPage() {
   const onboardingCount = reps.filter(r => r.status === 'onboarding').length
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="min-h-screen bg-gray-900 text-white">
       <Nav active="Sales Teams" />
 
       <div className="max-w-7xl mx-auto px-4 py-6">

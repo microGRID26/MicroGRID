@@ -373,7 +373,7 @@ export function OrgManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
           </select>
         </div>
         <button onClick={openNew}
-          className="px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white text-xs font-medium rounded-md transition-colors">
+          className="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs font-medium rounded-md transition-colors">
           + Add Organization
         </button>
       </div>
@@ -501,7 +501,7 @@ export function OrgManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                                 value={memberEmail}
                                 onChange={e => setMemberEmail(e.target.value)}
                                 placeholder="user@gomicrogridenergy.com"
-                                className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                                className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-green-500"
                               />
                             </div>
                             <div>
@@ -517,7 +517,7 @@ export function OrgManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                               </select>
                             </div>
                             <button onClick={addMember} disabled={addingMember}
-                              className="px-3 py-1.5 bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white text-xs font-medium rounded-md transition-colors">
+                              className="px-3 py-1.5 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white text-xs font-medium rounded-md transition-colors">
                               {addingMember ? 'Adding...' : 'Add'}
                             </button>
                             <button onClick={() => setShowAddMember(false)}
@@ -611,7 +611,7 @@ export function OrgManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             <select
               value={draft.org_type}
               onChange={e => setDraft(d => ({ ...d, org_type: e.target.value as OrgType }))}
-              className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
+              className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500 transition-colors"
             >
               {ORG_TYPES.map(t => (
                 <option key={t} value={t}>{ORG_TYPE_LABELS[t]}</option>

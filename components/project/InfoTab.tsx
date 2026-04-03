@@ -13,13 +13,15 @@ import type { CustomFieldDefinition, CustomFieldValue } from '@/lib/api'
 
 // ── HELPER COMPONENTS ────────────────────────────────────────────────────────
 
+type DraftUpdater = (fn: (prev: Partial<Project>) => Partial<Project>) => void
+
 function EditRow({ label, field, value, draft, editing, onChange, small, type = 'text' }: {
   label: string
   field: string
   value?: string | null
   draft: Record<string, any>
   editing: boolean
-  onChange: (d: any) => void
+  onChange: DraftUpdater
   small?: boolean
   type?: 'text' | 'date' | 'number' | 'currency'
 }) {
@@ -47,7 +49,7 @@ function EditRow({ label, field, value, draft, editing, onChange, small, type = 
         <input
           type={inputType}
           value={current ?? ''}
-          onChange={e => onChange((d: any) => ({ ...d, [field]: e.target.value || null }))}
+          onChange={e => onChange(d => ({ ...d, [field]: e.target.value || null }))}
           className={`w-full bg-gray-700 text-white text-xs rounded px-2 py-1 border border-gray-600 focus:border-green-500 focus:outline-none ${type === 'currency' ? 'pl-5' : ''}`}
         />
       </div>
@@ -61,7 +63,7 @@ function SelectEditRow({ label, field, value, draft, editing, onChange, options 
   value?: string | null
   draft: Record<string, any>
   editing: boolean
-  onChange: (d: any) => void
+  onChange: DraftUpdater
   options: string[]
 }) {
   const current = field in draft ? draft[field] : value
@@ -79,7 +81,7 @@ function SelectEditRow({ label, field, value, draft, editing, onChange, options 
       <span className="text-gray-500 text-xs w-28 flex-shrink-0">{label}</span>
       <select
         value={current ?? ''}
-        onChange={e => onChange((d: any) => ({ ...d, [field]: e.target.value || null }))}
+        onChange={e => onChange(d => ({ ...d, [field]: e.target.value || null }))}
         className="flex-1 bg-gray-700 text-white text-xs rounded px-2 py-1 border border-gray-600 focus:border-green-500 focus:outline-none"
       >
         <option value="">Select...</option>
@@ -96,7 +98,7 @@ function EquipmentEditRow({ label, field, category, value, draft, editing, onCha
   value?: string | null
   draft: Record<string, any>
   editing: boolean
-  onChange: (d: any) => void
+  onChange: DraftUpdater
   qtyField?: string
   qtyValue?: string | null
   onEquipmentSelect?: (equipment: Equipment | undefined) => void
@@ -113,7 +115,7 @@ function EquipmentEditRow({ label, field, category, value, draft, editing, onCha
         category={category}
         value={current ?? ''}
         onChange={(v, equipment) => {
-          onChange((d: any) => ({ ...d, [field]: v || null }))
+          onChange(d => ({ ...d, [field]: v || null }))
           if (onEquipmentSelect) onEquipmentSelect(equipment)
         }}
         placeholder={`Search ${label.toLowerCase()}...`}
@@ -122,7 +124,7 @@ function EquipmentEditRow({ label, field, category, value, draft, editing, onCha
         <input
           type="number"
           value={currentQty ?? ''}
-          onChange={e => onChange((d: any) => ({ ...d, [qtyField]: e.target.value || null }))}
+          onChange={e => onChange(d => ({ ...d, [qtyField]: e.target.value || null }))}
           placeholder="Qty"
           min="0"
           className="w-20 bg-gray-700 text-white text-xs rounded px-2 py-2 border border-gray-600 focus:border-green-500 focus:outline-none"
@@ -137,7 +139,7 @@ function PmSelectRow({ value, pmId, draft, editing, onChange }: {
   pmId: string | null
   draft: Record<string, any>
   editing: boolean
-  onChange: (d: any) => void
+  onChange: DraftUpdater
 }) {
   const supabase = createClient()
   const [pms, setPms] = useState<{ id: string; name: string }[]>([])
@@ -148,7 +150,7 @@ function PmSelectRow({ value, pmId, draft, editing, onChange }: {
     ;supabase.from('users').select('id, name').eq('active', true)
       .or(INTERNAL_DOMAINS.map(d => `email.like.%@${d}`).join(','))
       .order('name')
-      .then(({ data }: any) => { if (data) setPms(data) })
+      .then((result) => { if (result.data) setPms(result.data as { id: string; name: string }[]) })
   }, [editing])
 
   if (!editing) return (
@@ -165,7 +167,7 @@ function PmSelectRow({ value, pmId, draft, editing, onChange }: {
         value={currentId ?? ''}
         onChange={e => {
           const selected = pms.find(p => p.id === e.target.value)
-          onChange((d: any) => ({ ...d, pm_id: e.target.value || null, pm: selected?.name ?? null }))
+          onChange(d => ({ ...d, pm_id: e.target.value || null, pm: selected?.name ?? null }))
         }}
         className="flex-1 bg-gray-700 text-white text-xs rounded px-2 py-1 border border-gray-600 focus:border-green-500 focus:outline-none"
       >
@@ -182,7 +184,7 @@ function AutocompleteRow({ label, field, value, draft, editing, onChange, table,
   value?: string | null
   draft: Record<string, any>
   editing: boolean
-  onChange: (d: any) => void
+  onChange: DraftUpdater
   table: 'ahjs' | 'utilities' | 'hoas' | 'financiers'
   searchCol?: string
   onClickValue?: () => void
@@ -209,7 +211,7 @@ function AutocompleteRow({ label, field, value, draft, editing, onChange, table,
     if (!focused || query.length < 2) { setSuggestions([]); setOpen(false); return }
     const timer = setTimeout(async () => {
       const { data } = await supabase.from(table).select(searchCol).ilike(searchCol, `%${escapeIlike(query)}%`).order(searchCol).limit(8)
-      const names = (data ?? []).map((r: any) => r[searchCol])
+      const names = (data ?? []).map((r: Record<string, unknown>) => r[searchCol] as string)
       setSuggestions(names)
       setOpen(names.length > 0)
     }, 200)
@@ -243,7 +245,7 @@ function AutocompleteRow({ label, field, value, draft, editing, onChange, table,
           onBlur={() => setTimeout(() => setFocused(false), 150)}
           onChange={e => {
             setQuery(e.target.value)
-            onChange((d: any) => ({ ...d, [field]: e.target.value || null }))
+            onChange(d => ({ ...d, [field]: e.target.value || null }))
           }}
           className="w-full bg-gray-700 text-white text-xs rounded px-2 py-1 border border-gray-600 focus:border-green-500 focus:outline-none"
           placeholder={`Search ${label}…`}
@@ -255,7 +257,7 @@ function AutocompleteRow({ label, field, value, draft, editing, onChange, table,
                 className="w-full text-left px-3 py-1.5 text-xs text-gray-200 hover:bg-gray-700 hover:text-white transition-colors"
                 onMouseDown={() => {
                   setQuery(s)
-                  onChange((d: any) => ({ ...d, [field]: s }))
+                  onChange(d => ({ ...d, [field]: s }))
                   setOpen(false)
                 }}>
                 {s}
@@ -272,7 +274,7 @@ function DispositionEditRow({ value, draft, editing, onChange, isAdmin }: {
   value?: string | null
   draft: Record<string, any>
   editing: boolean
-  onChange: (d: any) => void
+  onChange: DraftUpdater
   isAdmin?: boolean
 }) {
   const current = ('disposition' in draft ? draft.disposition : value) as string | null
@@ -327,7 +329,7 @@ function DispositionEditRow({ value, draft, editing, onChange, isAdmin }: {
             if (newVal === 'Cancelled') {
               setShowCancelConfirm(true)
             } else {
-              onChange((d: any) => ({ ...d, disposition: newVal }))
+              onChange(d => ({ ...d, disposition: newVal }))
             }
           }}
           className="flex-1 bg-gray-700 text-white text-xs rounded px-2 py-1 border border-gray-600 focus:border-green-500 focus:outline-none"
@@ -352,7 +354,7 @@ function DispositionEditRow({ value, draft, editing, onChange, isAdmin }: {
               </button>
               <button
                 onClick={() => {
-                  onChange((d: any) => ({ ...d, disposition: 'Cancelled' }))
+                  onChange(d => ({ ...d, disposition: 'Cancelled' }))
                   setShowCancelConfirm(false)
                 }}
                 className="px-3 py-1.5 text-xs text-white bg-red-600 rounded hover:bg-red-500"
@@ -401,8 +403,10 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 // ── ADDERS SECTION ───────────────────────────────────────────────────────────
 
+interface ProjectAdder { id: string; adder_name: string; price: number; quantity: number; total_amount: number }
+
 function AddersSection({ adders, editing, onAdd, onDelete }: {
-  adders: any[]
+  adders: ProjectAdder[]
   editing: boolean
   onAdd?: (adder: { adder_name: string; price: number; quantity: number; total_amount: number }) => Promise<void>
   onDelete?: (id: string) => Promise<void>
@@ -413,7 +417,7 @@ function AddersSection({ adders, editing, onAdd, onDelete }: {
   const [newQty, setNewQty] = useState('1')
   const [saving, setSaving] = useState(false)
 
-  const total = adders.reduce((sum: number, a: any) => sum + (Number(a.total_amount) || 0), 0)
+  const total = adders.reduce((sum: number, a: ProjectAdder) => sum + (Number(a.total_amount) || 0), 0)
 
   const handleAdd = async () => {
     if (!newName.trim() || !newPrice || !onAdd) return
@@ -434,7 +438,7 @@ function AddersSection({ adders, editing, onAdd, onDelete }: {
     <Section title="Adders">
       {adders.length > 0 && (
         <div className="space-y-1">
-          {adders.map((a: any) => (
+          {adders.map((a) => (
             <div key={a.id} className="flex items-center gap-2 py-0.5 group">
               {editing && onDelete && (
                 <button
@@ -516,22 +520,29 @@ function AddersSection({ adders, editing, onAdd, onDelete }: {
 
 // ── INFO TAB ─────────────────────────────────────────────────────────────────
 
+interface AHJInfo { permit_phone: string | null; permit_website: string | null; max_duration: number | null; electric_code: string | null; permit_notes: string | null }
+interface UtilityInfo { phone: string | null; website: string | null; notes: string | null }
+interface HOAInfo { phone: string | null; website: string | null; contact_name: string | null; contact_email: string | null; notes: string | null }
+interface FinancierInfoData { phone: string | null; website: string | null; contact_name: string | null; contact_email: string | null; notes: string | null }
+interface StageHistoryEntry { id: string; project_id: string; stage: string; entered: string }
+interface ServiceCallEntry { id: string; project_id: string; created_at: string; status?: string; issue_type?: string; description?: string; [key: string]: unknown }
+
 interface InfoTabProps {
   project: Project
   editMode: boolean
   editDraft: Partial<Project>
-  setEditDraft: (fn: any) => void
-  ahjInfo: any
-  utilityInfo: any
-  hoaInfo: any
-  financierInfo: any
+  setEditDraft: DraftUpdater
+  ahjInfo: AHJInfo | null
+  utilityInfo: UtilityInfo | null
+  hoaInfo: HOAInfo | null
+  financierInfo: FinancierInfoData | null
   openAhjEdit: () => void
   openUtilEdit: () => void
   openHoaEdit: () => void
   openFinancierEdit: () => void
-  stageHistory?: any[]
-  serviceCalls?: any[]
-  adders?: any[]
+  stageHistory?: StageHistoryEntry[]
+  serviceCalls?: ServiceCallEntry[]
+  adders?: ProjectAdder[]
   onAddAdder?: (adder: { adder_name: string; price: number; quantity: number; total_amount: number }) => Promise<void>
   onDeleteAdder?: (id: string) => Promise<void>
   isSales?: boolean
@@ -608,8 +619,8 @@ export function InfoTab({ project, editMode, editDraft, setEditDraft, ahjInfo, u
     }
 
     if (watts && qty > 0) {
-      const kw = ((watts * qty) / 1000).toFixed(1)
-      setEditDraft((d: any) => ({ ...d, systemkw: kw }))
+      const kw = Number(((watts * qty) / 1000).toFixed(1))
+      setEditDraft(d => ({ ...d, systemkw: kw }))
     }
   }, [editDraft.module, editDraft.module_qty, moduleWatts, editMode])
 
@@ -671,7 +682,7 @@ export function InfoTab({ project, editMode, editDraft, setEditDraft, ahjInfo, u
                     type="button"
                     role="switch"
                     aria-checked={('energy_community' in editDraft ? editDraft.energy_community : project.energy_community) ?? false}
-                    onClick={() => setEditDraft((d: any) => ({ ...d, energy_community: !('energy_community' in d ? d.energy_community : project.energy_community) }))}
+                    onClick={() => setEditDraft(d => ({ ...d, energy_community: !('energy_community' in d ? d.energy_community : project.energy_community) }))}
                     className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
                       ('energy_community' in editDraft ? editDraft.energy_community : project.energy_community) ? 'bg-green-600' : 'bg-gray-600'
                     }`}
@@ -884,7 +895,7 @@ export function InfoTab({ project, editMode, editDraft, setEditDraft, ahjInfo, u
           )}
           {stageHistory.length > 0 && (
             <Section title="Stage History">
-              {stageHistory.map((h: any, i: number) => (
+              {stageHistory.map((h, i) => (
                 <div key={i} className="flex gap-2 py-0.5 text-xs">
                   <span className="text-gray-500 w-28 flex-shrink-0">{h.entered ? new Date(h.entered + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}</span>
                   <span className="text-gray-300">{h.stage}</span>
@@ -894,7 +905,7 @@ export function InfoTab({ project, editMode, editDraft, setEditDraft, ahjInfo, u
           )}
           {serviceCalls.length > 0 && (
             <Section title="Service Calls">
-              {serviceCalls.map((sc: any) => (
+              {serviceCalls.map((sc) => (
                 <div key={sc.id} className="flex items-start gap-2 py-1">
                   <span className={`text-xs px-1.5 py-0.5 rounded flex-shrink-0 ${
                     sc.status === 'open' ? 'bg-red-900 text-red-300' :

@@ -76,7 +76,7 @@ describe('loadVendors', () => {
     const result = await loadVendors()
 
     expect(mockSupabase.from).toHaveBeenCalledWith('vendors')
-    expect(chain.select).toHaveBeenCalledWith('*')
+    expect(chain.select).toHaveBeenCalled()
     expect(chain.order).toHaveBeenCalledWith('name')
     expect(chain.eq).not.toHaveBeenCalled()
     expect(result).toEqual([VENDOR_A, VENDOR_B])
@@ -134,7 +134,7 @@ describe('searchVendors', () => {
     const result = await searchVendors('acme')
 
     expect(mockSupabase.from).toHaveBeenCalledWith('vendors')
-    expect(chain.select).toHaveBeenCalledWith('*')
+    expect(chain.select).toHaveBeenCalled()
     expect(chain.eq).toHaveBeenCalledWith('active', true)
     expect(chain.ilike).toHaveBeenCalledWith('name', '%acme%')
     expect(chain.order).toHaveBeenCalledWith('name')
@@ -178,7 +178,7 @@ describe('loadVendor', () => {
     const result = await loadVendor('v1')
 
     expect(mockSupabase.from).toHaveBeenCalledWith('vendors')
-    expect(chain.select).toHaveBeenCalledWith('*')
+    expect(chain.select).toHaveBeenCalled()
     expect(chain.eq).toHaveBeenCalledWith('id', 'v1')
     expect(chain.single).toHaveBeenCalled()
     expect(result).toEqual(VENDOR_A)

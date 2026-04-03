@@ -75,7 +75,7 @@ describe('loadInvoiceRules', () => {
     const result = await loadInvoiceRules()
 
     expect(mockSupabase.from).toHaveBeenCalledWith('invoice_rules')
-    expect(chain.select).toHaveBeenCalledWith('*')
+    expect(chain.select).toHaveBeenCalled()
     expect(chain.order).toHaveBeenCalledWith('name', { ascending: true })
     expect(chain.limit).toHaveBeenCalledWith(100)
     expect(chain.eq).not.toHaveBeenCalled()

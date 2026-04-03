@@ -71,46 +71,44 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
   // Load existing job if editing
   useEffect(() => {
     if (!scheduleId) return
-    ;supabase.from('schedule').select('*').eq('id', scheduleId).single().then(({ data }: any) => {
+    ;supabase.from('schedule').select('*').eq('id', scheduleId).single().then(({ data }: { data: Record<string, string | number | boolean | null> | null }) => {
       if (data) {
         setForm({
-          crew_id: data.crew_id,
-          date: data.date,
-          end_date: data.end_date ?? '',
-          job_type: data.job_type,
-          time: data.time ?? '08:00',
-          notes: data.notes ?? '',
-          project_id: data.project_id,
-          status: data.status,
+          crew_id: String(data.crew_id),
+          date: String(data.date),
+          end_date: data.end_date ? String(data.end_date) : '',
+          job_type: String(data.job_type),
+          time: data.time ? String(data.time) : '08:00',
+          notes: data.notes ? String(data.notes) : '',
+          project_id: String(data.project_id),
+          status: String(data.status),
         })
-        // Populate install detail fields from existing record
         setInstallDetails({
-          arrival_window: data.arrival_window ?? '',
+          arrival_window: data.arrival_window ? String(data.arrival_window) : '',
           arrays: data.arrays != null ? String(data.arrays) : '',
-          pitch: data.pitch ?? '',
-          stories: data.stories ?? '',
-          special_equipment: data.special_equipment ?? '',
-          electrical_notes: data.electrical_notes ?? '',
-          wifi_info: data.wifi_info ?? '',
-          msp_upgrade: data.msp_upgrade ?? '',
+          pitch: data.pitch ? String(data.pitch) : '',
+          stories: data.stories ? String(data.stories) : '',
+          special_equipment: data.special_equipment ? String(data.special_equipment) : '',
+          electrical_notes: data.electrical_notes ? String(data.electrical_notes) : '',
+          wifi_info: data.wifi_info ? String(data.wifi_info) : '',
+          msp_upgrade: data.msp_upgrade ? String(data.msp_upgrade) : '',
         })
         if (data.job_type === 'install' || data.job_type === 'service') {
           const hasData = data.arrival_window || data.arrays || data.pitch || data.stories ||
             data.special_equipment || data.electrical_notes || data.wifi_info || data.msp_upgrade
           if (hasData) setInstallOpen(true)
         }
-        // Load full project data for crew brief & AHJ display
         if (data.project_id) {
           supabase.from('projects').select('id,name,city,pm,phone,address,zip,financier,financing_type,consultant,systemkw,module,module_qty,inverter,battery,battery_qty,utility,ahj,esid,org_id')
-            .eq('id', data.project_id).single().then(({ data: proj }: any) => {
+            .eq('id', data.project_id).single().then(({ data: proj }: { data: Project | null }) => {
               if (proj) {
-                setSelectedProject(proj as Project)
+                setSelectedProject(proj)
                 if (proj.ahj) {
                   supabase.from('ahjs').select('name, permit_phone, permit_required').eq('name', proj.ahj).maybeSingle()
-                    .then(({ data: ahjData }: any) => { if (ahjData) setAhjInfo({ name: ahjData.name, phone: ahjData.permit_phone, permit_required: ahjData.permit_required ?? true }) })
+                    .then(({ data: ahjData }: { data: { name: string; permit_phone: string | null; permit_required: boolean } | null }) => { if (ahjData) setAhjInfo({ name: ahjData.name, phone: ahjData.permit_phone, permit_required: ahjData.permit_required ?? true }) })
                 }
                 supabase.from('project_folders').select('folder_url').eq('project_id', proj.id).maybeSingle()
-                  .then(({ data: folderData }: any) => { if (folderData?.folder_url) setDriveUrl(folderData.folder_url) })
+                  .then(({ data: folderData }: { data: { folder_url: string | null } | null }) => { if (folderData?.folder_url) setDriveUrl(folderData.folder_url) })
               }
             })
         }
@@ -121,17 +119,15 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
   // Load pre-filled project
   useEffect(() => {
     if (!projectId) return
-    supabase.from('projects').select('id,name,city,pm,phone,address,zip,financier,financing_type,consultant,systemkw,module,module_qty,inverter,battery,battery_qty,utility,ahj,esid,org_id').eq('id', projectId).single().then(({ data }: any) => {
+    supabase.from('projects').select('id,name,city,pm,phone,address,zip,financier,financing_type,consultant,systemkw,module,module_qty,inverter,battery,battery_qty,utility,ahj,esid,org_id').eq('id', projectId).single().then(({ data }: { data: Project | null }) => {
       if (data) {
-        setSelectedProject(data as Project)
-        // Load AHJ info
+        setSelectedProject(data)
         if (data.ahj) {
           supabase.from('ahjs').select('name, permit_phone, permit_required').eq('name', data.ahj).maybeSingle()
-            .then(({ data: ahjData }: any) => { if (ahjData) setAhjInfo({ name: ahjData.name, phone: ahjData.permit_phone, permit_required: ahjData.permit_required ?? true }) })
+            .then(({ data: ahjData }: { data: { name: string; permit_phone: string | null; permit_required: boolean } | null }) => { if (ahjData) setAhjInfo({ name: ahjData.name, phone: ahjData.permit_phone, permit_required: ahjData.permit_required ?? true }) })
         }
-        // Load Drive folder
         supabase.from('project_folders').select('folder_url').eq('project_id', data.id).maybeSingle()
-          .then(({ data: folderData }: any) => { if (folderData?.folder_url) setDriveUrl(folderData.folder_url) })
+          .then(({ data: folderData }: { data: { folder_url: string | null } | null }) => { if (folderData?.folder_url) setDriveUrl(folderData.folder_url) })
       }
     })
   }, [projectId])
@@ -146,7 +142,7 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
         .or(`name.ilike.%${escapeIlike(q)}%,id.ilike.%${escapeIlike(q)}%,city.ilike.%${escapeIlike(q)}%`)
         .neq('stage', 'complete')
         .limit(8)
-        .then(({ data }: any) => { if (data && !stale) setProjectResults(data as Project[]) })
+        .then(({ data }: { data: Project[] | null }) => { if (data && !stale) setProjectResults(data) })
     }, 200)
     return () => { stale = true; clearTimeout(timer) }
   }, [projectSearch])
@@ -162,9 +158,9 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
       .eq('crew_id', form.crew_id)
       .lte('date', rangeEnd)
       .neq('status', 'cancelled')
-      .then(({ data }: any) => {
+      .then(({ data }: { data: { id: string; date: string; end_date?: string | null }[] | null }) => {
         if (!data) { setConflict(null); return }
-        const others = data.filter((s: any) => {
+        const others = data.filter(s => {
           if (s.id === scheduleId) return false
           const jobEnd = s.end_date || s.date
           // Overlap: job starts <= our end AND job ends >= our start
@@ -195,7 +191,7 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
       if (!confirm('WiFi Info is not filled out. The crew will need WiFi access for monitoring setup.\n\nContinue without WiFi info?')) { setSaving(false); return }
     }
 
-    const record: Record<string, any> = {
+    const record: Record<string, string | number | boolean | null> = {
       crew_id: form.crew_id,
       project_id: pid,
       date: form.date,
@@ -220,13 +216,13 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
     // R&R: auto-create reinstall schedule entry if Removal with reinstall date
     if (form.job_type === 'service' && serviceDetail === 'removal' && reinstallDate) {
       const reinstallId = crypto.randomUUID()
-      const reinstallRecord: Record<string, any> = {
+      const reinstallRecord: Record<string, string | number | boolean | null> = {
         id: reinstallId, project_id: pid, crew_id: form.crew_id,
         job_type: 'service', date: reinstallDate, status: 'scheduled',
         notes: `[Reinstall] Linked to removal on ${form.date}. ${form.notes ?? ''}`,
       }
       // Inherit org_id from the project
-      if ((selectedProject as any)?.org_id) reinstallRecord.org_id = (selectedProject as any).org_id
+      if (selectedProject?.org_id) reinstallRecord.org_id = selectedProject.org_id
       await supabase.from('schedule').insert(reinstallRecord)
     }
     // Auto-populate PM from the project if not already set
@@ -403,11 +399,11 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
                         const pid = p.id
                         // Load Google Drive folder URL
                         supabase.from('project_folders').select('folder_url').eq('project_id', pid).maybeSingle()
-                          .then(({ data }: any) => { if (data?.folder_url) setDriveUrl(data.folder_url) })
+                          .then(({ data }: { data: { folder_url: string | null } | null }) => { if (data?.folder_url) setDriveUrl(data.folder_url) })
                         // Load AHJ info
-                        if ((p as any).ahj) {
-                          supabase.from('ahjs').select('name, permit_phone, permit_required').eq('name', (p as any).ahj).maybeSingle()
-                            .then(({ data }: any) => { if (data) setAhjInfo({ name: data.name, phone: data.permit_phone, permit_required: data.permit_required ?? true }) })
+                        if (p.ahj) {
+                          supabase.from('ahjs').select('name, permit_phone, permit_required').eq('name', p.ahj).maybeSingle()
+                            .then(({ data }: { data: { name: string; permit_phone: string | null; permit_required: boolean } | null }) => { if (data) setAhjInfo({ name: data.name, phone: data.permit_phone, permit_required: data.permit_required ?? true }) })
                         }
                       }}
                         className="px-3 py-2 hover:bg-gray-700 cursor-pointer">
@@ -493,10 +489,9 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
               <label className={labelCls}>Notes</label>
               {selectedProject && form.job_type === 'install' && (
                 <button type="button" onClick={() => {
-                  const p = selectedProject as any
                   setInstallDetails(d => ({
                     ...d,
-                    msp_upgrade: d.msp_upgrade || (p.msp_bus_rating ? `Yes - ${p.msp_bus_rating}` : ''),
+                    msp_upgrade: d.msp_upgrade || (selectedProject.msp_bus_rating ? `Yes - ${selectedProject.msp_bus_rating}` : ''),
                   }))
                   setInstallOpen(true)
                 }}

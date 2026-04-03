@@ -2,6 +2,7 @@
 // Solar: system watts × per-watt rate by role
 // Adder: percentage of adder revenue
 // Referral: flat bonus per referral
+// Org filtering: inherited via project_id FK — RLS policies enforce org scope
 
 import { db } from '@/lib/db'
 
@@ -114,7 +115,7 @@ export async function loadCommissionRates(orgId?: string | null, activeOnly = tr
   const supabase = db()
   let q = supabase
     .from('commission_rates')
-    .select('*')
+    .select('id, role_key, label, rate_type, rate, description, active, sort_order, org_id, created_at, updated_at')
     .order('sort_order', { ascending: true })
     .limit(100)
   if (activeOnly) q = q.eq('active', true)
@@ -200,7 +201,7 @@ export async function loadCommissionRecords(
   const supabase = db()
   let q = supabase
     .from('commission_records')
-    .select('*')
+    .select('id, project_id, user_id, user_name, role_key, system_watts, rate, adder_revenue, referral_count, solar_commission, adder_commission, referral_commission, total_commission, status, milestone, paid_at, notes, admin_notes, days_since_sale, is_energy_community, adder_deduction, org_id, created_at, updated_at')
     .order('created_at', { ascending: false })
     .limit(500)
   if (filters?.userId) q = q.eq('user_id', filters.userId)
@@ -444,7 +445,7 @@ export async function loadCommissionTiers(rateId: string): Promise<CommissionTie
   const supabase = db()
   const { data, error } = await supabase
     .from('commission_tiers')
-    .select('*')
+    .select('id, rate_id, min_deals, max_deals, min_watts, max_watts, rate, label, sort_order, created_at')
     .eq('rate_id', rateId)
     .order('sort_order', { ascending: true })
     .limit(50)
@@ -496,7 +497,7 @@ export async function loadGeoModifiers(orgId?: string | null): Promise<Commissio
   const supabase = db()
   let q = supabase
     .from('commission_geo_modifiers')
-    .select('*')
+    .select('id, state, city, region, modifier, label, active, org_id, created_at')
     .eq('active', true)
     .order('state', { ascending: true })
     .limit(500)
@@ -571,7 +572,7 @@ export async function loadHierarchy(orgId?: string | null): Promise<CommissionHi
   const supabase = db()
   let q = supabase
     .from('commission_hierarchy')
-    .select('*')
+    .select('id, user_id, user_name, role_key, parent_id, team_name, active, org_id, created_at, updated_at')
     .eq('active', true)
     .order('role_key', { ascending: true })
     .limit(500)

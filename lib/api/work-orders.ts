@@ -136,14 +136,15 @@ export interface WorkOrderFilters {
   dateRange?: { start: string; end: string }
 }
 
-export async function loadWorkOrders(filters?: WorkOrderFilters): Promise<WorkOrder[]> {
+export async function loadWorkOrders(filters?: WorkOrderFilters, orgId?: string): Promise<WorkOrder[]> {
   const supabase = createClient()
   let query = supabase
     .from('work_orders')
-    .select('*')
+    .select('id, project_id, wo_number, type, status, assigned_crew, assigned_to, scheduled_date, started_at, completed_at, priority, description, special_instructions, customer_signature, customer_signed_at, materials_used, time_on_site_minutes, notes, created_by, created_at, updated_at')
     .order('scheduled_date', { ascending: false })
     .limit(500)
 
+  if (orgId) query = query.eq('org_id', orgId)
   if (filters?.status) query = query.eq('status', filters.status)
   if (filters?.type) query = query.eq('type', filters.type)
   if (filters?.projectId) query = query.eq('project_id', filters.projectId)
@@ -178,8 +179,8 @@ export async function loadWorkOrders(filters?: WorkOrderFilters): Promise<WorkOr
 export async function loadWorkOrder(id: string): Promise<{ wo: WorkOrder; checklist: WOChecklistItem[] } | null> {
   const supabase = createClient()
   const [woRes, checkRes] = await Promise.all([
-    supabase.from('work_orders').select('*').eq('id', id).maybeSingle(),
-    supabase.from('wo_checklist_items').select('*').eq('work_order_id', id).order('sort_order', { ascending: true }).limit(500),
+    supabase.from('work_orders').select('id, project_id, wo_number, type, status, assigned_crew, assigned_to, scheduled_date, started_at, completed_at, priority, description, special_instructions, customer_signature, customer_signed_at, materials_used, time_on_site_minutes, notes, created_by, created_at, updated_at').eq('id', id).maybeSingle(),
+    supabase.from('wo_checklist_items').select('id, work_order_id, description, completed, completed_by, completed_at, sort_order, notes, photo_url').eq('work_order_id', id).order('sort_order', { ascending: true }).limit(500),
   ])
 
   if (woRes.error || !woRes.data) {
@@ -387,7 +388,7 @@ export async function loadProjectWorkOrders(projectId: string): Promise<WorkOrde
   const supabase = createClient()
   const { data, error } = await supabase
     .from('work_orders')
-    .select('*')
+    .select('id, project_id, wo_number, type, status, assigned_crew, assigned_to, scheduled_date, started_at, completed_at, priority, description, special_instructions, customer_signature, customer_signed_at, materials_used, time_on_site_minutes, notes, created_by, created_at, updated_at')
     .eq('project_id', projectId)
     .order('created_at', { ascending: false })
     .limit(50)

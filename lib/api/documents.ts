@@ -1,3 +1,4 @@
+// Org filtering: inherited via project_id FK — RLS policies enforce org scope
 import { db } from '@/lib/db'
 import { escapeIlike } from '@/lib/utils'
 
@@ -42,7 +43,7 @@ export interface ProjectDocument {
 export async function loadProjectFiles(projectId: string): Promise<ProjectFile[]> {
   const { data, error } = await db()
     .from('project_files')
-    .select('*')
+    .select('id, project_id, folder_name, file_name, file_id, file_url, mime_type, file_size, created_at, updated_at, synced_at')
     .eq('project_id', projectId)
     .order('folder_name')
     .order('file_name')
@@ -54,7 +55,7 @@ export async function loadProjectFiles(projectId: string): Promise<ProjectFile[]
 export async function searchProjectFiles(projectId: string, query: string): Promise<ProjectFile[]> {
   const { data, error } = await db()
     .from('project_files')
-    .select('*')
+    .select('id, project_id, folder_name, file_name, file_id, file_url, mime_type, file_size, created_at, updated_at, synced_at')
     .eq('project_id', projectId)
     .ilike('file_name', `%${escapeIlike(query)}%`)
     .order('file_name')
@@ -72,7 +73,7 @@ export async function searchAllProjectFiles(
   const to = from + pageSize - 1
   const { data, error, count } = await db()
     .from('project_files')
-    .select('*', { count: 'exact' })
+    .select('id, project_id, folder_name, file_name, file_id, file_url, mime_type, file_size, created_at, updated_at, synced_at', { count: 'exact' })
     .ilike('file_name', `%${escapeIlike(query)}%`)
     .order('project_id')
     .order('file_name')
@@ -89,7 +90,7 @@ export async function loadAllProjectFiles(
   const to = from + pageSize - 1
   const { data, error, count } = await db()
     .from('project_files')
-    .select('*', { count: 'exact' })
+    .select('id, project_id, folder_name, file_name, file_id, file_url, mime_type, file_size, created_at, updated_at, synced_at', { count: 'exact' })
     .order('project_id')
     .order('file_name')
     .range(from, to)
@@ -98,7 +99,7 @@ export async function loadAllProjectFiles(
 }
 
 export async function loadDocumentRequirements(stage?: string): Promise<DocumentRequirement[]> {
-  let query = db().from('document_requirements').select('*').eq('active', true).order('sort_order').limit(500)
+  let query = db().from('document_requirements').select('id, stage, task_id, document_type, folder_name, filename_pattern, required, description, sort_order, active').eq('active', true).order('sort_order').limit(500)
   if (stage) query = query.eq('stage', stage)
   const { data, error } = await query
   if (error) { console.error('loadDocumentRequirements error:', error); return [] }
@@ -108,7 +109,7 @@ export async function loadDocumentRequirements(stage?: string): Promise<Document
 export async function loadProjectDocuments(projectId: string): Promise<ProjectDocument[]> {
   const { data, error } = await db()
     .from('project_documents')
-    .select('*')
+    .select('id, project_id, requirement_id, file_id, doc_status, verified_by, verified_at, notes')
     .eq('project_id', projectId)
     .limit(500)
   if (error) { console.error('loadProjectDocuments error:', error); return [] }

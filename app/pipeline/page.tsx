@@ -9,6 +9,7 @@ import { NewProjectModal } from '@/components/project/NewProjectModal'
 import { useSupabaseQuery, useServerFilter, clearQueryCache } from '@/lib/hooks'
 import { db } from '@/lib/db'
 import { updateProject } from '@/lib/api/projects'
+import { insertAuditLog, insertStageHistory } from '@/lib/api/tasks'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import { BulkActionBar, useBulkSelect, SelectCheckbox } from '@/components/BulkActionBar'
 import { buildTaskMap } from '@/lib/queue-task-map'
@@ -279,6 +280,7 @@ export default function PipelinePage() {
   // Advance stage progress (Pipeline-specific)
   const [advanceProgress, setAdvanceProgress] = useState<{ current: number; total: number } | null>(null)
   const [advanceConfirm, setAdvanceConfirm] = useState<{ message: string; onConfirm: () => void } | null>(null)
+  const [toast, setToast] = useState<{message: string, type: 'success'|'error'|'info'} | null>(null)
 
   // Smart filters (URL-persistent)
   const [search, setSearch] = useState('')
@@ -477,14 +479,15 @@ export default function PipelinePage() {
       db().from('ahjs').select('name, display_name').order('name').limit(2000),
       db().from('utilities').select('name, display_name').order('name').limit(500),
     ]).then(([finRes, ahjRes, utilRes]) => {
-      const finData = (finRes.data ?? []) as any[]
-      setKnownFinanciers(new Set(finData.map((f: any) => f.name)))
-      setFinancierDisplayNames(new Map(finData.map((f: any) => [f.name, f.display_name || f.name])))
+      type NameDisplay = { name: string; display_name: string | null }
+      const finData = (finRes.data ?? []) as NameDisplay[]
+      setKnownFinanciers(new Set(finData.map(f => f.name)))
+      setFinancierDisplayNames(new Map(finData.map(f => [f.name, f.display_name || f.name])))
       const ahjMap = new Map<string, string>()
-      for (const a of (ahjRes.data ?? []) as any[]) { if (a.display_name) ahjMap.set(a.name, a.display_name) }
+      for (const a of (ahjRes.data ?? []) as NameDisplay[]) { if (a.display_name) ahjMap.set(a.name, a.display_name) }
       setAhjDisplayNames(ahjMap)
       const utilMap = new Map<string, string>()
-      for (const u of (utilRes.data ?? []) as any[]) { if (u.display_name) utilMap.set(u.name, u.display_name) }
+      for (const u of (utilRes.data ?? []) as NameDisplay[]) { if (u.display_name) utilMap.set(u.name, u.display_name) }
       setUtilityDisplayNames(utilMap)
     }).catch(err => console.error('[display_name] load failed:', err))
   }, [])
@@ -603,13 +606,14 @@ export default function PipelinePage() {
       setAdvanceProgress({ current: i + 1, total: selectedProjects.length })
       try {
         await updateProject(proj.id, { stage: nextStage, stage_date: today })
-        await db().from('audit_log').insert({
+        await insertAuditLog({
           project_id: proj.id, field: 'stage',
           old_value: proj.stage, new_value: nextStage,
           changed_by: currentUser?.name ?? null, changed_by_id: currentUser?.id ?? null,
         })
-        await db().from('stage_history').insert({
-          project_id: proj.id, stage: nextStage, entered: today,
+        await insertStageHistory({
+          project_id: proj.id, from_stage: proj.stage, to_stage: nextStage,
+          changed_by: currentUser?.name ?? null, changed_by_id: currentUser?.id ?? null,
         })
       } catch (err) {
         console.error(`Bulk advance failed for ${proj.id}:`, err)
@@ -618,7 +622,7 @@ export default function PipelinePage() {
     }
     setAdvanceProgress(null)
     if (failures.length > 0) {
-      alert(`Stage advance failed for ${failures.length} project(s): ${failures.join(', ')}`)
+      setToast({ message: `Stage advance failed for ${failures.length} project(s): ${failures.join(', ')}`, type: 'error' }); setTimeout(() => setToast(null), 3000)
     }
     clearQueryCache()
     handleBulkComplete()
@@ -649,22 +653,25 @@ export default function PipelinePage() {
       <Nav active="Pipeline" onNewProject={() => setShowNewProject(true)} />
 
       {/* ── Smart Filters Toolbar ──────────────────────────────────────────── */}
-      <div className="bg-gray-950 border-b border-gray-800 px-4 py-2 flex-shrink-0">
+      <div className="bg-gray-900 border-b border-gray-800 px-4 py-2 flex-shrink-0">
         <div className="flex items-center gap-2 flex-wrap">
           {/* Search */}
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search projects..."
+            aria-label="Search projects"
             className="text-xs bg-gray-800 text-gray-200 border border-gray-700 rounded-md px-3 py-1.5 w-44 focus:outline-none focus:border-green-500 placeholder-gray-500"
           />
           {/* PM */}
           <select value={filterValues.pm ?? 'all'} onChange={e => setFilter('pm', e.target.value === 'all' ? '' : e.target.value)}
+            aria-label="Filter by PM"
             className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">
             <option value="all">All PMs</option>
             {pms.map(pm => <option key={pm.value} value={pm.value}>{pm.label}</option>)}
           </select>
           {/* Financier */}
           <select value={filterValues.financier ?? 'all'} onChange={e => setFilter('financier', e.target.value === 'all' ? '' : e.target.value)}
+            aria-label="Filter by financier"
             className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">
             <option value="all">All Financiers</option>
             {financiers.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
@@ -781,7 +788,7 @@ export default function PipelinePage() {
 
             if (isCollapsed) {
               return (
-                <div key={stageId} className="flex flex-col border-r border-gray-800 w-10 flex-shrink-0 bg-gray-950">
+                <div key={stageId} className="flex flex-col border-r border-gray-800 w-10 flex-shrink-0 bg-gray-900">
                   <button
                     onClick={() => toggleColCollapse(stageId)}
                     className="flex flex-col items-center py-3 px-1 gap-2 hover:bg-gray-900 transition-colors h-full"
@@ -801,7 +808,7 @@ export default function PipelinePage() {
             return (
               <div key={stageId} className="flex flex-col border-r border-gray-800 flex-1 min-w-[200px]">
                 {/* Column header with stats */}
-                <div className="bg-gray-950 border-b border-gray-800 px-3 py-2.5 sticky top-0 flex-shrink-0">
+                <div className="bg-gray-900 border-b border-gray-800 px-3 py-2.5 sticky top-0 flex-shrink-0">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-1.5">
                       <button
@@ -883,7 +890,7 @@ export default function PipelinePage() {
             <div key={stageId} className="mb-3">
               <button
                 onClick={() => toggleMobileSection(stageId)}
-                className="w-full bg-gray-950 border border-gray-800 rounded-lg px-4 py-3 flex items-center justify-between"
+                className="w-full bg-gray-900 border border-gray-800 rounded-lg px-4 py-3 flex items-center justify-between"
               >
                 <div className="flex items-center gap-3">
                   <span className="text-[10px] text-gray-500">{isCollapsed ? '\u25B8' : '\u25BE'}</span>
@@ -1020,6 +1027,12 @@ export default function PipelinePage() {
           existingIds={projects.map(p => p.id)}
           pms={pms.map(pm => ({ id: pm.value, name: pm.label }))}
         />
+      )}
+
+      {toast && (
+        <div className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${
+          toast.type === 'error' ? 'bg-red-600 text-white' : toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'
+        }`}>{toast.message}</div>
       )}
     </div>
   )

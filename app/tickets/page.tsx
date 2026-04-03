@@ -30,7 +30,7 @@ import { Plus, Search, X, Send, Download, Pencil } from 'lucide-react'
 const PAGE_SIZE = 50
 
 export default function TicketsPage() {
-  return <Suspense fallback={<div className="min-h-screen bg-gray-950"><Nav active="Tickets" /></div>}><TicketsPageInner /></Suspense>
+  return <Suspense fallback={<div className="min-h-screen bg-gray-900"><Nav active="Tickets" /></div>}><TicketsPageInner /></Suspense>
 }
 
 function TicketsPageInner() {
@@ -60,6 +60,7 @@ function TicketsPageInner() {
   const [filterRepId, setFilterRepId] = useState('')
   const [repNames, setRepNames] = useState<Map<string, string>>(new Map())
   const [showAnalytics, setShowAnalytics] = useState(false)
+  const [toast, setToast] = useState<{message: string, type: 'success'|'error'|'info'} | null>(null)
 
   // UI state
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -114,18 +115,18 @@ function TicketsPageInner() {
   }, [orgId])
 
   useEffect(() => { loadAll() }, [loadAll])
-  useEffect(() => { loadUsers(INTERNAL_DOMAINS).then(r => setUsers((r.data ?? []).map((x: any) => ({ id: x.id, name: x.name })))).catch(() => {}) }, [])
+  useEffect(() => { loadUsers(INTERNAL_DOMAINS).then(r => setUsers((r.data ?? []).map((x: any) => ({ id: x.id, name: x.name })))).catch((e: any) => console.error('[tickets] users load failed:', e)) }, [])
   // Load sales rep names for the rep filter dropdown
   useEffect(() => {
     db().from('sales_reps').select('id, first_name, last_name').limit(500)
       .then(({ data }: any) => {
-        if (data) setRepNames(new Map(data.map((r: any) => [r.id, `${r.first_name} ${r.last_name}`])))
-      }).catch(() => {})
+        if (data) setRepNames(new Map(data.map((r: { id: string; first_name: string; last_name: string }) => [r.id, `${r.first_name} ${r.last_name}`])))
+      }).catch((e: unknown) => console.error('[tickets] reps load failed:', e))
   }, [])
 
   // Realtime — auto-refresh on ticket and comment changes
-  useRealtimeSubscription('tickets' as any, { onChange: loadAll, debounceMs: 500 })
-  useRealtimeSubscription('ticket_comments' as any, {
+  useRealtimeSubscription('tickets' as unknown as Parameters<typeof useRealtimeSubscription>[0], { onChange: loadAll, debounceMs: 500 })
+  useRealtimeSubscription('ticket_comments' as unknown as Parameters<typeof useRealtimeSubscription>[0], {
     onChange: () => {
       loadAll()
       // Also refresh comments if a ticket is expanded
@@ -163,7 +164,7 @@ function TicketsPageInner() {
       org_id: orgId,
       created_by: userName,
       created_by_id: user?.id,
-    } as any)
+    } as Parameters<typeof createTicket>[0])
     if (ticket) {
       setShowCreate(false)
       setCreateForm({ title: '', description: '', category: 'service', subcategory: '', priority: 'normal', source: 'internal', project_id: '', assigned_to: '' })
@@ -223,7 +224,7 @@ function TicketsPageInner() {
       }
     }
     const ok = await updateTicket(editingId, editDraft)
-    if (!ok) { alert('Failed to save changes'); return }
+    if (!ok) { setToast({ message: 'Failed to save changes', type: 'error' }); setTimeout(() => setToast(null), 3000); return }
     setEditingId(null)
     loadAll()
   }, [editingId, editDraft, user, loadAll])
@@ -318,11 +319,11 @@ function TicketsPageInner() {
     if (p) setPanelProject(p)
   }
 
-  if (authLoading) return <div className="min-h-screen bg-gray-950"><Nav active="Tickets" /></div>
-  if (!isManager) return <div className="min-h-screen bg-gray-950"><Nav active="Tickets" /><div className="max-w-7xl mx-auto px-4 py-20 text-center text-gray-500">Not authorized. Manager+ required.</div></div>
+  if (authLoading) return <div className="min-h-screen bg-gray-900"><Nav active="Tickets" /></div>
+  if (!isManager) return <div className="min-h-screen bg-gray-900"><Nav active="Tickets" /><div className="max-w-7xl mx-auto px-4 py-20 text-center text-gray-500">Not authorized. Manager+ required.</div></div>
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="min-h-screen bg-gray-900 text-white">
       <Nav active="Tickets" />
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-4">
@@ -336,7 +337,7 @@ function TicketsPageInner() {
             <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs rounded-md">
               <Download className="w-3.5 h-3.5" /> CSV
             </button>
-            <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white text-xs font-medium rounded-md">
+            <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs font-medium rounded-md">
               <Plus className="w-3.5 h-3.5" /> New Ticket
             </button>
           </div>
@@ -509,19 +510,23 @@ function TicketsPageInner() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
             <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
               placeholder="Search ticket #, title, project..."
-              className="w-full pl-9 pr-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+              aria-label="Search tickets"
+              className="w-full pl-9 pr-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500" />
           </div>
           <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1) }}
+            aria-label="Filter by status"
             className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-xs text-white">
             <option value="">All Statuses</option>
             {TICKET_STATUSES.map(s => <option key={s} value={s}>{TICKET_STATUS_LABELS[s]}</option>)}
           </select>
           <select value={filterCategory} onChange={e => { setFilterCategory(e.target.value); setPage(1) }}
+            aria-label="Filter by category"
             className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-xs text-white">
             <option value="">All Categories</option>
             {TICKET_CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
           </select>
           <select value={filterPriority} onChange={e => { setFilterPriority(e.target.value); setPage(1) }}
+            aria-label="Filter by priority"
             className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-xs text-white">
             <option value="">All Priorities</option>
             {TICKET_PRIORITIES.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
@@ -531,6 +536,7 @@ function TicketsPageInner() {
             const repIds = [...new Set(tickets.filter(t => t.sales_rep_id).map(t => t.sales_rep_id!))]
             return repIds.length > 0 ? (
               <select value={filterRepId} onChange={e => { setFilterRepId(e.target.value); setPage(1) }}
+                aria-label="Filter by sales rep"
                 className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-xs text-white">
                 <option value="">All Reps</option>
                 {repIds.sort((a, b) => (repNames.get(a) ?? a).localeCompare(repNames.get(b) ?? b))
@@ -759,26 +765,35 @@ function TicketsPageInner() {
                                           )}
                                         </div>
                                       </div>
-                                      {(c as any).image_url && (c as any).image_url.match(/\.(jpg|jpeg|png|webp|gif|heic)$/i) ? (
-                                        <a href={(c as any).image_url} target="_blank" rel="noopener noreferrer">
-                                          <img src={(c as any).image_url} alt="Attachment" className="max-w-[200px] rounded-lg mt-1 mb-1 cursor-pointer hover:opacity-80" />
-                                        </a>
-                                      ) : (c as any).image_url ? (
-                                        <a href={`${(c as any).image_url}?download=`} target="_blank" rel="noopener noreferrer"
-                                          className="flex items-center gap-2 mt-1 mb-1 px-3 py-2 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors">
-                                          <svg className="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                          </svg>
-                                          <span className="text-blue-400 text-xs font-medium truncate">{c.message.replace('📎 ', '')}</span>
-                                          <svg className="w-3 h-3 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                          </svg>
-                                        </a>
-                                      ) : (
-                                        <p className="text-gray-300 whitespace-pre-wrap">{c.message.split(/(@[A-Z][a-z]+ [A-Z][a-z]+)/g).map((part, i) =>
-                                          part.startsWith('@') ? <span key={i} className="text-green-400 font-medium">{part}</span> : <React.Fragment key={i}>{part}</React.Fragment>
-                                        )}</p>
-                                      )}
+                                      {(() => {
+                                        const imgUrl = (c as TicketComment & { image_url?: string }).image_url
+                                        if (imgUrl && imgUrl.match(/\.(jpg|jpeg|png|webp|gif|heic)$/i)) {
+                                          return (
+                                            <a href={imgUrl} target="_blank" rel="noopener noreferrer">
+                                              <img src={imgUrl} alt="Attachment" className="max-w-[200px] rounded-lg mt-1 mb-1 cursor-pointer hover:opacity-80" />
+                                            </a>
+                                          )
+                                        }
+                                        if (imgUrl) {
+                                          return (
+                                            <a href={`${imgUrl}?download=`} target="_blank" rel="noopener noreferrer"
+                                              className="flex items-center gap-2 mt-1 mb-1 px-3 py-2 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors">
+                                              <svg className="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                              </svg>
+                                              <span className="text-blue-400 text-xs font-medium truncate">{c.message.replace('\ud83d\udcce ', '')}</span>
+                                              <svg className="w-3 h-3 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                              </svg>
+                                            </a>
+                                          )
+                                        }
+                                        return (
+                                          <p className="text-gray-300 whitespace-pre-wrap">{c.message.split(/(@[A-Z][a-z]+ [A-Z][a-z]+)/g).map((part, i) =>
+                                            part.startsWith('@') ? <span key={i} className="text-green-400 font-medium">{part}</span> : <React.Fragment key={i}>{part}</React.Fragment>
+                                          )}</p>
+                                        )
+                                      })()}
                                       {c.is_internal && <span className="text-[9px] text-amber-400 font-medium mt-1 block">INTERNAL NOTE — not visible to customer</span>}
                                     </div>
                                   ))}
@@ -961,13 +976,13 @@ function TicketsPageInner() {
                 <label className="text-xs text-gray-400 font-medium block mb-1">Title *</label>
                 <input value={createForm.title} onChange={e => setCreateForm(f => ({ ...f, title: e.target.value }))}
                   placeholder="Brief description of the issue"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500" />
+                  className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500" />
               </div>
               <div>
                 <label className="text-xs text-gray-400 font-medium block mb-1">Description</label>
                 <textarea value={createForm.description} onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))}
                   rows={3} placeholder="Full details..."
-                  className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white resize-none focus:outline-none focus:border-blue-500" />
+                  className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white resize-none focus:outline-none focus:border-green-500" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -1021,7 +1036,7 @@ function TicketsPageInner() {
                     onFocus={() => projectResults.length > 0 && setShowProjectDropdown(true)}
                     onBlur={() => setTimeout(() => setShowProjectDropdown(false), 200)}
                     placeholder="Search project name or PROJ-XXXXX..."
-                    className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500" />
+                    className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500" />
                   {showProjectDropdown && projectResults.length > 0 && (
                     <div className="absolute z-50 w-full mt-1 bg-gray-800 border border-gray-700 rounded-md shadow-xl max-h-48 overflow-y-auto">
                       {projectResults.map(p => (
@@ -1077,7 +1092,7 @@ function TicketsPageInner() {
                 <label className="text-xs text-gray-400 font-medium block mb-1">Resolution Notes</label>
                 <textarea value={resolveNotes} onChange={e => setResolveNotes(e.target.value)}
                   rows={3} placeholder="Describe what was done to resolve this ticket..."
-                  className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white resize-none focus:outline-none focus:border-blue-500" />
+                  className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white resize-none focus:outline-none focus:border-green-500" />
               </div>
             </div>
             <div className="px-5 py-3 border-t border-gray-800 flex justify-end gap-2">
@@ -1098,6 +1113,12 @@ function TicketsPageInner() {
           onClose={() => setPanelProject(null)}
           onProjectUpdated={() => {}}
         />
+      )}
+
+      {toast && (
+        <div className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${
+          toast.type === 'error' ? 'bg-red-600 text-white' : toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'
+        }`}>{toast.message}</div>
       )}
     </div>
   )

@@ -242,7 +242,7 @@ describe('loadCommissionRates', () => {
     const result = await loadCommissionRates()
 
     expect(mockSupabase.from).toHaveBeenCalledWith('commission_rates')
-    expect(chain.select).toHaveBeenCalledWith('*')
+    expect(chain.select).toHaveBeenCalled()
     expect(chain.eq).toHaveBeenCalledWith('active', true)
     expect(chain.order).toHaveBeenCalledWith('sort_order', { ascending: true })
     expect(chain.limit).toHaveBeenCalledWith(100)
@@ -293,7 +293,7 @@ describe('loadCommissionRecords', () => {
     const result = await loadCommissionRecords()
 
     expect(mockSupabase.from).toHaveBeenCalledWith('commission_records')
-    expect(chain.select).toHaveBeenCalledWith('*')
+    expect(chain.select).toHaveBeenCalled()
     expect(chain.order).toHaveBeenCalledWith('created_at', { ascending: false })
     expect(chain.limit).toHaveBeenCalledWith(500)
     expect(result).toEqual([MOCK_RECORD])

@@ -125,7 +125,7 @@ const CACHE_TTL = 30_000
 const CACHE_MAX_AGE = 300_000
 
 /** Maximum cache entries — LRU eviction when exceeded */
-const MAX_CACHE_ENTRIES = 50
+const MAX_CACHE_ENTRIES = 200
 
 /** Tables that have a direct org_id column for multi-tenant filtering */
 const ORG_SCOPED_TABLES = new Set([
@@ -305,6 +305,8 @@ export function useSupabaseQuery<T extends TableName>(
             const vals = value.not_in.map(v => typeof v === 'string' ? `"${escapeNotInValue(v)}"` : String(v)).join(',')
             query = query.not(field, 'in', `(${vals})`)
           } else if ('ilike' in value) {
+            // NOTE: Callers must use escapeIlike() on user input before wrapping with %...%
+            // The hook passes the value as-is since it may contain intentional wildcards
             query = query.ilike(field, value.ilike)
           } else if ('is' in value) {
             query = query.is(field, null)
@@ -402,16 +404,12 @@ export function useSupabaseQuery<T extends TableName>(
     fetchData()
   }, [fetchData])
 
-  // Realtime: invalidate cache and refetch when changes arrive
+  // Realtime: invalidate THIS query's cache and refetch (not all table entries)
   const handleRealtimeChange = useCallback(() => {
-    // Invalidate all cache entries for this table
-    for (const key of queryCache.keys()) {
-      if (key.startsWith(table + '|')) {
-        queryCache.delete(key)
-      }
-    }
+    // Only invalidate this specific query's cache entry, not all entries for the table
+    queryCache.delete(optionsKey)
     fetchData(true) // background refetch
-  }, [table, fetchData])
+  }, [optionsKey, fetchData])
 
   useRealtimeSubscription(table, {
     onChange: handleRealtimeChange,

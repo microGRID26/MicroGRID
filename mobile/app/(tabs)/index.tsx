@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
-import { View, Text, ScrollView, RefreshControl, ActivityIndicator } from 'react-native'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { View, Text, ScrollView, RefreshControl, ActivityIndicator, AppState } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import { theme, useThemeColors } from '../../lib/theme'
 import { getCustomerAccount, loadProject, loadTimeline, loadSchedule } from '../../lib/api'
@@ -56,9 +56,20 @@ export default function DashboardScreen() {
 
   useEffect(() => { load() }, [load])
 
-  // Auto-refresh every 30 seconds for real-time project updates
+  // Auto-refresh every 30 seconds — pause when app is backgrounded to save battery
+  const appActive = useRef(true)
   useEffect(() => {
-    const interval = setInterval(load, 30000)
+    const sub = AppState.addEventListener('change', (state) => {
+      appActive.current = state === 'active'
+      if (state === 'active') load() // Refresh when foregrounded
+    })
+    return () => sub.remove()
+  }, [load])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (appActive.current) load()
+    }, 30000)
     return () => clearInterval(interval)
   }, [load])
 

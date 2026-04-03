@@ -255,7 +255,7 @@ function CreateWOModal({
             className={cn(
               'text-xs px-4 py-2 rounded-lg font-medium transition-colors',
               projectId.trim() && !saving
-                ? 'bg-green-700 hover:bg-green-600 text-white'
+                ? 'bg-green-600 hover:bg-green-500 text-white'
                 : 'bg-gray-700 text-gray-500 cursor-not-allowed'
             )}>
             {saving ? 'Creating...' : 'Create Work Order'}
@@ -541,7 +541,7 @@ function WODetail({
             <span className="text-green-400 text-sm flex items-center gap-1"><Check className="w-4 h-4" /> Signed</span>
           ) : (
             <button onClick={handleSignature}
-              className="text-xs bg-green-700 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors">
+              className="text-xs bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg transition-colors">
               Collect Signature
             </button>
           )}
@@ -551,7 +551,7 @@ function WODetail({
         <div className="flex items-center gap-3">
           {nextStatus && (
             <button onClick={handleStatusAdvance}
-              className="text-sm bg-green-700 hover:bg-green-600 text-white px-5 py-2.5 rounded-lg font-medium transition-colors">
+              className="text-sm bg-green-600 hover:bg-green-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors">
               {nextStatus === 'assigned' ? 'Assign' : nextStatus === 'in_progress' ? 'Start Work' : 'Mark Complete'}
             </button>
           )}
@@ -684,7 +684,7 @@ export default function WorkOrdersPage() {
       <Nav active="Work Orders" />
 
       {/* Header */}
-      <div className="bg-gray-950 border-b border-gray-800 px-4 sm:px-6 py-5">
+      <div className="bg-gray-900 border-b border-gray-800 px-4 sm:px-6 py-5">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
           <div>
             <h1 className="text-xl font-bold text-white flex items-center gap-2">
@@ -695,7 +695,7 @@ export default function WorkOrdersPage() {
           </div>
           <button onClick={() => setShowCreate(true)}
             aria-label="Create new work order"
-            className="flex items-center gap-2 bg-green-700 hover:bg-green-600 text-white text-sm px-4 py-2 rounded-lg font-medium transition-colors">
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white text-sm px-4 py-2 rounded-lg font-medium transition-colors">
             <Plus className="w-4 h-4" /> New Work Order
           </button>
         </div>
@@ -717,7 +717,7 @@ export default function WorkOrdersPage() {
       </div>
 
       {/* Filter bar */}
-      <div className="bg-gray-950 border-b border-gray-800 flex flex-wrap items-center gap-3 px-4 sm:px-6 py-2">
+      <div className="bg-gray-900 border-b border-gray-800 flex flex-wrap items-center gap-3 px-4 sm:px-6 py-2">
         <input
           type="text"
           value={search}

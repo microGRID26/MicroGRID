@@ -167,7 +167,7 @@ export function CommissionRatesManager({ isSuperAdmin }: { isSuperAdmin: boolean
             <div className="flex flex-col gap-1">
               <label className="text-xs text-gray-400 font-medium">Rate Type</label>
               <select value={draft.rate_type ?? 'per_watt'} onChange={e => setDraft(d => ({ ...d, rate_type: e.target.value as CommissionRate['rate_type'] }))}
-                className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500">
                 <option value="per_watt">Per Watt ($/W)</option>
                 <option value="percentage">Percentage (%)</option>
                 <option value="flat">Flat Fee ($)</option>

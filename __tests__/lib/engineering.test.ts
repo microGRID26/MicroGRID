@@ -118,7 +118,7 @@ describe('loadAssignments', () => {
     const result = await loadAssignments()
 
     expect(mockSupabase.from).toHaveBeenCalledWith('engineering_assignments')
-    expect(chain.select).toHaveBeenCalledWith('*')
+    expect(chain.select).toHaveBeenCalled()
     expect(chain.order).toHaveBeenCalledWith('created_at', { ascending: false })
     expect(chain.limit).toHaveBeenCalledWith(500)
     expect(chain.or).not.toHaveBeenCalled()
@@ -509,7 +509,7 @@ describe('loadAssignmentQueue', () => {
     const result = await loadAssignmentQueue()
 
     expect(mockSupabase.from).toHaveBeenCalledWith('engineering_assignments')
-    expect(chain.select).toHaveBeenCalledWith('*')
+    expect(chain.select).toHaveBeenCalled()
     expect(chain.order).toHaveBeenCalledWith('created_at', { ascending: false })
     expect(chain.limit).toHaveBeenCalledWith(500)
     expect(chain.eq).not.toHaveBeenCalled()

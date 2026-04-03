@@ -1,3 +1,4 @@
+// Org filtering: inherited via project_id FK — RLS policies enforce org scope
 import { db } from '@/lib/db'
 
 export async function upsertTaskState(record: {
@@ -45,7 +46,7 @@ export async function insertTaskHistory(record: {
 
 export async function loadProjectAdders(projectId: string) {
   const { data, error } = await db().from('project_adders')
-    .select('*')
+    .select('id, project_id, adder_name, price, quantity, total_amount, created_at')
     .eq('project_id', projectId)
     .order('created_at', { ascending: true })
     .limit(500)
@@ -68,5 +69,32 @@ export async function addProjectAdder(adder: {
 export async function deleteProjectAdder(adderId: string) {
   const { error } = await db().from('project_adders').delete().eq('id', adderId)
   if (error) console.error('adder delete failed:', error)
+  return { error }
+}
+
+/** Insert an audit log entry. Used across pages for tracking field changes. */
+export async function insertAuditLog(entry: {
+  project_id: string
+  field: string
+  old_value?: string | null
+  new_value?: string | null
+  changed_by?: string | null
+  changed_by_id?: string | null
+}) {
+  const { error } = await db().from('audit_log').insert(entry)
+  if (error) console.error('[audit_log] insert failed:', error)
+  return { error }
+}
+
+/** Insert a stage history entry. Used when projects change stages. */
+export async function insertStageHistory(entry: {
+  project_id: string
+  from_stage: string | null
+  to_stage: string
+  changed_by?: string | null
+  changed_by_id?: string | null
+}) {
+  const { error } = await db().from('stage_history').insert(entry)
+  if (error) console.error('[stage_history] insert failed:', error)
   return { error }
 }

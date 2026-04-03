@@ -74,7 +74,7 @@ export function QueueConfigManager() {
       <div className="flex flex-col gap-1">
         <label className="text-xs text-gray-400 font-medium">Task</label>
         <select value={draft.task_id ?? ''} onChange={e => setDraft(d => ({ ...d, task_id: e.target.value }))}
-          className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
+          className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500">
           <option value="">Select task...</option>
           {taskOptions.map(t => <option key={t.id} value={t.id}>{t.name} ({t.id})</option>)}
         </select>
@@ -98,7 +98,7 @@ export function QueueConfigManager() {
         <div className="flex flex-col gap-1 flex-1">
           <label className="text-xs text-gray-400 font-medium">Color</label>
           <select value={draft.color ?? 'gray'} onChange={e => setDraft(d => ({ ...d, color: e.target.value }))}
-            className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
+            className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500">
             {colorOptions.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>

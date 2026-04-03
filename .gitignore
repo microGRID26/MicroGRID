@@ -43,3 +43,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env.local
+
+# Large email export files
+email-export/**/*.mbox
+email-export/**/all-emails.json
+scripts/extract-subhub.sh

@@ -103,7 +103,7 @@ function SessionsTab() {
             value={userFilter}
             onChange={e => setUserFilter(e.target.value)}
             className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1.5 text-xs text-white
-                       focus:outline-none focus:border-blue-500 transition-colors">
+                       focus:outline-none focus:border-green-500 transition-colors">
             <option value="">All Users</option>
             {userNames.map(n => <option key={n} value={n}>{n}</option>)}
           </select>
@@ -111,7 +111,7 @@ function SessionsTab() {
             value={dateRange}
             onChange={e => setDateRange(e.target.value as DateRange)}
             className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1.5 text-xs text-white
-                       focus:outline-none focus:border-blue-500 transition-colors">
+                       focus:outline-none focus:border-green-500 transition-colors">
             <option value="today">Today</option>
             <option value="7days">Last 7 Days</option>
             <option value="30days">Last 30 Days</option>
@@ -231,14 +231,14 @@ function ChangesTab() {
               onChange={e => setSearch(e.target.value)}
               placeholder="Project ID…"
               className="w-36 pl-8 pr-2 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-xs text-white
-                         placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+                         placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
             />
           </div>
           <select
             value={userFilter}
             onChange={e => setUserFilter(e.target.value)}
             className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1.5 text-xs text-white
-                       focus:outline-none focus:border-blue-500 transition-colors">
+                       focus:outline-none focus:border-green-500 transition-colors">
             <option value="">All Users</option>
             {userNames.map(n => <option key={n} value={n}>{n}</option>)}
           </select>
@@ -246,7 +246,7 @@ function ChangesTab() {
             value={fieldFilter}
             onChange={e => setFieldFilter(e.target.value)}
             className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1.5 text-xs text-white
-                       focus:outline-none focus:border-blue-500 transition-colors">
+                       focus:outline-none focus:border-green-500 transition-colors">
             <option value="">All Fields</option>
             {fieldNames.map(f => <option key={f} value={f}>{f}</option>)}
           </select>
@@ -254,7 +254,7 @@ function ChangesTab() {
             value={dateRange}
             onChange={e => setDateRange(e.target.value as DateRange)}
             className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1.5 text-xs text-white
-                       focus:outline-none focus:border-blue-500 transition-colors">
+                       focus:outline-none focus:border-green-500 transition-colors">
             <option value="today">Today</option>
             <option value="7days">Last 7 Days</option>
             <option value="30days">Last 30 Days</option>

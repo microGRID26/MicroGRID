@@ -204,14 +204,14 @@ export default function MissingDocumentsPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-gray-500 text-sm">Loading...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="min-h-screen bg-gray-900 text-white">
       <Nav active="Documents" right={
         <div className="flex items-center gap-3">
           <Pagination

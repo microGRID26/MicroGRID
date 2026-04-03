@@ -275,7 +275,7 @@ export default function MobileScanPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-dvh bg-gray-950 flex items-center justify-center">
+      <div className="min-h-dvh bg-gray-900 flex items-center justify-center">
         <div className="text-gray-500 text-sm">Loading...</div>
       </div>
     )
@@ -284,7 +284,7 @@ export default function MobileScanPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-dvh bg-gray-950 text-white">
+    <div className="min-h-dvh bg-gray-900 text-white">
       {/* Header */}
       <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3 sticky top-0 z-20">
         <a href="/mobile/field" className="p-1 -ml-1 text-gray-400 hover:text-white">

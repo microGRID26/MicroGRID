@@ -185,7 +185,7 @@ export async function loadTickets(filters?: {
   projectId?: string
   orgId?: string | null
 }): Promise<Ticket[]> {
-  let q = db().from('tickets').select('*').order('created_at', { ascending: false }).limit(2000)
+  let q = db().from('tickets').select('id, ticket_number, project_id, category, subcategory, priority, source, title, description, status, resolution_category, resolution_notes, assigned_to, assigned_to_id, assigned_team, escalated_to, escalated_at, reported_by, reported_by_id, sales_rep_id, pm_id, sla_response_hours, sla_resolution_hours, first_response_at, resolved_at, closed_at, tags, related_ticket_id, org_id, created_by, created_by_id, created_at, updated_at').order('created_at', { ascending: false }).limit(2000)
   if (filters?.status) q = q.eq('status', filters.status)
   if (filters?.category) q = q.eq('category', filters.category)
   if (filters?.priority) q = q.eq('priority', filters.priority)
@@ -199,13 +199,13 @@ export async function loadTickets(filters?: {
 }
 
 export async function loadTicket(id: string): Promise<Ticket | null> {
-  const { data, error } = await db().from('tickets').select('*').eq('id', id).single()
+  const { data, error } = await db().from('tickets').select('id, ticket_number, project_id, category, subcategory, priority, source, title, description, status, resolution_category, resolution_notes, assigned_to, assigned_to_id, assigned_team, escalated_to, escalated_at, reported_by, reported_by_id, sales_rep_id, pm_id, sla_response_hours, sla_resolution_hours, first_response_at, resolved_at, closed_at, tags, related_ticket_id, org_id, created_by, created_by_id, created_at, updated_at').eq('id', id).single()
   if (error) { console.error('[loadTicket]', error.message); return null }
   return data as Ticket
 }
 
 export async function loadProjectTickets(projectId: string): Promise<Ticket[]> {
-  const { data, error } = await db().from('tickets').select('*').eq('project_id', projectId).order('created_at', { ascending: false }).limit(50)
+  const { data, error } = await db().from('tickets').select('id, ticket_number, project_id, category, subcategory, priority, source, title, description, status, resolution_category, resolution_notes, assigned_to, assigned_to_id, assigned_team, escalated_to, escalated_at, reported_by, reported_by_id, sales_rep_id, pm_id, sla_response_hours, sla_resolution_hours, first_response_at, resolved_at, closed_at, tags, related_ticket_id, org_id, created_by, created_by_id, created_at, updated_at').eq('project_id', projectId).order('created_at', { ascending: false }).limit(50)
   if (error) console.error('[loadProjectTickets]', error.message)
   return (data ?? []) as Ticket[]
 }
@@ -296,7 +296,7 @@ export async function updateTicketStatus(
 
 export async function loadTicketComments(ticketId: string): Promise<TicketComment[]> {
   const { data, error } = await db().from('ticket_comments')
-    .select('*')
+    .select('id, ticket_id, author, author_id, message, is_internal, created_at')
     .eq('ticket_id', ticketId)
     .is('deleted_at', null)
     .order('created_at', { ascending: true })
@@ -345,7 +345,7 @@ export async function deleteTicketComment(commentId: string, deletedBy: string):
 
 export async function loadDeletedComments(ticketId: string): Promise<TicketComment[]> {
   const { data, error } = await db().from('ticket_comments')
-    .select('*')
+    .select('id, ticket_id, author, author_id, message, is_internal, created_at')
     .eq('ticket_id', ticketId)
     .not('deleted_at', 'is', null)
     .order('created_at', { ascending: true })
@@ -357,7 +357,7 @@ export async function loadDeletedComments(ticketId: string): Promise<TicketComme
 // ── History ──────────────────────────────────────────────────────────────────
 
 export async function loadTicketHistory(ticketId: string): Promise<TicketHistory[]> {
-  const { data, error } = await db().from('ticket_history').select('*').eq('ticket_id', ticketId).order('created_at', { ascending: false }).limit(200)
+  const { data, error } = await db().from('ticket_history').select('id, ticket_id, field, old_value, new_value, changed_by, changed_by_id, created_at').eq('ticket_id', ticketId).order('created_at', { ascending: false }).limit(200)
   if (error) console.error('[loadTicketHistory]', error.message)
   return (data ?? []) as TicketHistory[]
 }
@@ -369,13 +369,13 @@ export async function addTicketHistory(ticketId: string, field: string, oldValue
 // ── Categories & Resolution Codes ────────────────────────────────────────────
 
 export async function loadTicketCategories(): Promise<TicketCategory[]> {
-  const { data, error } = await db().from('ticket_categories').select('*').eq('active', true).order('sort_order').limit(200)
+  const { data, error } = await db().from('ticket_categories').select('id, category, subcategory, label, description, default_priority, default_sla_response, default_sla_resolution, active, sort_order, org_id').eq('active', true).order('sort_order').limit(200)
   if (error) console.error('[loadTicketCategories]', error.message)
   return (data ?? []) as TicketCategory[]
 }
 
 export async function loadResolutionCodes(): Promise<TicketResolutionCode[]> {
-  const { data, error } = await db().from('ticket_resolution_codes').select('*').eq('active', true).order('sort_order').limit(100)
+  const { data, error } = await db().from('ticket_resolution_codes').select('id, code, label, description, applies_to, active, sort_order').eq('active', true).order('sort_order').limit(100)
   if (error) console.error('[loadResolutionCodes]', error.message)
   return (data ?? []) as TicketResolutionCode[]
 }

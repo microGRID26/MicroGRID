@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 // Routes that require no authentication
 const PUBLIC_ROUTES = ['/login', '/auth', '/portal/login', '/portal/auth']
-const PUBLIC_PREFIXES = ['/api/webhooks/', '/api/email/send-daily', '/api/email/onboarding-reminder', '/api/email/digest', '/api/calendar/webhook', '/api/portal/', '/_next/', '/favicon.ico']
+const PUBLIC_PREFIXES = ['/api/webhooks/', '/api/email/send-daily', '/api/email/onboarding-reminder', '/api/email/digest', '/api/calendar/webhook', '/api/portal/chat', '/_next/', '/favicon.ico']
 
 // Role hierarchy levels (must match lib/useCurrentUser.ts ROLE_LEVEL)
 const ROLE_LEVEL: Record<string, number> = {
@@ -128,9 +128,23 @@ export async function proxy(request: NextRequest) {
     return response
   }
 
-  // Role check — for sensitive routes, always query DB to prevent cookie forgery
+  // Role check — always query DB when cookie is missing or expired; validate cookie with HMAC
   const isSensitiveRoute = pathname.startsWith('/admin') || pathname.startsWith('/system')
-  let userRole: string | undefined = isSensitiveRoute ? undefined : request.cookies.get(ROLE_COOKIE)?.value
+  const roleCookieRaw = isSensitiveRoute ? undefined : request.cookies.get(ROLE_COOKIE)?.value
+  // Cookie format: "role:hmac" — verify integrity to prevent forgery
+  let userRole: string | undefined
+  if (roleCookieRaw && roleCookieRaw.includes(':')) {
+    const [cookieRole, cookieHmac] = roleCookieRaw.split(':')
+    const hmacSecret = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'fallback'
+    const { createHmac } = await import('crypto')
+    const { timingSafeEqual } = await import('crypto')
+    const expectedHmac = createHmac('sha256', hmacSecret).update(cookieRole + ':' + user.id).digest('hex').slice(0, 16)
+    const a = Buffer.from(cookieHmac)
+    const b = Buffer.from(expectedHmac)
+    if (a.length === b.length && timingSafeEqual(a, b)) {
+      userRole = cookieRole
+    }
+  }
 
   if (!userRole) {
     try {
@@ -145,7 +159,11 @@ export async function proxy(request: NextRequest) {
       userRole = 'user'
     }
 
-    response.cookies.set(ROLE_COOKIE, userRole!, {
+    // Sign the cookie with HMAC to prevent forgery
+    const { createHmac } = await import('crypto')
+    const hmacSecret = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'fallback'
+    const hmac = createHmac('sha256', hmacSecret).update(userRole + ':' + user.id).digest('hex').slice(0, 16)
+    response.cookies.set(ROLE_COOKIE, `${userRole}:${hmac}`, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

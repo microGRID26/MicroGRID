@@ -39,24 +39,7 @@ export function SLAManager() {
     setSaving(true)
     if (!tableExists) {
       // Table doesn't exist yet — show instructions
-      setToast('Create sla_thresholds table first (see console)')
-      console.log(`
--- Run this in Supabase SQL editor:
-CREATE TABLE sla_thresholds (
-  stage text PRIMARY KEY,
-  target integer NOT NULL,
-  risk   integer NOT NULL,
-  crit   integer NOT NULL
-);
-INSERT INTO sla_thresholds (stage, target, risk, crit) VALUES
-  ('evaluation', 3,  4,  6),
-  ('survey',     3,  5,  10),
-  ('design',     3,  5,  10),
-  ('permit',     21, 30, 45),
-  ('install',    5,  7,  10),
-  ('inspection', 14, 21, 30),
-  ('complete',   3,  5,  7);
-      `)
+      setToast('SLA thresholds table not found. Contact admin to create sla_thresholds table.')
       setSaving(false)
       return
     }

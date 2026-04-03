@@ -425,7 +425,7 @@ export default function FundingPage() {
       )}
 
       {/* Filters */}
-      <div className="bg-gray-950 border-b border-gray-800 flex items-center gap-2 px-4 py-2 flex-shrink-0 flex-wrap">
+      <div className="bg-gray-900 border-b border-gray-800 flex items-center gap-2 px-4 py-2 flex-shrink-0 flex-wrap">
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as FundingFilter)}
           aria-label="Filter by funding status"
           className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">
@@ -577,7 +577,7 @@ export default function FundingPage() {
       {/* Table */}
       <div className="flex-1 overflow-auto">
         <table className="w-full border-collapse text-xs">
-          <thead className="bg-gray-950 sticky top-0 z-10">
+          <thead className="bg-gray-900 sticky top-0 z-10">
             {/* Group headers */}
             <tr>
               <th colSpan={6} className="border-b border-gray-800"></th>

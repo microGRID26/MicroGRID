@@ -216,9 +216,9 @@ function ProjectDetail({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-gray-950/95 overflow-y-auto pb-[env(safe-area-inset-bottom)]">
+    <div className="fixed inset-0 z-50 bg-gray-900/95 overflow-y-auto pb-[env(safe-area-inset-bottom)]">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-gray-950 border-b border-gray-800 px-4 py-3 flex items-center justify-between">
+      <div className="sticky top-0 z-10 bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center justify-between">
         <h2 className="text-lg font-bold text-white truncate mr-4">{project.name}</h2>
         <button
           onClick={onClose}
@@ -1009,7 +1009,7 @@ export default function FieldPage() {
 
   if (loading) {
     return (
-      <div className="min-h-dvh bg-gray-950 px-4 pt-16 space-y-4">
+      <div className="min-h-dvh bg-gray-900 px-4 pt-16 space-y-4">
         {[1, 2, 3].map(i => (
           <div key={i} className="bg-gray-900 rounded-xl border border-gray-800 p-4 animate-pulse">
             <div className="flex items-center gap-2 mb-3">
@@ -1025,9 +1025,9 @@ export default function FieldPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-gray-950 flex flex-col pb-[env(safe-area-inset-bottom)]">
+    <div className="min-h-dvh bg-gray-900 flex flex-col pb-[env(safe-area-inset-bottom)]">
       {/* Header */}
-      <header className="bg-gray-950 border-b border-gray-800 px-4 py-3 flex-shrink-0 sticky top-0 z-40">
+      <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex-shrink-0 sticky top-0 z-40">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-green-400 font-bold text-lg">MicroGRID</span>
@@ -1072,7 +1072,7 @@ export default function FieldPage() {
             <button
               onClick={() => handleClockIn()}
               disabled={clockLoading}
-              className="min-h-[44px] px-5 bg-green-700 hover:bg-green-600 text-white text-sm font-semibold rounded-xl active:scale-95 transition-all disabled:opacity-50"
+              className="min-h-[44px] px-5 bg-green-600 hover:bg-green-500 text-white text-sm font-semibold rounded-xl active:scale-95 transition-all disabled:opacity-50"
             >
               {clockLoading ? 'Saving...' : 'Clock In'}
             </button>
@@ -1081,7 +1081,7 @@ export default function FieldPage() {
       </div>
 
       {/* Search bar */}
-      <div className="bg-gray-950 border-b border-gray-800 px-4 py-3 flex-shrink-0 relative">
+      <div className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex-shrink-0 relative">
         <input
           type="text"
           value={search}
@@ -1194,7 +1194,7 @@ export default function FieldPage() {
 
       {/* Detail loading overlay */}
       {detailLoading && (
-        <div className="fixed inset-0 z-50 bg-gray-950/90 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 bg-gray-900/90 flex items-center justify-center">
           <div className="text-green-400 text-base animate-pulse">Loading project...</div>
         </div>
       )}

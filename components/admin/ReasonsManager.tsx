@@ -8,12 +8,13 @@ import { Input, Modal, SaveBtn, SearchBar, Badge } from './shared'
 
 export function ReasonsManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const supabase = db()
-  const [reasons, setReasons] = useState<any[]>([])
+  interface ReasonRecord { id: string; task_id: string; reason_type: 'pending' | 'revision'; reason: string; active: boolean; sort_order: number }
+  const [reasons, setReasons] = useState<ReasonRecord[]>([])
   const [search, setSearch] = useState('')
   const [filterTask, setFilterTask] = useState('')
   const [filterType, setFilterType] = useState<'' | 'pending' | 'revision'>('')
-  const [editing, setEditing] = useState<any | null>(null)
-  const [draft, setDraft] = useState<any>({})
+  const [editing, setEditing] = useState<ReasonRecord | null>(null)
+  const [draft, setDraft] = useState<Record<string, any>>({})
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState('')
   const [showNew, setShowNew] = useState(false)
@@ -29,11 +30,11 @@ export function ReasonsManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 
   useEffect(() => { load() }, [load])
 
-  const openEdit = (r: any) => { setEditing(r); setDraft({ ...r }) }
+  const openEdit = (r: ReasonRecord) => { setEditing(r); setDraft({ ...r }) }
 
   const save = async () => {
     if (!editing) return
-    if (draft.task_id && !ALL_TASKS_MAP[draft.task_id]) {
+    if (draft.task_id && !ALL_TASKS_MAP[String(draft.task_id)]) {
       setToast('Invalid task ID'); setTimeout(() => setToast(''), 2500); return
     }
     setSaving(true)
@@ -121,21 +122,21 @@ export function ReasonsManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       </div>
       {(editing || showNew) && (
         <Modal title={editing ? `Edit Reason` : 'New Reason'} onClose={() => { setEditing(null); setShowNew(false) }}>
-          <Input label="Task / Stage ID" value={draft.task_id ?? ''} onChange={v => setDraft((d: any) => ({ ...d, task_id: v }))} />
+          <Input label="Task / Stage ID" value={draft.task_id ?? ''} onChange={v => setDraft(d => ({ ...d, task_id: v }))} />
           <div className="flex flex-col gap-1">
             <label className="text-xs text-gray-400 font-medium">Type</label>
-            <select value={draft.reason_type ?? 'pending'} onChange={e => setDraft((d: any) => ({ ...d, reason_type: e.target.value }))}
-              className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
+            <select value={draft.reason_type ?? 'pending'} onChange={e => setDraft(d => ({ ...d, reason_type: e.target.value }))}
+              className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500">
               <option value="pending">Pending Resolution</option>
               <option value="revision">Revision Required</option>
             </select>
           </div>
-          <Input label="Reason" value={draft.reason ?? ''} onChange={v => setDraft((d: any) => ({ ...d, reason: v }))} />
-          <Input label="Sort Order" value={String(draft.sort_order ?? 0)} onChange={v => setDraft((d: any) => ({ ...d, sort_order: v ? Number(v) : 0 }))} type="number" />
+          <Input label="Reason" value={draft.reason ?? ''} onChange={v => setDraft(d => ({ ...d, reason: v }))} />
+          <Input label="Sort Order" value={String(draft.sort_order ?? 0)} onChange={v => setDraft(d => ({ ...d, sort_order: v ? Number(v) : 0 }))} type="number" />
           <div className="flex items-center gap-2 py-1">
             <label className="text-xs text-gray-400 font-medium">Active</label>
             <button
-              onClick={() => setDraft((d: any) => ({ ...d, active: !d.active }))}
+              onClick={() => setDraft(d => ({ ...d, active: !d.active }))}
               className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${draft.active !== false ? 'bg-green-600' : 'bg-gray-600'}`}
             >
               <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${draft.active !== false ? 'translate-x-4' : 'translate-x-0.5'}`} />

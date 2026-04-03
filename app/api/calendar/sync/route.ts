@@ -44,10 +44,15 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Verify auth — require a valid Supabase session via cookie
-  const authHeader = req.headers.get('authorization')
-  const cookieHeader = req.headers.get('cookie')
-  if (!authHeader && !cookieHeader) {
+  // Verify auth — require a valid Supabase session
+  const { createServerClient } = await import('@supabase/ssr')
+  const supabaseAuth = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll() { return req.cookies.getAll() }, setAll() {} } }
+  )
+  const { data: { user: authUser } } = await supabaseAuth.auth.getUser()
+  if (!authUser) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

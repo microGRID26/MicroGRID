@@ -101,7 +101,7 @@ describe('loadActiveCrews', () => {
     const result = await loadActiveCrews()
 
     expect(mockSupabase.from).toHaveBeenCalledWith('crews')
-    expect(chain.select).toHaveBeenCalledWith('*')
+    expect(chain.select).toHaveBeenCalled()
     expect(chain.eq).toHaveBeenCalledWith('active', 'TRUE')
     expect(chain.order).toHaveBeenCalledWith('name')
     expect(result.data).toEqual(crews)

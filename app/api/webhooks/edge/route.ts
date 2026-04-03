@@ -7,15 +7,24 @@ import crypto from 'crypto'
 // Updates MicroGRID's project_funding table and logs to audit_log.
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_SECRET = process.env.SUPABASE_SECRET_KEY || ''
-const WEBHOOK_SECRET = process.env.EDGE_WEBHOOK_SECRET || ''
+const SUPABASE_SECRET = process.env.SUPABASE_SECRET_KEY
+const WEBHOOK_SECRET = process.env.EDGE_WEBHOOK_SECRET
+
+if (!SUPABASE_SECRET) {
+  console.error('[edge-webhook] SUPABASE_SECRET_KEY not configured')
+}
+if (!WEBHOOK_SECRET) {
+  console.error('[edge-webhook] EDGE_WEBHOOK_SECRET not configured')
+}
 
 function supabase() {
+  if (!SUPABASE_SECRET) throw new Error('SUPABASE_SECRET_KEY not configured')
   return createClient(SUPABASE_URL, SUPABASE_SECRET)
 }
 
 /** Timing-safe secret comparison */
 function verifySignature(body: string, signature: string): boolean {
+  if (!WEBHOOK_SECRET) return false
   try {
     const expected = crypto
       .createHmac('sha256', WEBHOOK_SECRET)

@@ -225,7 +225,7 @@ export function OpenPortalButton({ ahjName }: { ahjName: string }) {
       .then(({ data }: { data: { permit_website: string | null } | null }) => {
         if (data?.permit_website) setUrl(data.permit_website)
       })
-      .catch(() => {})
+      .catch((e: any) => console.error('[PermitPortalCard] AHJ lookup failed:', e))
   }, [ahjName])
 
   if (!url) return null

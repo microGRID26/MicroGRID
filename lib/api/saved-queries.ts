@@ -1,4 +1,5 @@
 // lib/api/saved-queries.ts — Saved queries for Atlas reports
+// Org filtering: user_id scoped (personal data, not org-scoped)
 import { db } from '@/lib/db'
 
 export interface SavedQuery {
@@ -18,7 +19,7 @@ export interface SavedQuery {
 export async function loadSavedQueries(userId: string): Promise<SavedQuery[]> {
   const { data, error } = await db()
     .from('saved_queries')
-    .select('*')
+    .select('id, name, description, query_text, created_by, created_by_name, shared, run_count, last_run_at, created_at')
     .or(`created_by.eq.${userId},shared.eq.true`)
     .order('last_run_at', { ascending: false })
     .limit(100)

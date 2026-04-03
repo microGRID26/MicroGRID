@@ -162,11 +162,11 @@ export default function MapPage() {
     if (p) setPanelProject(p)
   }
 
-  if (authLoading) return <div className="min-h-screen bg-gray-950"><Nav active="Map" /></div>
-  if (!isManager) return <div className="min-h-screen bg-gray-950"><Nav active="Map" /><div className="max-w-7xl mx-auto px-4 py-20 text-center text-gray-500">Not authorized.</div></div>
+  if (authLoading) return <div className="min-h-screen bg-gray-900"><Nav active="Map" /></div>
+  if (!isManager) return <div className="min-h-screen bg-gray-900"><Nav active="Map" /><div className="max-w-7xl mx-auto px-4 py-20 text-center text-gray-500">Not authorized.</div></div>
 
   return (
-    <div className="h-screen flex flex-col bg-gray-950 text-white">
+    <div className="h-screen flex flex-col bg-gray-900 text-white">
       <Nav active="Map" />
 
       {/* Controls bar */}
@@ -181,7 +181,7 @@ export default function MapPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search name, city, PM..."
-            className="w-full pl-9 pr-3 py-1 bg-gray-800 border border-gray-700 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+            className="w-full pl-9 pr-3 py-1 bg-gray-800 border border-gray-700 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none focus:border-green-500" />
         </div>
 
         {/* Stage filter chips */}
@@ -214,7 +214,7 @@ export default function MapPage() {
       {/* Map */}
       <div className="flex-1 relative">
         {loading ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-950">
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
             <div className="text-gray-500 text-sm">Loading {projects.length > 0 ? `${projects.length} projects...` : 'map...'}</div>
           </div>
         ) : (

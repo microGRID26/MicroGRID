@@ -9,6 +9,27 @@ import { createClient } from '@supabase/supabase-js'
  * Body: { projectId: string, title: string, body: string, data?: object }
  */
 export async function POST(request: NextRequest) {
+  // Auth: require CRON_SECRET, ADMIN_API_SECRET, or valid Supabase session
+  const authHeader = request.headers.get('authorization') ?? ''
+  const token = authHeader.replace(/^Bearer\s+/i, '')
+  const cronSecret = process.env.CRON_SECRET
+  const adminSecret = process.env.ADMIN_API_SECRET
+  const hasSecretAuth = (cronSecret && token === cronSecret) || (adminSecret && token === adminSecret)
+
+  if (!hasSecretAuth) {
+    // Fall back to Supabase session validation
+    const { createServerClient } = await import('@supabase/ssr')
+    const supabaseAuth = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { cookies: { getAll() { return request.cookies.getAll() }, setAll() {} } }
+    )
+    const { data: { user } } = await supabaseAuth.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+  }
+
   const serviceKey = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!serviceKey) {
     return NextResponse.json({ error: 'Service key not configured' }, { status: 503 })

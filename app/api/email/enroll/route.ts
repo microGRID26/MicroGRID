@@ -46,11 +46,7 @@ export async function POST(req: Request) {
     const adminSecret = process.env.ADMIN_API_SECRET
     const token = authHeader?.replace('Bearer ', '')
     const isAuthed = (cronSecret && token === cronSecret) || (adminSecret && token === adminSecret)
-    // Also allow same-origin calls from the admin UI (check Origin/Referer)
-    const origin = req.headers.get('origin') || req.headers.get('referer') || ''
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://nova.gomicrogridenergy.com'
-    const isSameOrigin = origin.startsWith(appUrl) || origin.startsWith('http://localhost')
-    if (!isAuthed && !isSameOrigin) {
+    if (!isAuthed) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

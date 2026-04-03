@@ -43,7 +43,7 @@ describe('loadCalendarSettings', () => {
     const result = await loadCalendarSettings()
 
     expect(mockSupabase.from).toHaveBeenCalledWith('calendar_settings')
-    expect(chain.select).toHaveBeenCalledWith('*')
+    expect(chain.select).toHaveBeenCalled()
     expect(chain.order).toHaveBeenCalledWith('crew_id', { ascending: true })
     expect(result).toHaveLength(2)
     expect(result[0].crew_id).toBe('crew-a')

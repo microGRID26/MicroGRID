@@ -2,6 +2,7 @@
 // Based on the MicroGRID Commission Structure CSV:
 //   EC template: $0.50/W gross, $0.10/W ops deduction, $0.40/W effective stack
 //   Non-EC template: $0.35/W gross, $0.10/W ops deduction, $0.25/W effective stack
+// Org filtering: inherited via project_id FK — RLS policies enforce org scope
 
 import { db } from '@/lib/db'
 import { createClient } from '@/lib/supabase/client'
@@ -259,7 +260,7 @@ export async function loadAdvances(filters?: AdvanceFilters): Promise<Commission
   const supabase = db()
   let query = supabase
     .from('commission_advances')
-    .select('*')
+    .select('id, project_id, rep_id, rep_name, role_key, amount, milestone, status, self_generated, paid_at, clawback_date, clawback_reason, clawed_back_at, notes, admin_notes, org_id, created_at, updated_at')
     .order('created_at', { ascending: false })
     .limit(500)
 
@@ -333,7 +334,7 @@ export async function loadPendingClawbacks(orgId?: string): Promise<CommissionAd
   const today = new Date().toISOString().split('T')[0]
   let query = supabase
     .from('commission_advances')
-    .select('*')
+    .select('id, project_id, rep_id, rep_name, role_key, amount, milestone, status, self_generated, paid_at, clawback_date, clawback_reason, clawed_back_at, notes, admin_notes, org_id, created_at, updated_at')
     .eq('status', 'paid')
     .lte('clawback_date', today)
     .order('clawback_date', { ascending: true })

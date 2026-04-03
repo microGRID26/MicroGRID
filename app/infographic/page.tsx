@@ -105,7 +105,7 @@ export default function InfographicPage() {
   const maxCount = Math.max(...stats.pipeline.map(s => s.count), 1)
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white print:bg-white print:text-black">
+    <div className="min-h-screen bg-gray-900 text-white print:bg-white print:text-black">
       <style>{`
         @keyframes countUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes growBar { from { width: 0; } }

@@ -1,10 +1,11 @@
+// Org filtering: inherited via project_id FK — RLS policies enforce org scope
 import { createClient } from '@/lib/supabase/client'
 import { db } from '@/lib/db'
 
 export async function loadProjectNotes(projectId: string) {
   const supabase = createClient()
   const { data, error } = await supabase.from('notes')
-    .select('*')
+    .select('id, project_id, task_id, text, time, pm, pm_id')
     .eq('project_id', projectId)
     .is('task_id', null)
     .order('time', { ascending: false })

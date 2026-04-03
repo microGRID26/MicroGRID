@@ -98,7 +98,7 @@ export function Input({ id, label, value, onChange, type = 'text', className = '
         value={value}
         onChange={e => onChange(e.target.value)}
         className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white
-                   focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                   focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-colors"
       />
     </div>
   )
@@ -116,7 +116,7 @@ export function Textarea({ id, label, value, onChange }: { id?: string; label: s
         onChange={e => onChange(e.target.value)}
         rows={3}
         className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white
-                   focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors resize-none"
+                   focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-colors resize-none"
       />
     </div>
   )
@@ -182,7 +182,7 @@ export function SearchBar({ value, onChange, placeholder }: { value: string; onC
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder ?? 'Search…'}
         className="w-full pl-9 pr-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-sm text-white
-                   placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+                   placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
       />
     </div>
   )

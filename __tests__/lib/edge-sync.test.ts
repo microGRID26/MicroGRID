@@ -360,7 +360,7 @@ describe('syncProjectToEdge', () => {
 
     expect(result).toBe(true)
     expect(mockSupabase.from).toHaveBeenCalledWith('projects')
-    expect(projectChain.select).toHaveBeenCalledWith('*')
+    expect(projectChain.select).toHaveBeenCalledWith('name, address, city, zip, email, phone, stage, stage_date, sale_date, contract, systemkw, financier, financing_type, pm, pm_id, disposition, module, module_qty, inverter, inverter_qty, battery, battery_qty, utility, ahj, dealer, advisor, consultant, org_id')
     expect(projectChain.eq).toHaveBeenCalledWith('id', 'PROJ-001')
     expect(projectChain.single).toHaveBeenCalled()
 

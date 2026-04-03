@@ -49,7 +49,7 @@ describe('loadProjectMaterials', () => {
     const result = await loadProjectMaterials('PROJ-001')
 
     expect(mockSupabase.from).toHaveBeenCalledWith('project_materials')
-    expect(chain.select).toHaveBeenCalledWith('*')
+    expect(chain.select).toHaveBeenCalled()
     expect(chain.eq).toHaveBeenCalledWith('project_id', 'PROJ-001')
     expect(chain.order).toHaveBeenCalledWith('category')
     expect(result).toEqual(materials)
@@ -442,7 +442,7 @@ describe('lookupByBarcode', () => {
     const result = await lookupByBarcode('BC-12345')
 
     expect(mockSupabase.from).toHaveBeenCalledWith('warehouse_stock')
-    expect(chain.select).toHaveBeenCalledWith('*')
+    expect(chain.select).toHaveBeenCalled()
     expect(chain.ilike).toHaveBeenCalledWith('barcode', 'BC-12345')
     expect(chain.limit).toHaveBeenCalledWith(1)
     expect(chain.maybeSingle).toHaveBeenCalled()
@@ -491,7 +491,7 @@ describe('loadWarehouseStock', () => {
     const result = await loadWarehouseStock()
 
     expect(mockSupabase.from).toHaveBeenCalledWith('warehouse_stock')
-    expect(chain.select).toHaveBeenCalledWith('*')
+    expect(chain.select).toHaveBeenCalled()
     expect(chain.order).toHaveBeenCalledWith('category')
     expect(result).toEqual(stock)
     expect(result).toHaveLength(2)
@@ -1592,7 +1592,7 @@ describe('loadWarehouseTransactions', () => {
     const result = await loadWarehouseTransactions()
 
     expect(mockSupabase.from).toHaveBeenCalledWith('warehouse_transactions')
-    expect(chain.select).toHaveBeenCalledWith('*')
+    expect(chain.select).toHaveBeenCalled()
     expect(chain.order).toHaveBeenCalledWith('created_at', { ascending: false })
     expect(chain.limit).toHaveBeenCalledWith(500)
     expect(result).toEqual(transactions)

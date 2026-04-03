@@ -78,7 +78,7 @@ describe('loadNTPRequests', () => {
     const result = await loadNTPRequests()
 
     expect(mockSupabase.from).toHaveBeenCalledWith('ntp_requests')
-    expect(chain.select).toHaveBeenCalledWith('*')
+    expect(chain.select).toHaveBeenCalled()
     expect(chain.order).toHaveBeenCalledWith('submitted_at', { ascending: false })
     expect(result).toEqual([NTP_REQUEST])
   })

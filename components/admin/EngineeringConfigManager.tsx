@@ -118,7 +118,7 @@ export function EngineeringConfigManager() {
                 value={draft[field.key] ?? ''}
                 onChange={e => updateDraft(field.key, e.target.value)}
                 className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white
-                           focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                           focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-colors"
               />
             )}
             {field.type === 'number' && (
@@ -129,7 +129,7 @@ export function EngineeringConfigManager() {
                   value={draft[field.key] ?? ''}
                   onChange={e => updateDraft(field.key, e.target.value)}
                   className="w-full pl-7 bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white
-                             focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                             focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-colors"
                 />
               </div>
             )}

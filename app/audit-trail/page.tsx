@@ -162,7 +162,7 @@ export default function AuditTrailPage() {
   return (
     <>
       <Nav active="Audit Trail" />
-      <div className="bg-gray-950 border-b border-gray-800 px-4 py-2 flex flex-wrap items-center gap-2">
+      <div className="bg-gray-900 border-b border-gray-800 px-4 py-2 flex flex-wrap items-center gap-2">
         <input
           value={projectSearch}
           onChange={e => setProjectSearch(e.target.value)}

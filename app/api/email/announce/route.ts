@@ -80,6 +80,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ sent: 0, message: 'No matching users' })
     }
 
+    // NOTE: html is intentionally NOT escaped — admins send formatted HTML announcements.
+    // This route requires ADMIN_API_SECRET, so only authorized admins can send content.
     // Wrap the provided HTML in a simple email layout
     const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://nova.gomicrogridenergy.com'
     const wrappedHtml = `<!DOCTYPE html>

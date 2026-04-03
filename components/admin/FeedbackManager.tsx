@@ -103,12 +103,12 @@ export function FeedbackManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         </div>
         <div className="flex items-center gap-2">
           <select value={filterType} onChange={e => setFilterType(e.target.value)}
-            className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors">
+            className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1.5 text-xs text-white focus:outline-none focus:border-green-500 transition-colors">
             <option value="">All Types</option>
             {FEEDBACK_TYPES_LIST.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-            className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors">
+            className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1.5 text-xs text-white focus:outline-none focus:border-green-500 transition-colors">
             <option value="">All Statuses</option>
             {FEEDBACK_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
@@ -173,7 +173,7 @@ export function FeedbackManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                   value={entry.status}
                   onChange={e => updateField(entry.id, 'status', e.target.value)}
                   className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-xs text-white
-                             focus:outline-none focus:border-blue-500 transition-colors"
+                             focus:outline-none focus:border-green-500 transition-colors"
                 >
                   {FEEDBACK_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
@@ -190,7 +190,7 @@ export function FeedbackManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                   rows={1}
                   placeholder="Add notes..."
                   className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-xs text-white
-                             placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors resize-none"
+                             placeholder-gray-600 focus:outline-none focus:border-green-500 transition-colors resize-none"
                 />
               </div>
             </div>

@@ -32,7 +32,7 @@ export const EQUIPMENT_TYPE_OPTIONS = ['modules', 'inverters', 'batteries', 'rac
  */
 export async function loadVendors(activeOnly?: boolean, orgId?: string | null): Promise<Vendor[]> {
   const supabase = db()
-  let q = supabase.from('vendors').select('*').order('name').limit(2000)
+  let q = supabase.from('vendors').select('id, name, contact_name, contact_email, contact_phone, website, address, city, state, zip, category, equipment_types, lead_time_days, payment_terms, notes, active, created_at').order('name').limit(2000)
   if (activeOnly) q = q.eq('active', true)
   if (orgId) q = q.eq('org_id', orgId)
   const { data, error } = await q
@@ -48,7 +48,7 @@ export async function searchVendors(query: string, orgId?: string | null): Promi
   const supabase = db()
   let q = supabase
     .from('vendors')
-    .select('*')
+    .select('id, name, contact_name, contact_email, contact_phone, website, address, city, state, zip, category, equipment_types, lead_time_days, payment_terms, notes, active, created_at')
     .eq('active', true)
     .ilike('name', `%${escapeIlike(query)}%`)
     .order('name')
@@ -69,7 +69,7 @@ export async function loadVendor(id: string): Promise<Vendor | null> {
   const supabase = db()
   const { data, error } = await supabase
     .from('vendors')
-    .select('*')
+    .select('id, name, contact_name, contact_email, contact_phone, website, address, city, state, zip, category, equipment_types, lead_time_days, payment_terms, notes, active, created_at')
     .eq('id', id)
     .single()
   if (error) {

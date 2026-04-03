@@ -45,7 +45,7 @@ A standalone Expo React Native app lives in the `/mobile` directory with its own
 
 ## Testing
 
-**Vitest** + React Testing Library with jsdom. 2,504 tests across 74 files. Supabase globally mocked in `vitest.setup.ts`. Tests focus on business logic, not rendering. When adding features, add corresponding tests.
+**Vitest** + React Testing Library with jsdom. 2,728+ tests across 90 files. Supabase globally mocked in `vitest.setup.ts`. Tests focus on business logic, not rendering. When adding features, add corresponding tests. API route tests in `__tests__/api/`.
 
 Test categories: `__tests__/lib/` (API, utils), `__tests__/logic/` (SLA, funding, filters), `__tests__/pages/` (page logic), `__tests__/auth/` (OAuth, proxy), `__tests__/hooks/` (custom hooks), `__tests__/components/` (UI components).
 
@@ -146,7 +146,7 @@ Email domain whitelist: `@gomicrogridenergy.com`, `@energydevelopmentgroup.com`,
 30 tables have org-scoped SELECT policies. Direct `org_id` check on 8 tables, EXISTS subquery via `project_id` on 16 tables, FK inheritance on 3 tables. All include `org_id IS NULL` backward compat + `auth_is_platform_user()` for cross-org visibility. When adding new tables with `project_id`, add org-scoped RLS using the EXISTS pattern from migration 043.
 
 ### Security Headers
-`next.config.ts`: X-Frame-Options DENY, nosniff, HSTS, XSS protection. Webhook secrets use timing-safe comparison.
+`next.config.ts`: X-Frame-Options DENY, nosniff, HSTS, XSS protection, Content-Security-Policy. Webhook secrets use timing-safe comparison. Role cookie HMAC-signed to prevent forgery.
 
 ## Supabase Configuration
 - `pgrst.db_max_rows` = 50000
@@ -163,7 +163,7 @@ Email domain whitelist: `@gomicrogridenergy.com`, `@energydevelopmentgroup.com`,
 - `active` field on `crews` is string not boolean
 - `useSupabaseQuery` cannot query views or untyped tables — use `lib/api/` or `db()`
 - SubHub webhook requires `SUPABASE_SECRET_KEY` env var
-- 10 `as any` casts in production code
+- `as any` casts remain in production code (mostly from `db()` helper and untyped tables)
 - Ops dashboard "Last Year" period only queries active `projects` table, not `legacy_projects`
 
 ## Co-Author Convention

@@ -16,11 +16,13 @@ export function TicketConfigManager() {
   const [filterCat, setFilterCat] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [draft, setDraft] = useState<any>({})
+  const [draft, setDraft] = useState<Record<string, any>>({})
 
   const reload = () => {
-    db().from('ticket_categories').select('*').order('sort_order').limit(500).then(({ data }: any) => setCategories(data ?? [])).catch(() => {})
-    db().from('ticket_resolution_codes').select('*').order('sort_order').limit(200).then(({ data }: any) => setResolutions(data ?? [])).catch(() => {})
+    db().from('ticket_categories').select('*').order('sort_order').limit(500).then(({ data }: { data: TicketCategory[] | null }) => setCategories(data ?? []))
+      .catch((err: unknown) => console.error('[TicketConfig] categories load failed:', err))
+    db().from('ticket_resolution_codes').select('*').order('sort_order').limit(200).then(({ data }: { data: TicketResolutionCode[] | null }) => setResolutions(data ?? []))
+      .catch((err: unknown) => console.error('[TicketConfig] resolutions load failed:', err))
   }
 
   useEffect(() => { reload() }, [])
@@ -138,7 +140,7 @@ export function TicketConfigManager() {
           </select>
         )}
         <button onClick={() => { setShowAdd(true); setDraft({}) }}
-          className="flex items-center gap-1 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white text-xs rounded-md">
+          className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs rounded-md">
           <Plus className="w-3 h-3" /> Add
         </button>
       </div>
@@ -180,29 +182,29 @@ export function TicketConfigManager() {
                     <tr><td colSpan={8} className="px-3 py-3 bg-gray-900/50">
                       <div className="grid grid-cols-4 gap-2 text-xs">
                         <div><label className="text-[10px] text-gray-500">Category</label>
-                          <select value={draft.category} onChange={e => setDraft((d: any) => ({ ...d, category: e.target.value }))} className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white">
+                          <select value={draft.category} onChange={e => setDraft(d => ({ ...d, category: e.target.value }))} className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white">
                             {TICKET_CATEGORIES.map(c2 => <option key={c2} value={c2}>{c2}</option>)}
                           </select>
                         </div>
                         <div><label className="text-[10px] text-gray-500">Subcategory</label>
-                          <input value={draft.subcategory} onChange={e => setDraft((d: any) => ({ ...d, subcategory: e.target.value }))} className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white" />
+                          <input value={draft.subcategory} onChange={e => setDraft(d => ({ ...d, subcategory: e.target.value }))} className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white" />
                         </div>
                         <div><label className="text-[10px] text-gray-500">Label</label>
-                          <input value={draft.label} onChange={e => setDraft((d: any) => ({ ...d, label: e.target.value }))} className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white" />
+                          <input value={draft.label} onChange={e => setDraft(d => ({ ...d, label: e.target.value }))} className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white" />
                         </div>
                         <div><label className="text-[10px] text-gray-500">Default Priority</label>
-                          <select value={draft.default_priority} onChange={e => setDraft((d: any) => ({ ...d, default_priority: e.target.value }))} className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white">
+                          <select value={draft.default_priority} onChange={e => setDraft(d => ({ ...d, default_priority: e.target.value }))} className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white">
                             <option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option><option value="critical">Critical</option>
                           </select>
                         </div>
                         <div><label className="text-[10px] text-gray-500">SLA Response (hrs)</label>
-                          <input type="number" value={draft.default_sla_response} onChange={e => setDraft((d: any) => ({ ...d, default_sla_response: parseInt(e.target.value) || 24 }))} className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white" />
+                          <input type="number" value={draft.default_sla_response} onChange={e => setDraft(d => ({ ...d, default_sla_response: parseInt(e.target.value) || 24 }))} className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white" />
                         </div>
                         <div><label className="text-[10px] text-gray-500">SLA Resolution (hrs)</label>
-                          <input type="number" value={draft.default_sla_resolution} onChange={e => setDraft((d: any) => ({ ...d, default_sla_resolution: parseInt(e.target.value) || 72 }))} className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white" />
+                          <input type="number" value={draft.default_sla_resolution} onChange={e => setDraft(d => ({ ...d, default_sla_resolution: parseInt(e.target.value) || 72 }))} className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white" />
                         </div>
                         <div><label className="text-[10px] text-gray-500">Sort Order</label>
-                          <input type="number" value={draft.sort_order} onChange={e => setDraft((d: any) => ({ ...d, sort_order: parseInt(e.target.value) || 0 }))} className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white" />
+                          <input type="number" value={draft.sort_order} onChange={e => setDraft(d => ({ ...d, sort_order: parseInt(e.target.value) || 0 }))} className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white" />
                         </div>
                         <div className="flex items-end gap-2">
                           <button onClick={saveCat} className="px-3 py-1 bg-green-600 hover:bg-green-500 rounded text-[10px] text-white font-medium">Save</button>
@@ -249,16 +251,16 @@ export function TicketConfigManager() {
                     <tr><td colSpan={6} className="px-3 py-3 bg-gray-900/50">
                       <div className="grid grid-cols-3 gap-2 text-xs">
                         <div><label className="text-[10px] text-gray-500">Code</label>
-                          <input value={draft.code} onChange={e => setDraft((d: any) => ({ ...d, code: e.target.value }))} className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white font-mono" />
+                          <input value={draft.code} onChange={e => setDraft(d => ({ ...d, code: e.target.value }))} className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white font-mono" />
                         </div>
                         <div><label className="text-[10px] text-gray-500">Label</label>
-                          <input value={draft.label} onChange={e => setDraft((d: any) => ({ ...d, label: e.target.value }))} className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white" />
+                          <input value={draft.label} onChange={e => setDraft(d => ({ ...d, label: e.target.value }))} className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white" />
                         </div>
                         <div><label className="text-[10px] text-gray-500">Applies To (comma-separated)</label>
-                          <input value={draft.applies_to} onChange={e => setDraft((d: any) => ({ ...d, applies_to: e.target.value }))} placeholder="service, sales, warranty" className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white" />
+                          <input value={draft.applies_to} onChange={e => setDraft(d => ({ ...d, applies_to: e.target.value }))} placeholder="service, sales, warranty" className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white" />
                         </div>
                         <div className="col-span-2"><label className="text-[10px] text-gray-500">Description</label>
-                          <input value={draft.description} onChange={e => setDraft((d: any) => ({ ...d, description: e.target.value }))} className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white" />
+                          <input value={draft.description} onChange={e => setDraft(d => ({ ...d, description: e.target.value }))} className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white" />
                         </div>
                         <div className="flex items-end gap-2">
                           <button onClick={saveRes} className="px-3 py-1 bg-green-600 hover:bg-green-500 rounded text-[10px] text-white font-medium">Save</button>
@@ -289,33 +291,33 @@ export function TicketConfigManager() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs text-gray-400 block mb-1">Category</label>
-                      <select value={draft.category ?? 'service'} onChange={e => setDraft((d: any) => ({ ...d, category: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white">
+                      <select value={draft.category ?? 'service'} onChange={e => setDraft(d => ({ ...d, category: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white">
                         {TICKET_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
                     <div>
                       <label className="text-xs text-gray-400 block mb-1">Subcategory</label>
-                      <input value={draft.subcategory ?? ''} onChange={e => setDraft((d: any) => ({ ...d, subcategory: e.target.value }))} placeholder="e.g. panel_damage" className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white" />
+                      <input value={draft.subcategory ?? ''} onChange={e => setDraft(d => ({ ...d, subcategory: e.target.value }))} placeholder="e.g. panel_damage" className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white" />
                     </div>
                   </div>
                   <div>
                     <label className="text-xs text-gray-400 block mb-1">Label *</label>
-                    <input value={draft.label ?? ''} onChange={e => setDraft((d: any) => ({ ...d, label: e.target.value }))} placeholder="Display name" className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white" />
+                    <input value={draft.label ?? ''} onChange={e => setDraft(d => ({ ...d, label: e.target.value }))} placeholder="Display name" className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white" />
                   </div>
                   <div className="grid grid-cols-3 gap-3">
                     <div>
                       <label className="text-xs text-gray-400 block mb-1">Priority</label>
-                      <select value={draft.default_priority ?? 'normal'} onChange={e => setDraft((d: any) => ({ ...d, default_priority: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white">
+                      <select value={draft.default_priority ?? 'normal'} onChange={e => setDraft(d => ({ ...d, default_priority: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white">
                         <option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option>
                       </select>
                     </div>
                     <div>
                       <label className="text-xs text-gray-400 block mb-1">SLA Resp (hrs)</label>
-                      <input type="number" value={draft.default_sla_response ?? 24} onChange={e => setDraft((d: any) => ({ ...d, default_sla_response: parseInt(e.target.value) || 24 }))} className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white" />
+                      <input type="number" value={draft.default_sla_response ?? 24} onChange={e => setDraft(d => ({ ...d, default_sla_response: parseInt(e.target.value) || 24 }))} className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white" />
                     </div>
                     <div>
                       <label className="text-xs text-gray-400 block mb-1">SLA Res (hrs)</label>
-                      <input type="number" value={draft.default_sla_resolution ?? 72} onChange={e => setDraft((d: any) => ({ ...d, default_sla_resolution: parseInt(e.target.value) || 72 }))} className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white" />
+                      <input type="number" value={draft.default_sla_resolution ?? 72} onChange={e => setDraft(d => ({ ...d, default_sla_resolution: parseInt(e.target.value) || 72 }))} className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white" />
                     </div>
                   </div>
                 </>
@@ -324,16 +326,16 @@ export function TicketConfigManager() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs text-gray-400 block mb-1">Code *</label>
-                      <input value={draft.code ?? ''} onChange={e => setDraft((d: any) => ({ ...d, code: e.target.value }))} placeholder="e.g. equipment_swap" className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white font-mono" />
+                      <input value={draft.code ?? ''} onChange={e => setDraft(d => ({ ...d, code: e.target.value }))} placeholder="e.g. equipment_swap" className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white font-mono" />
                     </div>
                     <div>
                       <label className="text-xs text-gray-400 block mb-1">Label *</label>
-                      <input value={draft.label ?? ''} onChange={e => setDraft((d: any) => ({ ...d, label: e.target.value }))} placeholder="Display name" className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white" />
+                      <input value={draft.label ?? ''} onChange={e => setDraft(d => ({ ...d, label: e.target.value }))} placeholder="Display name" className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white" />
                     </div>
                   </div>
                   <div>
                     <label className="text-xs text-gray-400 block mb-1">Applies To (comma-separated categories, leave blank for all)</label>
-                    <input value={draft.applies_to ?? ''} onChange={e => setDraft((d: any) => ({ ...d, applies_to: e.target.value }))} placeholder="service, warranty" className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white" />
+                    <input value={draft.applies_to ?? ''} onChange={e => setDraft(d => ({ ...d, applies_to: e.target.value }))} placeholder="service, warranty" className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white" />
                   </div>
                 </>
               )}

@@ -65,7 +65,7 @@ export async function loadProjectMaterials(projectId: string, orgType?: string |
   const supabase = db()
   const { data, error } = await supabase
     .from('project_materials')
-    .select('*')
+    .select('id, project_id, equipment_id, name, category, quantity, unit, source, vendor, status, po_number, expected_date, delivered_date, notes, sourcing, raw_price, sell_price, created_at, updated_at')
     .eq('project_id', projectId)
     .order('category')
     .order('name')
@@ -212,7 +212,7 @@ export async function autoGenerateMaterials(
  */
 export async function loadWarehouseStock(category?: string, location?: string, orgId?: string | null, orgType?: string | null): Promise<WarehouseStock[]> {
   const supabase = db()
-  let q = supabase.from('warehouse_stock').select('*').order('category').order('name').limit(2000)
+  let q = supabase.from('warehouse_stock').select('id, equipment_id, name, category, quantity_on_hand, reorder_point, unit, location, barcode, last_counted_at, sourcing, raw_price, sell_price, updated_at').order('category').order('name').limit(2000)
   if (category) q = q.eq('category', category)
   if (location) q = q.eq('location', location)
   if (orgId) q = q.eq('org_id', orgId)
@@ -232,7 +232,7 @@ export async function lookupByBarcode(barcode: string): Promise<WarehouseStock |
   const supabase = db()
   const { data, error } = await supabase
     .from('warehouse_stock')
-    .select('*')
+    .select('id, equipment_id, name, category, quantity_on_hand, reorder_point, unit, location, barcode, last_counted_at, sourcing, raw_price, sell_price, updated_at')
     .ilike('barcode', escapeIlike(barcode))
     .limit(1)
     .maybeSingle()
@@ -255,7 +255,7 @@ export async function loadAllProjectMaterials(filters?: {
   const supabase = db()
   let q = supabase
     .from('project_materials')
-    .select('*, projects!project_materials_project_id_fkey(name)')
+    .select('id, project_id, equipment_id, name, category, quantity, unit, source, vendor, status, po_number, expected_date, delivered_date, notes, sourcing, raw_price, sell_price, created_at, updated_at, projects!project_materials_project_id_fkey(name)')
     .order('created_at', { ascending: false })
     .limit(2000)
   if (filters?.status) q = q.eq('status', filters.status)
@@ -267,7 +267,7 @@ export async function loadAllProjectMaterials(filters?: {
     console.error('[loadAllProjectMaterials] join failed, falling back:', error.message)
     let q2 = supabase
       .from('project_materials')
-      .select('*')
+      .select('id, project_id, equipment_id, name, category, quantity, unit, source, vendor, status, po_number, expected_date, delivered_date, notes, sourcing, raw_price, sell_price, created_at, updated_at')
       .order('created_at', { ascending: false })
       .limit(2000)
     if (filters?.status) q2 = q2.eq('status', filters.status)
@@ -338,7 +338,7 @@ export async function loadPurchaseOrders(filters?: {
   const supabase = db()
   let q = supabase
     .from('purchase_orders')
-    .select('*')
+    .select('id, po_number, vendor, project_id, status, total_amount, notes, created_by, created_at, updated_at, submitted_at, confirmed_at, shipped_at, delivered_at, tracking_number, expected_delivery, delivery_accurate, delivery_discrepancy')
     .order('created_at', { ascending: false })
     .limit(2000)
   if (filters?.status) q = q.eq('status', filters.status)
@@ -356,7 +356,7 @@ export async function loadPurchaseOrder(id: string): Promise<{ po: PurchaseOrder
   const supabase = db()
   const { data: po, error: poErr } = await supabase
     .from('purchase_orders')
-    .select('*')
+    .select('id, po_number, vendor, project_id, status, total_amount, notes, created_by, created_at, updated_at, submitted_at, confirmed_at, shipped_at, delivered_at, tracking_number, expected_delivery, delivery_accurate, delivery_discrepancy')
     .eq('id', id)
     .single()
   if (poErr || !po) {
@@ -365,7 +365,7 @@ export async function loadPurchaseOrder(id: string): Promise<{ po: PurchaseOrder
   }
   const { data: items, error: itemsErr } = await supabase
     .from('po_line_items')
-    .select('*')
+    .select('id, po_id, material_id, equipment_id, name, quantity, unit_price, total_price, notes')
     .eq('po_id', id)
     .order('name')
     .limit(500)
@@ -515,7 +515,7 @@ export async function loadPOLineItems(poId: string): Promise<POLineItem[]> {
   const supabase = db()
   const { data, error } = await supabase
     .from('po_line_items')
-    .select('*')
+    .select('id, po_id, material_id, equipment_id, name, quantity, unit_price, total_price, notes')
     .eq('po_id', poId)
     .order('name')
     .limit(500)
@@ -595,7 +595,7 @@ export async function checkoutFromWarehouse(
   // Get current stock
   const { data: stock, error: stockErr } = await supabase
     .from('warehouse_stock')
-    .select('*')
+    .select('id, equipment_id, name, category, quantity_on_hand, reorder_point, unit, location, barcode, last_counted_at, sourcing, raw_price, sell_price, updated_at')
     .eq('id', stockId)
     .single()
   if (stockErr || !stock) {
@@ -800,7 +800,7 @@ export async function loadWarehouseTransactions(
   const supabase = db()
   let q = supabase
     .from('warehouse_transactions')
-    .select('*')
+    .select('id, stock_id, project_id, transaction_type, quantity, notes, performed_by, created_at')
     .order('created_at', { ascending: false })
     .limit(500)
   if (stockId) q = q.eq('stock_id', stockId)
@@ -821,7 +821,7 @@ export async function getLowStockItems(): Promise<WarehouseStock[]> {
   const supabase = db()
   const { data, error } = await supabase
     .from('warehouse_stock')
-    .select('*')
+    .select('id, equipment_id, name, category, quantity_on_hand, reorder_point, unit, location, barcode, last_counted_at, sourcing, raw_price, sell_price, updated_at')
     .order('name')
     .limit(2000)
   if (error) {

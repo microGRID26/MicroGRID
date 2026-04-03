@@ -1,5 +1,6 @@
 // lib/api/ntp.ts — NTP (Notice to Proceed) request data access layer
 // EPCs submit projects for underwriting; EDGE (platform org) reviews and approves/rejects.
+// Org filtering: inherited via project_id FK — RLS policies enforce org scope
 
 import { db } from '@/lib/db'
 import { escapeIlike } from '@/lib/utils'
@@ -38,7 +39,7 @@ export async function loadNTPRequests(orgId?: string | null, status?: NTPStatus 
   const supabase = db()
   let q = supabase
     .from('ntp_requests')
-    .select('*')
+    .select('id, project_id, requesting_org, status, submitted_by, submitted_by_id, reviewed_by, reviewed_by_id, submitted_at, reviewed_at, rejection_reason, revision_notes, evidence, notes, created_at, updated_at')
     .order('submitted_at', { ascending: false })
     .limit(500)
   if (orgId) q = q.eq('requesting_org', orgId)
@@ -55,7 +56,7 @@ export async function loadNTPRequestByProject(projectId: string): Promise<NTPReq
   const supabase = db()
   const { data, error } = await supabase
     .from('ntp_requests')
-    .select('*')
+    .select('id, project_id, requesting_org, status, submitted_by, submitted_by_id, reviewed_by, reviewed_by_id, submitted_at, reviewed_at, rejection_reason, revision_notes, evidence, notes, created_at, updated_at')
     .eq('project_id', projectId)
     .order('submitted_at', { ascending: false })
     .limit(1)
@@ -74,7 +75,7 @@ export async function loadNTPHistory(projectId: string): Promise<NTPRequest[]> {
   const supabase = db()
   const { data, error } = await supabase
     .from('ntp_requests')
-    .select('*')
+    .select('id, project_id, requesting_org, status, submitted_by, submitted_by_id, reviewed_by, reviewed_by_id, submitted_at, reviewed_at, rejection_reason, revision_notes, evidence, notes, created_at, updated_at')
     .eq('project_id', projectId)
     .order('submitted_at', { ascending: false })
     .limit(50)
@@ -170,7 +171,7 @@ export async function loadNTPQueue(status?: NTPStatus | null): Promise<NTPReques
   const supabase = db()
   let q = supabase
     .from('ntp_requests')
-    .select('*')
+    .select('id, project_id, requesting_org, status, submitted_by, submitted_by_id, reviewed_by, reviewed_by_id, submitted_at, reviewed_at, rejection_reason, revision_notes, evidence, notes, created_at, updated_at')
     .order('submitted_at', { ascending: false })
     .limit(500)
   if (status) {

@@ -68,7 +68,7 @@ export function QuickActionMenu({ projectId, projectName, onRefresh }: QuickActi
         )}
         <div className="flex gap-1 mt-1.5">
           <button onClick={handleSave} disabled={!value.trim() || saving}
-            className="text-[10px] px-2 py-0.5 bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white rounded">
+            className="text-[10px] px-2 py-0.5 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white rounded">
             {saving ? '...' : 'Save'}
           </button>
           <button onClick={() => { setAction(null); setValue('') }}

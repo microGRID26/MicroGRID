@@ -204,7 +204,7 @@ export default function PermitsPage() {
   // ── Auth gate ────────────────────────────────────────────────────────────
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-gray-500 text-sm">Loading...</div>
       </div>
     )
@@ -212,7 +212,7 @@ export default function PermitsPage() {
 
   if (!authUser) {
     return (
-      <div className="min-h-screen bg-gray-950 flex flex-col">
+      <div className="min-h-screen bg-gray-900 flex flex-col">
         <Nav active="Permits" />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">

@@ -307,7 +307,7 @@ export default function InventoryPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-gray-500 text-sm">Checking permissions…</div>
       </div>
     )
@@ -315,7 +315,7 @@ export default function InventoryPage() {
 
   if (!isManager) {
     return (
-      <div className="min-h-screen bg-gray-950 flex flex-col">
+      <div className="min-h-screen bg-gray-900 flex flex-col">
         <Nav active="Inventory" />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">

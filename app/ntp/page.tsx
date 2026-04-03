@@ -13,7 +13,7 @@ import {
 } from '@/lib/api/ntp'
 import type { NTPRequest, NTPStatus } from '@/lib/api/ntp'
 import type { Project } from '@/types/database'
-import { loadProjectById } from '@/lib/api'
+import { loadProjectById, insertAuditLog } from '@/lib/api'
 import { db } from '@/lib/db'
 import { sendToEdge } from '@/lib/api/edge-sync'
 import { ClipboardCheck, CheckCircle, XCircle, AlertTriangle, Clock, Search, Plus, ChevronDown, ChevronUp, X, Eye, Download } from 'lucide-react'
@@ -450,7 +450,7 @@ export default function NTPPage() {
       })
 
       // Log to audit_log
-      await supabase.from('audit_log').insert({
+      await insertAuditLog({
         project_id: request.project_id,
         field: 'ntp_status',
         old_value: request.status,
@@ -552,7 +552,7 @@ export default function NTPPage() {
 
   if (userLoading || orgLoading) {
     return (
-      <div className="min-h-screen bg-gray-950">
+      <div className="min-h-screen bg-gray-900">
         <Nav active="NTP" />
         <div className="flex items-center justify-center h-64 text-gray-500">Loading...</div>
       </div>
@@ -568,7 +568,7 @@ export default function NTPPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950">
+    <div className="min-h-screen bg-gray-900">
       <Nav active="NTP" />
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">

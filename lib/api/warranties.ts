@@ -59,7 +59,7 @@ export async function loadProjectWarranties(projectId: string): Promise<Equipmen
   const supabase = db()
   const { data, error } = await supabase
     .from('equipment_warranties')
-    .select('*')
+    .select('id, project_id, equipment_type, manufacturer, model, serial_number, quantity, install_date, warranty_start_date, warranty_end_date, warranty_years, notes, created_at, updated_at')
     .eq('project_id', projectId)
     .order('equipment_type')
     .limit(500)
@@ -130,7 +130,7 @@ export async function loadWarrantyClaims(warrantyId: string): Promise<WarrantyCl
   const supabase = db()
   const { data, error } = await supabase
     .from('warranty_claims')
-    .select('*')
+    .select('id, warranty_id, project_id, claim_number, status, issue_description, submitted_date, resolved_date, resolution_notes, replacement_serial, created_by, created_at, updated_at')
     .eq('warranty_id', warrantyId)
     .order('created_at', { ascending: false })
     .limit(500)
@@ -181,17 +181,19 @@ export async function updateClaim(
 /**
  * Load warranties expiring within N days from today.
  */
-export async function loadExpiringWarranties(daysAhead: number = 90): Promise<EquipmentWarranty[]> {
+export async function loadExpiringWarranties(daysAhead: number = 90, orgId?: string): Promise<EquipmentWarranty[]> {
   const supabase = db()
   const today = new Date().toISOString().split('T')[0]
   const future = new Date(Date.now() + daysAhead * 86400000).toISOString().split('T')[0]
-  const { data, error } = await supabase
+  let query = supabase
     .from('equipment_warranties')
-    .select('*')
+    .select('id, project_id, equipment_type, manufacturer, model, serial_number, quantity, install_date, warranty_start_date, warranty_end_date, warranty_years, notes, created_at, updated_at')
     .gte('warranty_end_date', today)
     .lte('warranty_end_date', future)
     .order('warranty_end_date')
     .limit(2000)
+  if (orgId) query = query.eq('org_id', orgId)
+  const { data, error } = await query
   if (error) console.error('[loadExpiringWarranties]', error.message)
   return (data ?? []) as EquipmentWarranty[]
 }
@@ -202,7 +204,8 @@ export async function loadExpiringWarranties(daysAhead: number = 90): Promise<Eq
 export async function loadAllWarranties(
   page: number = 1,
   pageSize: number = 50,
-  filters?: WarrantyFilters
+  filters?: WarrantyFilters,
+  orgId?: string
 ): Promise<{ data: EquipmentWarranty[]; total: number }> {
   const supabase = db()
   const from = (page - 1) * pageSize
@@ -210,10 +213,11 @@ export async function loadAllWarranties(
 
   let q = supabase
     .from('equipment_warranties')
-    .select('*', { count: 'exact' })
+    .select('id, project_id, equipment_type, manufacturer, model, serial_number, quantity, install_date, warranty_start_date, warranty_end_date, warranty_years, notes, created_at, updated_at', { count: 'exact' })
     .order('warranty_end_date', { ascending: true })
     .range(from, to)
 
+  if (orgId) q = q.eq('org_id', orgId)
   if (filters?.equipmentType) {
     q = q.eq('equipment_type', filters.equipmentType)
   }
@@ -243,7 +247,7 @@ export async function loadOpenClaims(): Promise<WarrantyClaim[]> {
   const supabase = db()
   const { data, error } = await supabase
     .from('warranty_claims')
-    .select('*')
+    .select('id, warranty_id, project_id, claim_number, status, issue_description, submitted_date, resolved_date, resolution_notes, replacement_serial, created_by, created_at, updated_at')
     .in('status', ['draft', 'submitted', 'approved'])
     .order('created_at', { ascending: false })
     .limit(200)

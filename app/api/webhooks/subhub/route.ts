@@ -14,8 +14,8 @@ import { syncProjectToEdge } from '@/lib/api/edge-sync'
 // DISABLED by default — set SUBHUB_WEBHOOK_ENABLED=true in .env.local to activate
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_SECRET = process.env.SUPABASE_SECRET_KEY || ''
-const WEBHOOK_SECRET = process.env.SUBHUB_WEBHOOK_SECRET || ''
+const SUPABASE_SECRET = process.env.SUPABASE_SECRET_KEY
+const WEBHOOK_SECRET = process.env.SUBHUB_WEBHOOK_SECRET
 const WEBHOOK_ENABLED = process.env.SUBHUB_WEBHOOK_ENABLED === 'true'
 const DRIVE_WEBHOOK_URL = process.env.NEXT_PUBLIC_DRIVE_WEBHOOK_URL ?? ''
 
@@ -57,6 +57,7 @@ interface SubHubPayload {
 }
 
 function supabase() {
+  if (!SUPABASE_SECRET) throw new Error('SUPABASE_SECRET_KEY not configured')
   return createClient(SUPABASE_URL, SUPABASE_SECRET)
 }
 

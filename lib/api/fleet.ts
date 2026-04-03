@@ -75,9 +75,10 @@ export interface VehicleFilters {
 /**
  * Load all vehicles with optional filters.
  */
-export async function loadVehicles(filters?: VehicleFilters): Promise<Vehicle[]> {
+export async function loadVehicles(filters?: VehicleFilters, orgId?: string): Promise<Vehicle[]> {
   const supabase = db()
-  let q = supabase.from('vehicles').select('*').order('vehicle_number').limit(500)
+  let q = supabase.from('vehicles').select('id, vehicle_number, vin, year, make, model, license_plate, color, assigned_crew, assigned_driver, status, odometer, insurance_expiry, registration_expiry, last_inspection_date, next_inspection_date, notes, created_at, updated_at').order('vehicle_number').limit(500)
+  if (orgId) q = q.eq('org_id', orgId)
   if (filters?.status) q = q.eq('status', filters.status)
   if (filters?.crew) q = q.eq('assigned_crew', filters.crew)
   if (filters?.search) {
@@ -96,7 +97,7 @@ export async function loadVehicle(id: string): Promise<Vehicle | null> {
   const supabase = db()
   const { data, error } = await supabase
     .from('vehicles')
-    .select('*')
+    .select('id, vehicle_number, vin, year, make, model, license_plate, color, assigned_crew, assigned_driver, status, odometer, insurance_expiry, registration_expiry, last_inspection_date, next_inspection_date, notes, created_at, updated_at')
     .eq('id', id)
     .single()
   if (error) {
@@ -166,7 +167,7 @@ export async function loadVehicleMaintenance(vehicleId: string): Promise<Mainten
   const supabase = db()
   const { data, error } = await supabase
     .from('vehicle_maintenance')
-    .select('*')
+    .select('id, vehicle_id, type, description, date, odometer, cost, vendor, next_due_date, next_due_odometer, performed_by, notes, created_at')
     .eq('vehicle_id', vehicleId)
     .order('date', { ascending: false })
     .limit(100)
@@ -219,7 +220,7 @@ export async function loadUpcomingMaintenance(daysAhead: number = 30): Promise<M
   const cutoffStr = cutoff.toISOString().split('T')[0]
   const { data, error } = await supabase
     .from('vehicle_maintenance')
-    .select('*')
+    .select('id, vehicle_id, type, description, date, odometer, cost, vendor, next_due_date, next_due_odometer, performed_by, notes, created_at')
     .lte('next_due_date', cutoffStr)
     .order('next_due_date')
     .limit(100)

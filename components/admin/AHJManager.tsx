@@ -38,7 +38,7 @@ export function AHJManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
     const { error } = await supabase.from('ahjs').update({
       name: draft.name,
       display_name: draft.display_name || null,
-      permit_required: (draft as any).permit_required ?? true,
+      permit_required: draft.permit_required ?? true,
       permit_phone: draft.permit_phone,
       permit_website: draft.permit_website,
       max_duration: draft.max_duration,
@@ -91,8 +91,8 @@ export function AHJManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                 onClick={() => openEdit(a)}>
                 <td className="px-3 py-2 text-white font-medium max-w-[200px] truncate">{a.name}</td>
                 <td className="px-3 py-2">
-                  <span className={`w-3 h-3 rounded-full inline-block ${(a as any).permit_required !== false ? 'bg-green-500' : 'bg-red-500'}`}
-                    title={(a as any).permit_required !== false ? 'Permit Required' : 'No Permit Required'} />
+                  <span className={`w-3 h-3 rounded-full inline-block ${a.permit_required !== false ? 'bg-green-500' : 'bg-red-500'}`}
+                    title={a.permit_required !== false ? 'Permit Required' : 'No Permit Required'} />
                 </td>
                 <td className="px-3 py-2 text-gray-400">{a.permit_phone || '—'}</td>
                 <td className="px-3 py-2 text-gray-400 max-w-[160px] truncate">
@@ -157,12 +157,12 @@ export function AHJManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
           <Input label="Display Name (short label for dropdowns)" value={draft.display_name ?? ''} onChange={v => setDraft(d => ({ ...d, display_name: v || null }))} />
           <div className="flex items-center gap-3 py-1">
             <label className="text-xs text-gray-400">Permit Required</label>
-            <button onClick={() => setDraft(d => ({ ...d, permit_required: !(d as any).permit_required } as any))}
-              className={`w-10 h-5 rounded-full transition-colors relative ${(draft as any).permit_required !== false ? 'bg-green-500' : 'bg-red-500'}`}>
-              <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-transform ${(draft as any).permit_required !== false ? 'left-5' : 'left-0.5'}`} />
+            <button onClick={() => setDraft(d => ({ ...d, permit_required: !d.permit_required }))}
+              className={`w-10 h-5 rounded-full transition-colors relative ${draft.permit_required !== false ? 'bg-green-500' : 'bg-red-500'}`}>
+              <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-transform ${draft.permit_required !== false ? 'left-5' : 'left-0.5'}`} />
             </button>
-            <span className={`text-xs font-medium ${(draft as any).permit_required !== false ? 'text-green-400' : 'text-red-400'}`}>
-              {(draft as any).permit_required !== false ? 'Yes — permit needed' : 'No — no permit needed'}
+            <span className={`text-xs font-medium ${draft.permit_required !== false ? 'text-green-400' : 'text-red-400'}`}>
+              {draft.permit_required !== false ? 'Yes — permit needed' : 'No — no permit needed'}
             </span>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -185,7 +185,7 @@ export function AHJManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                       value={draft.password ?? ''}
                       onChange={e => setDraft(d => ({ ...d, password: e.target.value }))}
                       className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white
-                                 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 pr-9"
+                                 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 pr-9"
                     />
                     <button type="button" onClick={() => setShowPw(s => !s)}
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">

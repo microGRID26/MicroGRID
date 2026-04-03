@@ -156,7 +156,7 @@ export function DocumentRequirementsManager({ isSuperAdmin }: { isSuperAdmin: bo
           <select
             value={stageFilter}
             onChange={e => setStageFilter(e.target.value)}
-            className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500"
+            className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500"
           >
             <option value="">All Stages</option>
             {STAGE_ORDER.map(s => (
@@ -240,7 +240,7 @@ export function DocumentRequirementsManager({ isSuperAdmin }: { isSuperAdmin: bo
               <select
                 value={draft.stage ?? 'evaluation'}
                 onChange={e => setDraft(d => ({ ...d, stage: e.target.value }))}
-                className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-colors"
               >
                 {STAGE_ORDER.map(s => (
                   <option key={s} value={s}>{STAGE_LABELS[s]}</option>

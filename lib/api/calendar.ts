@@ -1,3 +1,4 @@
+// Org filtering: inherited via crew_id FK — RLS policies enforce org scope
 import { db } from '@/lib/db'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -50,7 +51,7 @@ export const JOB_TYPE_COLOR_ID: Record<string, string> = {
 export async function loadCalendarSettings(): Promise<CalendarSettings[]> {
   const { data, error } = await db()
     .from('calendar_settings')
-    .select('*')
+    .select('id, crew_id, calendar_id, enabled, auto_sync, last_full_sync, created_at')
     .order('crew_id', { ascending: true })
     .limit(500)
   if (error) console.error('loadCalendarSettings failed:', error)
@@ -81,7 +82,7 @@ export async function loadSyncStatus(scheduleIds: string[]): Promise<CalendarSyn
   if (scheduleIds.length === 0) return []
   const { data, error } = await db()
     .from('calendar_sync')
-    .select('*')
+    .select('id, schedule_id, calendar_id, event_id, crew_id, last_synced_at, sync_status, error_message, created_at')
     .in('schedule_id', scheduleIds)
     .limit(2000)
   if (error) console.error('loadSyncStatus failed:', error)
@@ -124,7 +125,7 @@ export async function deleteSyncEntry(scheduleId: string): Promise<boolean> {
 export async function loadRecentSyncEntries(limit = 20): Promise<CalendarSyncEntry[]> {
   const { data, error } = await db()
     .from('calendar_sync')
-    .select('*')
+    .select('id, schedule_id, calendar_id, event_id, crew_id, last_synced_at, sync_status, error_message, created_at')
     .order('last_synced_at', { ascending: false })
     .limit(limit)
   if (error) console.error('loadRecentSyncEntries failed:', error)

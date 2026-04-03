@@ -101,7 +101,7 @@ export function PayScaleManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       <div className="flex items-center gap-3 mb-4">
         <div className="flex-1"><SearchBar value={search} onChange={setSearch} placeholder="Search pay scales..." /></div>
         <button onClick={() => { setShowAdd(true); setEditingId(null); resetForm() }}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white text-xs font-medium rounded-md">
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs font-medium rounded-md">
           <Plus className="w-3.5 h-3.5" /> Add Tier
         </button>
       </div>

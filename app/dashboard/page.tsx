@@ -80,7 +80,7 @@ export default function DashboardPage() {
 
   const loadSchedule = useCallback(async () => {
     const { data } = await loadScheduleByDateRange(todayStr, nextWeekStr)
-    if (data) setScheduleRows(data as ScheduleRow[])
+    if (data) setScheduleRows(data as unknown as ScheduleRow[])
     setSchedLoading(false)
   }, [todayStr, nextWeekStr])
 

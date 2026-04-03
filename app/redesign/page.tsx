@@ -605,6 +605,7 @@ export default function RedesignPage() {
   const [results, setResults] = useState<Results | null>(null)
   const [showExisting, setShowExisting] = useState(true)
   const [showTarget, setShowTarget] = useState(true)
+  const [toast, setToast] = useState<{message: string, type: 'success'|'error'|'info'} | null>(null)
   const scrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     return () => { if (scrollTimer.current) clearTimeout(scrollTimer.current) }
@@ -651,7 +652,7 @@ export default function RedesignPage() {
     if (!target.stringsPerMppt || target.stringsPerMppt <= 0) errors.push('Strings per MPPT must be > 0')
     if (!existing.panelWattage || existing.panelWattage <= 0) errors.push('Existing panel wattage must be > 0')
     if (errors.length > 0) {
-      alert('Validation errors:\n' + errors.join('\n'))
+      setToast({ message: 'Validation errors: ' + errors.join(', '), type: 'error' }); setTimeout(() => setToast(null), 3000)
       return
     }
     try {
@@ -673,12 +674,12 @@ export default function RedesignPage() {
     }
 
     if (recommendedStringSize <= 0) {
-      alert('Invalid string configuration — check panel/inverter specs')
+      setToast({ message: 'Invalid string configuration — check panel/inverter specs', type: 'error' }); setTimeout(() => setToast(null), 3000)
       return
     }
 
     if (target.panelWattage <= 0) {
-      alert('Target panel wattage must be greater than zero')
+      setToast({ message: 'Target panel wattage must be greater than zero', type: 'error' }); setTimeout(() => setToast(null), 3000)
       return
     }
 
@@ -818,7 +819,7 @@ export default function RedesignPage() {
     }, 100)
     } catch (err) {
       console.error('Redesign calculate error:', err)
-      alert('Calculation error: ' + (err instanceof Error ? err.message : String(err)))
+      setToast({ message: 'Calculation error: ' + (err instanceof Error ? err.message : String(err)), type: 'error' }); setTimeout(() => setToast(null), 3000)
     }
   }
 
@@ -1355,6 +1356,12 @@ export default function RedesignPage() {
           </div>
         )}
       </div>
+
+      {toast && (
+        <div className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${
+          toast.type === 'error' ? 'bg-red-600 text-white' : toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'
+        }`}>{toast.message}</div>
+      )}
     </div>
   )
 }

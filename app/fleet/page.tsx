@@ -372,7 +372,7 @@ export default function FleetPage() {
             <button onClick={exportCSV} className="text-xs px-3 py-1.5 rounded-md bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center gap-1.5">
               <Download className="w-3 h-3" /> Export
             </button>
-            <button onClick={() => setShowAddModal(true)} className="text-xs px-3 py-1.5 rounded-md bg-green-700 hover:bg-green-600 text-white font-medium flex items-center gap-1.5">
+            <button onClick={() => setShowAddModal(true)} className="text-xs px-3 py-1.5 rounded-md bg-green-600 hover:bg-green-500 text-white font-medium flex items-center gap-1.5">
               <Plus className="w-3 h-3" /> Add Vehicle
             </button>
           </div>
@@ -649,7 +649,7 @@ export default function FleetPage() {
             <div className="flex justify-end gap-2 px-5 py-4 border-t border-gray-700">
               <button onClick={() => setShowAddModal(false)} className="text-xs px-4 py-1.5 rounded-md bg-gray-700 text-gray-300 hover:text-white">Cancel</button>
               <button onClick={handleAddVehicle} disabled={addSaving || !addDraft.vehicle_number?.trim()}
-                className="text-xs px-4 py-1.5 rounded-md bg-green-700 hover:bg-green-600 text-white font-medium disabled:opacity-50">
+                className="text-xs px-4 py-1.5 rounded-md bg-green-600 hover:bg-green-500 text-white font-medium disabled:opacity-50">
                 {addSaving ? 'Adding...' : 'Add Vehicle'}
               </button>
             </div>
@@ -823,7 +823,7 @@ function ExpandableRow({
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => handleSaveEdit(v.id)} disabled={editSaving}
-                      className="text-xs px-4 py-1.5 rounded-md bg-green-700 hover:bg-green-600 text-white font-medium disabled:opacity-50">
+                      className="text-xs px-4 py-1.5 rounded-md bg-green-600 hover:bg-green-500 text-white font-medium disabled:opacity-50">
                       {editSaving ? 'Saving...' : 'Save'}
                     </button>
                     <button onClick={() => setEditMode(false)} className="text-xs px-4 py-1.5 rounded-md bg-gray-700 text-gray-300 hover:text-white">
@@ -931,7 +931,7 @@ function ExpandableRow({
                     </div>
                     <div className="flex gap-2">
                       <button onClick={handleAddMaintenance} disabled={maintSaving || !maintDraft.type}
-                        className="text-xs px-4 py-1.5 rounded-md bg-green-700 hover:bg-green-600 text-white font-medium disabled:opacity-50">
+                        className="text-xs px-4 py-1.5 rounded-md bg-green-600 hover:bg-green-500 text-white font-medium disabled:opacity-50">
                         {maintSaving ? 'Adding...' : 'Add Record'}
                       </button>
                       <button onClick={() => { setShowAddMaint(false); setMaintDraft({}) }}

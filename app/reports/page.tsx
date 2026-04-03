@@ -526,7 +526,7 @@ export default function ReportsPage() {
               </label>
               <div className="flex justify-end gap-2">
                 <button onClick={() => setSaveModalQuery(null)} className="text-xs text-gray-400 hover:text-white px-3 py-1.5">Cancel</button>
-                <button onClick={handleSaveQuery} disabled={!saveName.trim()} className="text-xs bg-green-700 hover:bg-green-600 text-white px-4 py-1.5 rounded-lg disabled:opacity-50">Save</button>
+                <button onClick={handleSaveQuery} disabled={!saveName.trim()} className="text-xs bg-green-600 hover:bg-green-500 text-white px-4 py-1.5 rounded-lg disabled:opacity-50">Save</button>
               </div>
             </div>
           </div>

@@ -104,6 +104,7 @@ function ChangeOrdersContent() {
   const [selected, setSelected] = useState<ChangeOrder | null>(null)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [showNewModal, setShowNewModal] = useState(false)
+  const [toast, setToast] = useState<{message: string, type: 'success'|'error'|'info'} | null>(null)
   // Filters
   const searchParams = useSearchParams()
   const projectParam = searchParams.get('project')
@@ -192,7 +193,7 @@ function ChangeOrdersContent() {
   const openProject = async (projectId: string) => {
     const data = await loadProjectById(projectId)
     if (!data) {
-      alert(`Failed to load project ${projectId}`)
+      setToast({ message: `Failed to load project ${projectId}`, type: 'error' }); setTimeout(() => setToast(null), 3000)
       return
     }
     setSelectedProject(data)
@@ -216,7 +217,7 @@ function ChangeOrdersContent() {
       <Nav active="Change Orders" />
 
       {/* Status tabs + filters */}
-      <div className="bg-gray-950 border-b border-gray-800 flex items-center gap-1 px-4 py-2 flex-shrink-0 flex-wrap">
+      <div className="bg-gray-900 border-b border-gray-800 flex items-center gap-1 px-4 py-2 flex-shrink-0 flex-wrap">
         {[
           { key: 'active', label: `Active (${counts.active})` },
           { key: 'all', label: `All (${counts.all})` },
@@ -243,7 +244,7 @@ function ChangeOrdersContent() {
             {pms.map(pm => <option key={pm.id} value={pm.id}>{pm.name}</option>)}
           </select>
           <button onClick={() => setShowNewModal(true)}
-            className="text-xs px-3 py-1.5 rounded-md bg-green-700 hover:bg-green-600 text-white font-medium flex items-center gap-1.5 transition-colors">
+            className="text-xs px-3 py-1.5 rounded-md bg-green-600 hover:bg-green-500 text-white font-medium flex items-center gap-1.5 transition-colors">
             <Plus className="w-3 h-3" /> New Change Order
           </button>
         </div>
@@ -261,7 +262,7 @@ function ChangeOrdersContent() {
             </div>
           ) : (
             <table className="w-full">
-              <thead className="bg-gray-950 sticky top-0 z-10">
+              <thead className="bg-gray-900 sticky top-0 z-10">
                 <tr className="text-xs text-gray-500 text-left">
                   <th className="px-4 py-2.5 font-medium">ID</th>
                   <th className="px-4 py-2.5 font-medium">Project</th>
@@ -360,6 +361,12 @@ function ChangeOrdersContent() {
           onClose={() => setSelectedProject(null)}
           onProjectUpdated={loadData}
         />
+      )}
+
+      {toast && (
+        <div className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${
+          toast.type === 'error' ? 'bg-red-600 text-white' : toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'
+        }`}>{toast.message}</div>
       )}
     </div>
   )
@@ -505,7 +512,7 @@ function ChangeOrderDetailPanel({ order, users, currentUser, onClose, onUpdated,
   const wp = workflowProgress(co)
 
   return (
-    <div className="w-full lg:w-[480px] xl:w-[540px] bg-gray-950 border-l border-gray-800 flex flex-col overflow-hidden flex-shrink-0">
+    <div className="w-full lg:w-[480px] xl:w-[540px] bg-gray-900 border-l border-gray-800 flex flex-col overflow-hidden flex-shrink-0">
       {/* Toast */}
       {toast && (
         <div className="absolute top-4 right-4 bg-gray-700 text-white text-xs px-4 py-2 rounded-lg shadow-lg z-10">
@@ -673,7 +680,7 @@ function ChangeOrderDetailPanel({ order, users, currentUser, onClose, onUpdated,
               className="flex-1 bg-gray-800 text-gray-200 text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none placeholder-gray-600"
             />
             <button onClick={addNote} disabled={!newNote.trim() || saving}
-              className="text-xs px-3 py-2 rounded-lg bg-green-700 hover:bg-green-600 text-white font-medium disabled:opacity-50 transition-colors">
+              className="text-xs px-3 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white font-medium disabled:opacity-50 transition-colors">
               {saving ? '...' : 'Add'}
             </button>
           </div>
@@ -901,7 +908,7 @@ function NewChangeOrderModal({ users, currentUser, onClose, onCreated }: {
           </button>
           <button onClick={handleCreate}
             disabled={!selectedProject || !title.trim() || saving}
-            className="px-4 py-1.5 text-xs bg-green-700 hover:bg-green-600 text-white rounded-md font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+            className="px-4 py-1.5 text-xs bg-green-600 hover:bg-green-500 text-white rounded-md font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
             {saving ? 'Creating...' : 'Create Change Order'}
           </button>
         </div>

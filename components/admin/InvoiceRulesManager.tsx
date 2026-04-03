@@ -184,7 +184,7 @@ export function InvoiceRulesManager({ isSuperAdmin }: { isSuperAdmin: boolean })
             value={draft.name}
             onChange={e => setDraft(prev => ({ ...prev, name: e.target.value }))}
             placeholder="e.g. Engineering Design Services"
-            className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500"
+            className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500"
           />
         </div>
         <div className="grid grid-cols-3 gap-3">
@@ -249,7 +249,7 @@ export function InvoiceRulesManager({ isSuperAdmin }: { isSuperAdmin: boolean })
                     value={item.description}
                     onChange={e => updateLineItemField(i, 'description', e.target.value)}
                     placeholder="Description *"
-                    className="flex-1 bg-gray-700 text-white border border-gray-600 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-500"
+                    className="flex-1 bg-gray-700 text-white border border-gray-600 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-green-500"
                   />
                   {draft.line_items.length > 1 && (
                     <button onClick={() => removeLineItemRow(i)} className="text-gray-500 hover:text-red-400">

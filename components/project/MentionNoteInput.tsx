@@ -174,7 +174,7 @@ export function MentionNoteInput({
       </div>
       <div className="flex justify-end mt-2">
         <button onClick={handleSubmit} disabled={saving || !value.trim()}
-          className="text-xs px-4 py-2 bg-green-700 hover:bg-green-600 disabled:opacity-40 text-white rounded-lg transition-colors">
+          className="text-xs px-4 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg transition-colors">
           {saving ? 'Saving...' : 'Add Note'}
         </button>
       </div>

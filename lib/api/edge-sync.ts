@@ -192,7 +192,7 @@ export async function syncProjectToEdge(projectId: string): Promise<boolean> {
     const supabase = db()
     const { data: project, error } = await supabase
       .from('projects')
-      .select('*')
+      .select('name, address, city, zip, email, phone, stage, stage_date, sale_date, contract, systemkw, financier, financing_type, pm, pm_id, disposition, module, module_qty, inverter, inverter_qty, battery, battery_qty, utility, ahj, dealer, advisor, consultant, org_id')
       .eq('id', projectId)
       .single()
 
@@ -249,7 +249,7 @@ export async function syncFundingToEdge(projectId: string): Promise<boolean> {
     const supabase = db()
     const { data: funding, error } = await supabase
       .from('project_funding')
-      .select('*')
+      .select('m1_status, m1_amount, m1_funded_date, m2_status, m2_amount, m2_funded_date, m3_status, m3_amount, m3_funded_date, m3_projected')
       .eq('project_id', projectId)
       .single()
 

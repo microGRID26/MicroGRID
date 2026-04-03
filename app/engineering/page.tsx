@@ -637,7 +637,7 @@ export default function EngineeringPage() {
   // Loading state
   if (userLoading || orgLoading) {
     return (
-      <div className="min-h-screen bg-gray-950">
+      <div className="min-h-screen bg-gray-900">
         <Nav active="Engineering" />
         <div className="flex items-center justify-center h-64 text-gray-500">Loading...</div>
       </div>
@@ -663,7 +663,7 @@ export default function EngineeringPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950">
+    <div className="min-h-screen bg-gray-900">
       <Nav active="Engineering" />
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">

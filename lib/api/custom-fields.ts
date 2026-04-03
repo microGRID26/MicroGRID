@@ -41,9 +41,10 @@ export const FIELD_TYPES: { value: CustomFieldType; label: string }[] = [
 /**
  * Load all custom field definitions, optionally filtering to active only.
  */
-export async function loadFieldDefinitions(activeOnly?: boolean): Promise<CustomFieldDefinition[]> {
+export async function loadFieldDefinitions(activeOnly?: boolean, orgId?: string): Promise<CustomFieldDefinition[]> {
   const supabase = db()
-  let q = supabase.from('custom_field_definitions').select('*').order('sort_order').order('created_at').limit(500)
+  let q = supabase.from('custom_field_definitions').select('id, field_name, label, field_type, options, required, default_value, section, sort_order, active, created_at').order('sort_order').order('created_at').limit(500)
+  if (orgId) q = q.eq('org_id', orgId)
   if (activeOnly) q = q.eq('active', true)
   const { data, error } = await q
   if (error) console.error('[loadFieldDefinitions]', error.message)
@@ -96,7 +97,7 @@ export async function deleteFieldDefinition(id: string): Promise<boolean> {
  */
 export async function loadProjectCustomFields(projectId: string): Promise<CustomFieldValue[]> {
   const supabase = db()
-  const { data, error } = await supabase.from('custom_field_values').select('*').eq('project_id', projectId).limit(500)
+  const { data, error } = await supabase.from('custom_field_values').select('id, project_id, field_id, value, updated_at').eq('project_id', projectId).limit(500)
   if (error) console.error('[loadProjectCustomFields]', error.message)
   return (data ?? []) as CustomFieldValue[]
 }
@@ -122,7 +123,7 @@ export async function saveProjectCustomField(projectId: string, fieldId: string,
  */
 export async function loadAllCustomFieldValues(fieldId: string): Promise<CustomFieldValue[]> {
   const supabase = db()
-  const { data, error } = await supabase.from('custom_field_values').select('*').eq('field_id', fieldId).limit(2000)
+  const { data, error } = await supabase.from('custom_field_values').select('id, project_id, field_id, value, updated_at').eq('field_id', fieldId).limit(2000)
   if (error) console.error('[loadAllCustomFieldValues]', error.message)
   return (data ?? []) as CustomFieldValue[]
 }

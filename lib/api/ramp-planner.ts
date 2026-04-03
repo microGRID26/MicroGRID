@@ -208,8 +208,10 @@ export function computePriorityScore(
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
-export async function loadRampConfig(): Promise<RampConfig> {
-  const { data } = await db().from('ramp_config').select('config_key, value').limit(50)
+export async function loadRampConfig(orgId?: string): Promise<RampConfig> {
+  let query = db().from('ramp_config').select('config_key, value').limit(50)
+  if (orgId) query = query.eq('org_id', orgId)
+  const { data } = await query
   const map = new Map<string, string>((data ?? []).map((r: any) => [r.config_key as string, r.value as string]))
   return {
     warehouse_lat: parseFloat(map.get('warehouse_lat') ?? '29.9902'),
@@ -235,12 +237,12 @@ export async function updateRampConfig(key: string, value: string): Promise<bool
 // ── Readiness CRUD ───────────────────────────────────────────────────────────
 
 export async function loadReadiness(projectId: string): Promise<ProjectReadiness | null> {
-  const { data } = await db().from('project_readiness').select('*').eq('project_id', projectId).single()
+  const { data } = await db().from('project_readiness').select('id, project_id, ntp_approved, redesign_complete, ext_scope_clear, permit_clear, equipment_ready, utility_approved, hoa_approved, blocker_notes, readiness_score, updated_at, updated_by').eq('project_id', projectId).single()
   return data as ProjectReadiness | null
 }
 
 export async function loadAllReadiness(): Promise<Map<string, ProjectReadiness>> {
-  const { data } = await db().from('project_readiness').select('*').limit(2000)
+  const { data } = await db().from('project_readiness').select('id, project_id, ntp_approved, redesign_complete, ext_scope_clear, permit_clear, equipment_ready, utility_approved, hoa_approved, blocker_notes, readiness_score, updated_at, updated_by').limit(2000)
   const map = new Map<string, ProjectReadiness>()
   for (const r of (data ?? []) as ProjectReadiness[]) {
     map.set(r.project_id, r)
@@ -261,12 +263,12 @@ export async function upsertReadiness(projectId: string, updates: Partial<Projec
 // ── Schedule CRUD ────────────────────────────────────────────────────────────
 
 export async function loadScheduleByWeek(weekStart: string): Promise<RampScheduleEntry[]> {
-  const { data } = await db().from('ramp_schedule').select('*').eq('scheduled_week', weekStart).order('crew_name').order('slot').limit(100)
+  const { data } = await db().from('ramp_schedule').select('id, project_id, crew_id, crew_name, scheduled_week, scheduled_day, slot, status, priority_score, drive_minutes, distance_miles, notes, completed_at, cancelled_reason, created_by, created_at, updated_at').eq('scheduled_week', weekStart).order('crew_name').order('slot').limit(100)
   return (data ?? []) as RampScheduleEntry[]
 }
 
 export async function loadAllSchedule(): Promise<RampScheduleEntry[]> {
-  const { data } = await db().from('ramp_schedule').select('*').order('scheduled_week').order('crew_name').order('slot').limit(1000)
+  const { data } = await db().from('ramp_schedule').select('id, project_id, crew_id, crew_name, scheduled_week, scheduled_day, slot, status, priority_score, drive_minutes, distance_miles, notes, completed_at, cancelled_reason, created_by, created_at, updated_at').order('scheduled_week').order('crew_name').order('slot').limit(1000)
   return (data ?? []) as RampScheduleEntry[]
 }
 

@@ -26,7 +26,7 @@ export function EmailManager({ isSuperAdmin, currentUserEmail, currentUserName }
 
   const loadEnrollments = useCallback(async () => {
     setLoading(true)
-    const { data, error } = await (db() as any)
+    const { data, error } = await db()
       .from('email_onboarding')
       .select('*')
       .order('started_at', { ascending: false })
@@ -46,7 +46,7 @@ export function EmailManager({ isSuperAdmin, currentUserEmail, currentUserName }
   }
 
   const togglePause = async (enrollment: Enrollment) => {
-    const { error } = await (db() as any)
+    const { error } = await db()
       .from('email_onboarding')
       .update({ paused: !enrollment.paused })
       .eq('id', enrollment.id)
@@ -75,7 +75,7 @@ export function EmailManager({ isSuperAdmin, currentUserEmail, currentUserName }
   const enrollAllUsers = async () => {
     setEnrolling(true)
     try {
-      const { data: users } = await (db() as any)
+      const { data: users } = await db()
         .from('users')
         .select('id, email, name')
         .eq('active', true)
@@ -242,7 +242,7 @@ export function EmailManager({ isSuperAdmin, currentUserEmail, currentUserName }
             <button
               onClick={enrollAllUsers}
               disabled={enrolling}
-              className="px-3 py-1.5 bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white text-xs font-medium rounded-md transition-colors"
+              className="px-3 py-1.5 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white text-xs font-medium rounded-md transition-colors"
             >
               {enrolling ? 'Enrolling...' : 'Enroll All Users'}
             </button>
@@ -377,7 +377,7 @@ export function EmailManager({ isSuperAdmin, currentUserEmail, currentUserName }
                   value={announceSubject}
                   onChange={e => setAnnounceSubject(e.target.value)}
                   className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white
-                           focus:outline-none focus:border-blue-500 transition-colors"
+                           focus:outline-none focus:border-green-500 transition-colors"
                   placeholder="What's New in MicroGRID..."
                 />
               </div>
@@ -388,7 +388,7 @@ export function EmailManager({ isSuperAdmin, currentUserEmail, currentUserName }
                   onChange={e => setAnnounceMessage(e.target.value)}
                   rows={5}
                   className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white
-                           focus:outline-none focus:border-blue-500 transition-colors resize-none"
+                           focus:outline-none focus:border-green-500 transition-colors resize-none"
                   placeholder="Write your announcement..."
                 />
               </div>
@@ -398,7 +398,7 @@ export function EmailManager({ isSuperAdmin, currentUserEmail, currentUserName }
                   value={announceRole}
                   onChange={e => setAnnounceRole(e.target.value)}
                   className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white
-                           focus:outline-none focus:border-blue-500 transition-colors"
+                           focus:outline-none focus:border-green-500 transition-colors"
                 >
                   <option value="">All Users</option>
                   <option value="super_admin">Super Admin</option>

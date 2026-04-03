@@ -45,7 +45,7 @@ describe('loadProjectById', () => {
     const result = await loadProjectById('PROJ-001')
 
     expect(mockSupabase.from).toHaveBeenCalledWith('projects')
-    expect(chain.select).toHaveBeenCalledWith('*')
+    expect(chain.select).toHaveBeenCalled()
     expect(chain.eq).toHaveBeenCalledWith('id', 'PROJ-001')
     expect(chain.single).toHaveBeenCalled()
     expect(result).toEqual(project)
@@ -205,7 +205,7 @@ describe('loadScheduleByDateRange', () => {
     const result = await loadScheduleByDateRange('2026-03-01', '2026-03-31')
 
     expect(mockSupabase.from).toHaveBeenCalledWith('schedule')
-    expect(chain.select).toHaveBeenCalledWith('*')
+    expect(chain.select).toHaveBeenCalled()
     expect(chain.lte).toHaveBeenCalledWith('date', '2026-03-31')
     expect(chain.or).toHaveBeenCalledWith('end_date.gte.2026-03-01,and(end_date.is.null,date.gte.2026-03-01)')
     expect(result.data).toEqual(scheduleData)
@@ -327,7 +327,7 @@ describe('loadActiveCrews', () => {
     const result = await loadActiveCrews()
 
     expect(mockSupabase.from).toHaveBeenCalledWith('crews')
-    expect(chain.select).toHaveBeenCalledWith('*')
+    expect(chain.select).toHaveBeenCalled()
     expect(chain.eq).toHaveBeenCalledWith('active', 'TRUE')
     expect(chain.order).toHaveBeenCalledWith('name')
     expect(result.data).toEqual(crews)

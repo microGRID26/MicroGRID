@@ -7,7 +7,7 @@ import { TASKS, isTaskRequired } from '@/lib/tasks'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import { useEdgeSync } from '@/lib/hooks/useEdgeSync'
 import { useProjectTasks } from '@/lib/hooks/useProjectTasks'
-import type { Project, Note } from '@/types/database'
+import type { Project, Note, Crew } from '@/types/database'
 import { BomTab } from './BomTab'
 import { TasksTab } from './TasksTab'
 import { NotesTab } from './NotesTab'
@@ -41,13 +41,13 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   const edgeSync = useEdgeSync()
   const [project, setProject] = useState<Project>(initialProject)
   const [tab, setTab] = useState<'tasks' | 'notes' | 'info' | 'tickets' | 'details'>(
-    initialTab === 'bom' || initialTab === 'materials' || initialTab === 'warranty' || initialTab === 'files' || initialTab === 'ntp' ? 'details' : (initialTab as any) ?? 'tasks'
+    initialTab === 'bom' || initialTab === 'materials' || initialTab === 'warranty' || initialTab === 'files' || initialTab === 'ntp' ? 'details' : (initialTab as 'tasks' | 'notes' | 'info') ?? 'tasks'
   )
   const [detailSections, setDetailSections] = useState<Set<string>>(new Set(initialTab === 'ntp' ? ['ntp'] : initialTab === 'bom' ? ['bom'] : initialTab === 'materials' ? ['materials'] : initialTab === 'warranty' ? ['warranty'] : initialTab === 'files' ? ['files'] : []))
   useEffect(() => {
     if (!initialTab) return
     const mapped = ['bom', 'materials', 'warranty', 'files', 'ntp'].includes(initialTab) ? 'details' : initialTab
-    setTab(mapped as any)
+    setTab(mapped as 'tasks' | 'notes' | 'info' | 'tickets' | 'details')
   }, [initialTab])
   const [notes, setNotes] = useState<Note[]>([])
   const [newNote, setNewNote] = useState('')
@@ -62,19 +62,30 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
   const [editDraft, setEditDraft] = useState<Partial<Project>>({})
   const [editSaving, setEditSaving] = useState(false)
   // taskView state removed — TasksTab manages its own view state now
-  const [ahjInfo, setAhjInfo] = useState<any>(null)
-  const [utilityInfo, setUtilityInfo] = useState<any>(null)
-  const [hoaInfo, setHoaInfo] = useState<any>(null)
-  const [financierInfo, setFinancierInfo] = useState<any>(null)
-  const [ahjEdit, setAhjEdit] = useState<any>(null)
-  const [utilEdit, setUtilEdit] = useState<any>(null)
-  const [hoaEdit, setHoaEdit] = useState<any>(null)
-  const [financierEdit, setFinancierEdit] = useState<any>(null)
+  interface AHJInfoData { permit_phone: string | null; permit_website: string | null; max_duration: number | null; electric_code: string | null; permit_notes: string | null }
+  interface UtilInfoData { phone: string | null; website: string | null; notes: string | null }
+  interface HOAInfoData { phone: string | null; website: string | null; contact_name: string | null; contact_email: string | null; notes: string | null }
+  interface FinancierInfoData { phone: string | null; website: string | null; contact_name: string | null; contact_email: string | null; notes: string | null }
+  // Reference entity edit records use index signature because they map to multiple DB tables
+  // (AHJs, utilities, HOAs, financiers) with varying schemas.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- index typed as any because values flow directly into form input value props (string/number/boolean)
+  type RefEditRecord = { id: string; [key: string]: any }
+  interface StageHistoryEntry { id: string; project_id: string; stage: string; entered: string }
+  interface ServiceCallEntry { id: string; project_id: string; created_at: string; [key: string]: unknown }
+  interface ProjectAdderEntry { id: string; adder_name: string; price: number; quantity: number; total_amount: number; created_at: string }
+  const [ahjInfo, setAhjInfo] = useState<AHJInfoData | null>(null)
+  const [utilityInfo, setUtilityInfo] = useState<UtilInfoData | null>(null)
+  const [hoaInfo, setHoaInfo] = useState<HOAInfoData | null>(null)
+  const [financierInfo, setFinancierInfo] = useState<FinancierInfoData | null>(null)
+  const [ahjEdit, setAhjEdit] = useState<RefEditRecord | null>(null)
+  const [utilEdit, setUtilEdit] = useState<RefEditRecord | null>(null)
+  const [hoaEdit, setHoaEdit] = useState<RefEditRecord | null>(null)
+  const [financierEdit, setFinancierEdit] = useState<RefEditRecord | null>(null)
   const [refSaving, setRefSaving] = useState(false)
-  const [serviceCalls, setServiceCalls] = useState<any[]>([])
-  const [stageHistory, setStageHistory] = useState<any[]>([])
-  const [adders, setAdders] = useState<any[]>([])
-  const [scheduleModal, setScheduleModal] = useState<{ jobType: string; crews: any[] } | null>(null)
+  const [serviceCalls, setServiceCalls] = useState<ServiceCallEntry[]>([])
+  const [stageHistory, setStageHistory] = useState<StageHistoryEntry[]>([])
+  const [adders, setAdders] = useState<ProjectAdderEntry[]>([])
+  const [scheduleModal, setScheduleModal] = useState<{ jobType: string; crews: Crew[] } | null>(null)
   const [showWOCreate, setShowWOCreate] = useState(false)
   const [woType, setWoType] = useState('install')
   const [woCreating, setWoCreating] = useState(false)
@@ -269,7 +280,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
 
   useEffect(() => {
     let mounted = true
-    supabase.auth.getUser().then(({ data }: any) => {
+    supabase.auth.getUser().then(({ data }: { data: { user: { email?: string | null } | null } }) => {
       if (mounted) setUserEmail(data.user?.email ?? '')
     })
     return () => { mounted = false }
@@ -280,10 +291,10 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     setProject(initialProject)
     setBlockerInput(initialProject.blocker ?? '')
     // Fetch full project data (parent pages may pass trimmed columns from optimized queries)
-    supabase.from('projects').select('*').eq('id', initialProject.id).single().then(({ data }: any) => {
-      if (mounted && data) {
-        setProject(data as Project)
-        setBlockerInput((data as Project).blocker ?? '')
+    supabase.from('projects').select('*').eq('id', initialProject.id).single().then((result: { data: Record<string, unknown> | null }) => {
+      if (mounted && result.data) {
+        setProject(result.data as unknown as Project)
+        setBlockerInput((result.data as unknown as Project).blocker ?? '')
       }
     })
     return () => { mounted = false }
@@ -566,7 +577,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
             {editMode && (
               <div className="flex items-center gap-2">
                 <button onClick={saveEdits} disabled={editSaving}
-                  className="text-xs px-3 py-1.5 rounded-lg font-medium bg-green-700 hover:bg-green-600 text-white disabled:opacity-50 transition-colors">
+                  className="text-xs px-3 py-1.5 rounded-lg font-medium bg-green-600 hover:bg-green-500 text-white disabled:opacity-50 transition-colors">
                   {editSaving ? 'Saving...' : 'Save Changes'}
                 </button>
                 <button onClick={() => { setEditMode(false); setEditDraft({}) }}
@@ -579,7 +590,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
               <button onClick={advanceStage} disabled={advancing}
                 title={!advance.ok ? `Complete required tasks: ${advance.missing.join(', ')}` : ''}
                 className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                  advance.ok ? 'bg-green-700 hover:bg-green-600 text-white' : 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                  advance.ok ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-gray-800 text-gray-500 cursor-not-allowed'
                 }`}>
                 {advancing ? 'Moving...' : `→ ${STAGE_LABELS[nextStage]}`}
               </button>
@@ -787,7 +798,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
             <div className="space-y-3">
               <div className="flex items-center gap-3 bg-gray-800/50 rounded-lg px-3 py-2">
                 <label className="text-xs text-gray-400">Permit Required</label>
-                <button onClick={() => setAhjEdit((d: any) => ({ ...d, permit_required: !d.permit_required }))}
+                <button onClick={() => setAhjEdit(d => ({ ...d!, permit_required: !d!.permit_required }))}
                   className={`w-10 h-5 rounded-full transition-colors relative ${ahjEdit.permit_required !== false ? 'bg-green-500' : 'bg-red-500'}`}>
                   <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-transform ${ahjEdit.permit_required !== false ? 'left-5' : 'left-0.5'}`} />
                 </button>
@@ -797,36 +808,36 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Permit Phone</label>
-                <input value={ahjEdit.permit_phone ?? ''} onChange={e => setAhjEdit((d: any) => ({ ...d, permit_phone: e.target.value || null }))}
+                <input value={ahjEdit.permit_phone ?? ''} onChange={e => setAhjEdit(d => ({ ...d!, permit_phone: e.target.value || null }))}
                   className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Permit Website</label>
-                <input value={ahjEdit.permit_website ?? ''} onChange={e => setAhjEdit((d: any) => ({ ...d, permit_website: e.target.value || null }))}
+                <input value={ahjEdit.permit_website ?? ''} onChange={e => setAhjEdit(d => ({ ...d!, permit_website: e.target.value || null }))}
                   className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">Max Duration (days)</label>
-                  <input type="number" value={ahjEdit.max_duration ?? ''} onChange={e => setAhjEdit((d: any) => ({ ...d, max_duration: e.target.value ? Number(e.target.value) : null }))}
+                  <input type="number" value={ahjEdit.max_duration ?? ''} onChange={e => setAhjEdit(d => ({ ...d!, max_duration: e.target.value ? Number(e.target.value) : null }))}
                     className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">Electric Code</label>
-                  <input value={ahjEdit.electric_code ?? ''} onChange={e => setAhjEdit((d: any) => ({ ...d, electric_code: e.target.value || null }))}
+                  <input value={ahjEdit.electric_code ?? ''} onChange={e => setAhjEdit(d => ({ ...d!, electric_code: e.target.value || null }))}
                     className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
                 </div>
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Permit Notes</label>
-                <textarea rows={3} value={ahjEdit.permit_notes ?? ''} onChange={e => setAhjEdit((d: any) => ({ ...d, permit_notes: e.target.value || null }))}
+                <textarea rows={3} value={ahjEdit.permit_notes ?? ''} onChange={e => setAhjEdit(d => ({ ...d!, permit_notes: e.target.value || null }))}
                   className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none resize-none" />
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-4">
               <button onClick={() => setAhjEdit(null)} className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md">Cancel</button>
               <button onClick={saveAhjEdit} disabled={refSaving}
-                className="px-4 py-1.5 text-xs bg-green-700 hover:bg-green-600 text-white rounded-md font-medium disabled:opacity-50">
+                className="px-4 py-1.5 text-xs bg-green-600 hover:bg-green-500 text-white rounded-md font-medium disabled:opacity-50">
                 {refSaving ? 'Saving…' : 'Save'}
               </button>
             </div>
@@ -1010,7 +1021,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                   }
                 }}
                 disabled={woCreating}
-                className="px-4 py-1.5 text-xs bg-green-700 hover:bg-green-600 text-white rounded-md font-medium disabled:opacity-50"
+                className="px-4 py-1.5 text-xs bg-green-600 hover:bg-green-500 text-white rounded-md font-medium disabled:opacity-50"
               >
                 {woCreating ? 'Creating...' : 'Create'}
               </button>
@@ -1030,24 +1041,24 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
             <div className="space-y-3">
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Phone</label>
-                <input value={utilEdit.phone ?? ''} onChange={e => setUtilEdit((d: any) => ({ ...d, phone: e.target.value || null }))}
+                <input value={utilEdit.phone ?? ''} onChange={e => setUtilEdit(d => ({ ...d!, phone: e.target.value || null }))}
                   className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Website</label>
-                <input value={utilEdit.website ?? ''} onChange={e => setUtilEdit((d: any) => ({ ...d, website: e.target.value || null }))}
+                <input value={utilEdit.website ?? ''} onChange={e => setUtilEdit(d => ({ ...d!, website: e.target.value || null }))}
                   className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Notes</label>
-                <textarea rows={3} value={utilEdit.notes ?? ''} onChange={e => setUtilEdit((d: any) => ({ ...d, notes: e.target.value || null }))}
+                <textarea rows={3} value={utilEdit.notes ?? ''} onChange={e => setUtilEdit(d => ({ ...d!, notes: e.target.value || null }))}
                   className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none resize-none" />
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-4">
               <button onClick={() => setUtilEdit(null)} className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md">Cancel</button>
               <button onClick={saveUtilEdit} disabled={refSaving}
-                className="px-4 py-1.5 text-xs bg-green-700 hover:bg-green-600 text-white rounded-md font-medium disabled:opacity-50">
+                className="px-4 py-1.5 text-xs bg-green-600 hover:bg-green-500 text-white rounded-md font-medium disabled:opacity-50">
                 {refSaving ? 'Saving…' : 'Save'}
               </button>
             </div>
@@ -1067,35 +1078,35 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">Contact Name</label>
-                  <input value={hoaEdit.contact_name ?? ''} onChange={e => setHoaEdit((d: any) => ({ ...d, contact_name: e.target.value || null }))}
+                  <input value={hoaEdit.contact_name ?? ''} onChange={e => setHoaEdit(d => ({ ...d!, contact_name: e.target.value || null }))}
                     className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">Phone</label>
-                  <input value={hoaEdit.phone ?? ''} onChange={e => setHoaEdit((d: any) => ({ ...d, phone: e.target.value || null }))}
+                  <input value={hoaEdit.phone ?? ''} onChange={e => setHoaEdit(d => ({ ...d!, phone: e.target.value || null }))}
                     className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
                 </div>
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Contact Email</label>
-                <input value={hoaEdit.contact_email ?? ''} onChange={e => setHoaEdit((d: any) => ({ ...d, contact_email: e.target.value || null }))}
+                <input value={hoaEdit.contact_email ?? ''} onChange={e => setHoaEdit(d => ({ ...d!, contact_email: e.target.value || null }))}
                   className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Website</label>
-                <input value={hoaEdit.website ?? ''} onChange={e => setHoaEdit((d: any) => ({ ...d, website: e.target.value || null }))}
+                <input value={hoaEdit.website ?? ''} onChange={e => setHoaEdit(d => ({ ...d!, website: e.target.value || null }))}
                   className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Notes</label>
-                <textarea rows={3} value={hoaEdit.notes ?? ''} onChange={e => setHoaEdit((d: any) => ({ ...d, notes: e.target.value || null }))}
+                <textarea rows={3} value={hoaEdit.notes ?? ''} onChange={e => setHoaEdit(d => ({ ...d!, notes: e.target.value || null }))}
                   className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none resize-none" />
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-4">
               <button onClick={() => setHoaEdit(null)} className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md">Cancel</button>
               <button onClick={saveHoaEdit} disabled={refSaving}
-                className="px-4 py-1.5 text-xs bg-green-700 hover:bg-green-600 text-white rounded-md font-medium disabled:opacity-50">
+                className="px-4 py-1.5 text-xs bg-green-600 hover:bg-green-500 text-white rounded-md font-medium disabled:opacity-50">
                 {refSaving ? 'Saving…' : 'Save'}
               </button>
             </div>
@@ -1115,35 +1126,35 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">Contact Name</label>
-                  <input value={financierEdit.contact_name ?? ''} onChange={e => setFinancierEdit((d: any) => ({ ...d, contact_name: e.target.value || null }))}
+                  <input value={financierEdit.contact_name ?? ''} onChange={e => setFinancierEdit(d => ({ ...d!, contact_name: e.target.value || null }))}
                     className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">Phone</label>
-                  <input value={financierEdit.phone ?? ''} onChange={e => setFinancierEdit((d: any) => ({ ...d, phone: e.target.value || null }))}
+                  <input value={financierEdit.phone ?? ''} onChange={e => setFinancierEdit(d => ({ ...d!, phone: e.target.value || null }))}
                     className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
                 </div>
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Contact Email</label>
-                <input value={financierEdit.contact_email ?? ''} onChange={e => setFinancierEdit((d: any) => ({ ...d, contact_email: e.target.value || null }))}
+                <input value={financierEdit.contact_email ?? ''} onChange={e => setFinancierEdit(d => ({ ...d!, contact_email: e.target.value || null }))}
                   className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Website</label>
-                <input value={financierEdit.website ?? ''} onChange={e => setFinancierEdit((d: any) => ({ ...d, website: e.target.value || null }))}
+                <input value={financierEdit.website ?? ''} onChange={e => setFinancierEdit(d => ({ ...d!, website: e.target.value || null }))}
                   className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Notes</label>
-                <textarea rows={3} value={financierEdit.notes ?? ''} onChange={e => setFinancierEdit((d: any) => ({ ...d, notes: e.target.value || null }))}
+                <textarea rows={3} value={financierEdit.notes ?? ''} onChange={e => setFinancierEdit(d => ({ ...d!, notes: e.target.value || null }))}
                   className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none resize-none" />
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-4">
               <button onClick={() => setFinancierEdit(null)} className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md">Cancel</button>
               <button onClick={saveFinancierEdit} disabled={refSaving}
-                className="px-4 py-1.5 text-xs bg-green-700 hover:bg-green-600 text-white rounded-md font-medium disabled:opacity-50">
+                className="px-4 py-1.5 text-xs bg-green-600 hover:bg-green-500 text-white rounded-md font-medium disabled:opacity-50">
                 {refSaving ? 'Saving...' : 'Save'}
               </button>
             </div>

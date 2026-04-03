@@ -301,7 +301,7 @@ function ExportModal({ projects, onClose }: { projects: Project[]; onClose: () =
                 {group.keys.map(key => (
                   <label key={key} className="flex items-center gap-2 cursor-pointer group">
                     <input type="checkbox" checked={selected.has(key)} onChange={() => toggle(key)}
-                      className="rounded border-gray-600 bg-gray-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900" />
+                      className="rounded border-gray-600 bg-gray-800 text-blue-500 focus:ring-green-500 focus:ring-offset-gray-900" />
                     <span className={`text-xs transition-colors ${selected.has(key) ? 'text-gray-200' : 'text-gray-600'}`}>
                       {fieldMap[key] ?? key}
                     </span>
@@ -633,7 +633,7 @@ export default function CommandPage() {
     loadTickets({}).then(tix => {
       const mine = tix.filter(t => t.assigned_to === currentUser.name && !['resolved', 'closed'].includes(t.status))
       setMyTicketCount(mine.length)
-    }).catch(() => {})
+    }).catch((e: any) => console.error('[command] ticket count load failed:', e))
   }, [currentUser?.name])
 
   // For classify (still used for overdue/pending detection)
@@ -756,7 +756,7 @@ export default function CommandPage() {
       <Nav active="Command" onNewProject={() => setShowNewProject(true)} />
 
       {/* ── FILTER BAR ──────────────────────────────────────────────────── */}
-      <div className="bg-gray-950 border-b border-gray-800 px-4 py-2 flex flex-wrap items-center gap-2">
+      <div className="bg-gray-900 border-b border-gray-800 px-4 py-2 flex flex-wrap items-center gap-2">
         <input type="text" value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Search projects..."
           aria-label="Search projects"
@@ -784,6 +784,7 @@ export default function CommandPage() {
         </div>
         {!isMyProjects && (
           <select value={pmFilter} onChange={e => setPmFilter(e.target.value)}
+            aria-label="Filter by PM"
             className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded-md px-2 py-1.5">
             <option value="all">All PMs</option>
             {pms.map(pm => <option key={pm.id} value={pm.id}>{pm.name}</option>)}

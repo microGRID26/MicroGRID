@@ -49,13 +49,20 @@ export async function loadTaskStates(projectIds?: string[]) {
   const supabase = createClient()
 
   if (projectIds && projectIds.length <= 500) {
-    // Batch by project IDs for smaller sets
-    const allTasks: any[] = []
+    // Batch by project IDs — use Promise.all for parallel fetching
+    const chunks: string[][] = []
     for (let i = 0; i < projectIds.length; i += 100) {
-      const chunk = projectIds.slice(i, i + 100)
-      const { data, error } = await supabase.from('task_state')
-        .select('project_id, task_id, status, reason, follow_up_date, completed_date')
-        .in('project_id', chunk)
+      chunks.push(projectIds.slice(i, i + 100))
+    }
+    const results = await Promise.all(
+      chunks.map(chunk =>
+        supabase.from('task_state')
+          .select('project_id, task_id, status, reason, follow_up_date, completed_date')
+          .in('project_id', chunk)
+      )
+    )
+    const allTasks: any[] = []
+    for (const { data, error } of results) {
       if (error) console.error('task_state batch failed:', error)
       if (data) allTasks.push(...data)
     }
@@ -72,7 +79,7 @@ export async function loadTaskStates(projectIds?: string[]) {
 
 export async function loadProjectFunding(limit = PROJECT_LIMIT) {
   const supabase = createClient()
-  const { data, error } = await supabase.from('project_funding').select('*').limit(limit)
+  const { data, error } = await supabase.from('project_funding').select('project_id, m1_amount, m1_funded_date, m1_cb, m1_cb_credit, m1_notes, m1_status, m2_amount, m2_funded_date, m2_cb, m2_cb_credit, m2_notes, m2_status, m3_amount, m3_funded_date, m3_projected, m3_notes, m3_status, nonfunded_code_1, nonfunded_code_2, nonfunded_code_3').limit(limit)
   if (error) console.error('project_funding load failed:', error)
   return { data: data ?? [], error }
 }
@@ -83,9 +90,10 @@ export async function updateProject(projectId: string, updates: Record<string, a
   return { error }
 }
 
-/** Load a single project by ID */
+/** Load a single project by ID — returns all columns for project detail panel */
 export async function loadProjectById(projectId: string): Promise<Project | null> {
   const supabase = createClient()
+  // select('*') intentional: single-record fetch for detail view uses all 50+ Project columns
   const { data, error } = await supabase.from('projects').select('*').eq('id', projectId).single()
   if (error) console.error('project load by id failed:', error)
   return (data as Project | null) ?? null
@@ -95,10 +103,18 @@ export async function loadProjectById(projectId: string): Promise<Project | null
 export async function loadProjectsByIds(projectIds: string[]): Promise<Project[]> {
   if (!projectIds.length) return []
   const supabase = createClient()
-  const allProjects: Project[] = []
+  // Batch by 100 IDs — use Promise.all for parallel fetching
+  const chunks: string[][] = []
   for (let i = 0; i < projectIds.length; i += 100) {
-    const chunk = projectIds.slice(i, i + 100)
-    const { data, error } = await supabase.from('projects').select('id, name').in('id', chunk)
+    chunks.push(projectIds.slice(i, i + 100))
+  }
+  const results = await Promise.all(
+    chunks.map(chunk =>
+      supabase.from('projects').select('id, name').in('id', chunk)
+    )
+  )
+  const allProjects: Project[] = []
+  for (const { data, error } of results) {
     if (error) console.error('projects batch load failed:', error)
     if (data) allProjects.push(...(data as unknown as Project[]))
   }

@@ -44,9 +44,10 @@ export const EQUIPMENT_CATEGORIES: { value: EquipmentCategory; label: string }[]
  * Load all equipment items, optionally filtered by category.
  * Pass orgType to control raw_price visibility (only 'supply' sees it).
  */
-export async function loadEquipment(category?: string, orgType?: string | null): Promise<Equipment[]> {
+export async function loadEquipment(category?: string, orgType?: string | null, orgId?: string): Promise<Equipment[]> {
   const supabase = db()
-  let q = supabase.from('equipment').select('*').eq('active', true).order('sort_order').order('name').limit(5000)
+  let q = supabase.from('equipment').select('id, name, manufacturer, model, category, watts, description, active, sort_order, sourcing, raw_price, sell_price, created_at').eq('active', true).order('sort_order').order('name').limit(5000)
+  if (orgId) q = q.eq('org_id', orgId)
   if (category) q = q.eq('category', category)
   const { data, error } = await q
   if (error) console.error('[loadEquipment]', error.message)
@@ -58,17 +59,18 @@ export async function loadEquipment(category?: string, orgType?: string | null):
  * Uses ilike for partial matching.
  * Pass orgType to control raw_price visibility (only 'supply' sees it).
  */
-export async function searchEquipment(query: string, category?: string, orgType?: string | null): Promise<Equipment[]> {
+export async function searchEquipment(query: string, category?: string, orgType?: string | null, orgId?: string): Promise<Equipment[]> {
   const supabase = db()
   const escaped = escapeIlike(query)
   let q = supabase
     .from('equipment')
-    .select('*')
+    .select('id, name, manufacturer, model, category, watts, description, active, sort_order, sourcing, raw_price, sell_price, created_at')
     .eq('active', true)
     .or(`name.ilike.%${escaped}%,manufacturer.ilike.%${escaped}%,description.ilike.%${escaped}%`)
     .order('sort_order')
     .order('name')
     .limit(20)
+  if (orgId) q = q.eq('org_id', orgId)
   if (category) q = q.eq('category', category)
   const { data, error } = await q
   if (error) console.error('[searchEquipment]', error.message)
@@ -79,15 +81,17 @@ export async function searchEquipment(query: string, category?: string, orgType?
  * Load all equipment (including inactive) for admin management.
  * Pass orgType to control raw_price visibility (only 'supply' sees it).
  */
-export async function loadAllEquipment(orgType?: string | null): Promise<Equipment[]> {
+export async function loadAllEquipment(orgType?: string | null, orgId?: string): Promise<Equipment[]> {
   const supabase = db()
-  const { data, error } = await supabase
+  let q = supabase
     .from('equipment')
-    .select('*')
+    .select('id, name, manufacturer, model, category, watts, description, active, sort_order, sourcing, raw_price, sell_price, created_at')
     .order('category')
     .order('sort_order')
     .order('name')
     .limit(5000)
+  if (orgId) q = q.eq('org_id', orgId)
+  const { data, error } = await q
   if (error) console.error('[loadAllEquipment]', error.message)
   return stripRawPrice((data ?? []) as Equipment[], orgType)
 }
