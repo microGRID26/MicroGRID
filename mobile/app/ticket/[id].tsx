@@ -284,7 +284,7 @@ export default function TicketDetailScreen() {
                 return (
                   <View key={c.id} style={{ alignSelf: isCustomer ? 'flex-end' : 'flex-start', maxWidth: '85%', marginBottom: 8 }}>
                     <View style={{
-                      backgroundColor: hasImage ? colors.surface : (isCustomer ? colors.accent : colors.surface),
+                      backgroundColor: hasAttachment ? colors.surface : (isCustomer ? colors.accent : colors.surface),
                       borderRadius: theme.radius.xl,
                       borderBottomRightRadius: isCustomer ? 4 : theme.radius.xl,
                       borderBottomLeftRadius: isCustomer ? theme.radius.xl : 4,
@@ -305,18 +305,20 @@ export default function TicketDetailScreen() {
                         />
                       ) : hasFile ? (
                         <TouchableOpacity
-                          onPress={() => { Linking.openURL(c.image_url!) }}
-                          style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 }}>
-                          <Feather name="file-text" size={18} color={colors.accent} />
+                          onPress={() => { Linking.openURL(c.image_url!).catch(() => {}) }}
+                          style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 }}>
+                          <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: colors.accent + '20', alignItems: 'center', justifyContent: 'center' }}>
+                            <Feather name="file-text" size={18} color={colors.accent} />
+                          </View>
                           <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 13, color: isCustomer ? colors.accentText : colors.text, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>
+                            <Text style={{ fontSize: 13, color: colors.text, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>
                               {c.message.replace(/📎\s*/, '')}
                             </Text>
-                            <Text style={{ fontSize: 10, color: colors.textMuted, fontFamily: 'Inter_400Regular', marginTop: 1 }}>
-                              Tap to download
+                            <Text style={{ fontSize: 10, color: colors.textMuted, fontFamily: 'Inter_400Regular', marginTop: 2 }}>
+                              Tap to open file
                             </Text>
                           </View>
-                          <Feather name="download" size={14} color={colors.textMuted} />
+                          <Feather name="download" size={16} color={colors.accent} />
                         </TouchableOpacity>
                       ) : (
                         <Text style={{
