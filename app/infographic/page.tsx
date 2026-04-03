@@ -271,9 +271,9 @@ export default function InfographicPage() {
               <h2 className="text-xs text-gray-500 uppercase tracking-wider mb-4 font-semibold">Roadmap</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
-                  { phase: 'Phase 2', title: 'System Redesign Tool', desc: 'Enhanced redesign calculator for Ecoflow → Duracell migration. Automated string sizing, panel-fit estimates, and DXF planset generation.', status: 'Up Next', color: '#f59e0b' },
+                  { phase: 'Done', title: 'Customer App', desc: 'Native iOS/Android Expo app with OTP auth, project dashboard, iMessage-style ticketing, Atlas AI chat, push notifications. PWA web portal also live.', status: 'Shipped', color: '#22c55e' },
+                  { phase: 'Phase 2', title: 'Duracell API + Monitoring', desc: 'Duracell system monitoring integration. Real-time energy production, battery status, consumption tracking via API.', status: 'Up Next', color: '#f59e0b' },
                   { phase: 'Phase 3', title: 'Route Optimization', desc: 'Google Routes API integration for real drive times with traffic. Day-level scheduling with time windows and homeowner availability.', status: 'Planned', color: '#3b82f6' },
-                  { phase: 'Phase 4', title: 'Customer App', desc: 'Native iOS/Android app for homeowners. Sign documents, view lending agreements, monitor system performance. One-stop shop.', status: 'Planned', color: '#8b5cf6' },
                 ].map(r => (
                   <div key={r.phase} className="bg-gray-800 rounded-xl p-5 border border-gray-700 print:border-gray-300 print:bg-gray-50">
                     <div className="flex items-center gap-2 mb-2">
@@ -712,10 +712,10 @@ export default function InfographicPage() {
               <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Architecture</h2>
               <div className="space-y-1">
                 {[
-                  { layer: 'Browser', color: '#3b82f6', items: ['Next.js 16 App Router', 'React 19', 'TypeScript (strict)', 'Tailwind CSS v4', 'Leaflet Maps'] },
-                  { layer: 'API Layer', color: '#1D9E75', items: ['16 API modules', '200+ functions', 'lib/api/ centralized', 'Typed requests', '.limit() on all queries'] },
-                  { layer: 'Database', color: '#f59e0b', items: ['Supabase (PostgreSQL)', '45+ tables', 'Row-Level Security', 'Org-scoped access', 'Realtime subscriptions'] },
-                  { layer: 'Infrastructure', color: '#8b5cf6', items: ['Vercel (auto-deploy)', 'Sentry (errors)', 'Resend (email)', 'Google Calendar sync', 'HMAC webhooks'] },
+                  { layer: 'Browser', color: '#3b82f6', items: ['Next.js 16 App Router', 'React 19', 'TypeScript (strict)', 'Tailwind CSS v4', 'Leaflet Maps', 'Expo React Native (mobile)'] },
+                  { layer: 'API Layer', color: '#1D9E75', items: ['29 API modules', '250+ functions', 'lib/api/ centralized', 'Column-specific selects', '.limit() on all queries', 'Org-scoped filtering'] },
+                  { layer: 'Database', color: '#f59e0b', items: ['Supabase (PostgreSQL)', '70+ tables', 'Row-Level Security', 'Org-scoped RLS (30 tables)', 'Realtime subscriptions', 'HMAC-signed cookies'] },
+                  { layer: 'Infrastructure', color: '#8b5cf6', items: ['Vercel (auto-deploy)', 'Sentry (errors)', 'Resend (email)', 'Google Calendar sync', 'HMAC webhooks', 'CSP headers', 'Expo Push API'] },
                 ].map(l => (
                   <div key={l.layer} className="rounded-lg px-5 py-4 flex items-center gap-4 animate-pulse-glow" style={{ backgroundColor: `${l.color}08`, borderLeft: `4px solid ${l.color}`, boxShadow: `inset 0 0 40px ${l.color}05` }}>
                     <div className="w-28 flex-shrink-0">
@@ -738,20 +738,21 @@ export default function InfographicPage() {
                 {[
                   { name: 'Project', color: '#1D9E75' },
                   { name: 'Tasks', color: '#3b82f6' },
-                  { name: 'Notes', color: '#8b5cf6' },
                   { name: 'Schedule', color: '#f59e0b' },
                   { name: 'Funding', color: '#22c55e' },
                   { name: 'Tickets', color: '#ec4899' },
+                  { name: 'Invoices', color: '#06b6d4' },
+                  { name: 'Commissions', color: '#8b5cf6' },
                 ].map((n, i) => (
                   <div key={n.name} className="flex items-center flex-shrink-0">
                     <div className="rounded-lg px-4 py-3 text-center border" style={{ backgroundColor: `${n.color}10`, borderColor: `${n.color}40` }}>
                       <div className="text-xs font-bold" style={{ color: n.color }}>{n.name}</div>
                     </div>
-                    {i < 5 && <span className="mx-1 text-gray-600">→</span>}
+                    {i < 6 && <span className="mx-1 text-gray-600">→</span>}
                   </div>
                 ))}
               </div>
-              <p className="text-center text-[10px] text-gray-600 mt-2">Every entity links back to the project. All changes logged to audit_log with timestamp and author.</p>
+              <p className="text-center text-[10px] text-gray-600 mt-2">Every entity links back to the project. Notes, audit_log, work orders, warranties, documents, NTP requests all project-scoped. All changes tracked with timestamp and author.</p>
             </div>
 
             {/* Live stats */}
@@ -767,8 +768,8 @@ export default function InfographicPage() {
                   { label: 'Active Crews', value: stats.crewCount },
                   { label: 'AHJ Records', value: stats.ahjCount },
                   { label: 'Equipment Items', value: stats.equipmentCount },
-                  { label: 'Migrations', value: 66 },
-                  { label: 'API Modules', value: 16 },
+                  { label: 'DB Migrations', value: 70 },
+                  { label: 'API Modules', value: 29 },
                 ].map(s => (
                   <div key={s.label} className="bg-gray-800 rounded-lg p-3 text-center border border-gray-700">
                     <div className="text-xl font-bold text-green-400">{s.value.toLocaleString()}</div>
@@ -785,10 +786,11 @@ export default function InfographicPage() {
                 <div className="bg-gray-800 rounded-xl p-5 border border-gray-700 space-y-2">
                   {[
                     ['Framework', 'Vitest + React Testing Library'],
-                    ['Test Files', '74'],
-                    ['Total Tests', '2,506 (2,504 passed)'],
-                    ['Pre-commit', 'Tests must pass before push'],
-                    ['Protocol', 'Build → Test → Audit R1 → Fix → Audit R2'],
+                    ['Test Files', '90'],
+                    ['Total Tests', '2,728 passing'],
+                    ['API Route Tests', '15 routes, 100% coverage'],
+                    ['Pre-commit', 'All tests must pass before push'],
+                    ['Protocol', 'Test → Audit → Fix → Doc (×2)'],
                   ].map(([k, v]) => (
                     <div key={k} className="flex justify-between text-xs"><span className="text-gray-400">{k}</span><span className="text-white">{v}</span></div>
                   ))}
@@ -800,10 +802,11 @@ export default function InfographicPage() {
                   {[
                     ['Auth', 'Google OAuth (domain-restricted)'],
                     ['Database RLS', 'Org-scoped on 30+ tables'],
-                    ['Route Protection', 'Server-side proxy + role hierarchy'],
+                    ['Route Protection', 'Server-side proxy + HMAC-signed role cookie'],
                     ['Roles', 'super_admin → admin → finance → manager → user → sales'],
-                    ['Webhooks', 'HMAC-SHA256 signed'],
-                    ['Sanitization', 'escapeIlike + HTML escape'],
+                    ['Headers', 'CSP, HSTS, X-Frame-Options DENY, nosniff'],
+                    ['Webhooks', 'HMAC-SHA256 + timingSafeEqual'],
+                    ['API Auth', 'All 15 routes authenticated (secret or session)'],
                   ].map(([k, v]) => (
                     <div key={k} className="flex justify-between text-xs"><span className="text-gray-400">{k}</span><span className="text-white">{v}</span></div>
                   ))}
@@ -813,11 +816,20 @@ export default function InfographicPage() {
 
             {/* Code quality bar */}
             <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-                <div><div className="text-2xl font-bold text-green-400">9.5/10</div><div className="text-[10px] text-gray-400">Quality Rating</div></div>
-                <div><div className="text-2xl font-bold text-green-400">10</div><div className="text-[10px] text-gray-400">`as any` casts left</div></div>
-                <div><div className="text-2xl font-bold text-green-400">200+</div><div className="text-[10px] text-gray-400">API Functions</div></div>
-                <div><div className="text-2xl font-bold text-green-400">50+</div><div className="text-[10px] text-gray-400">Pages / Routes</div></div>
+              <h3 className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-3">Audit Scorecard</h3>
+              <div className="grid grid-cols-3 md:grid-cols-6 gap-4 text-center">
+                <div><div className="text-2xl font-bold text-green-400">A</div><div className="text-[10px] text-gray-400">Security</div></div>
+                <div><div className="text-2xl font-bold text-green-400">A</div><div className="text-[10px] text-gray-400">Performance</div></div>
+                <div><div className="text-2xl font-bold text-green-400">A</div><div className="text-[10px] text-gray-400">UX Consistency</div></div>
+                <div><div className="text-2xl font-bold text-blue-400">B</div><div className="text-[10px] text-gray-400">Code Quality</div></div>
+                <div><div className="text-2xl font-bold text-blue-400">B</div><div className="text-[10px] text-gray-400">Architecture</div></div>
+                <div><div className="text-2xl font-bold text-blue-400">B</div><div className="text-[10px] text-gray-400">Test Coverage</div></div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mt-4 pt-4 border-t border-gray-700">
+                <div><div className="text-xl font-bold text-green-400">0</div><div className="text-[10px] text-gray-400">Critical Issues</div></div>
+                <div><div className="text-xl font-bold text-green-400">250+</div><div className="text-[10px] text-gray-400">API Functions</div></div>
+                <div><div className="text-xl font-bold text-green-400">49</div><div className="text-[10px] text-gray-400">Pages / Routes</div></div>
+                <div><div className="text-xl font-bold text-green-400">2,728</div><div className="text-[10px] text-gray-400">Automated Tests</div></div>
               </div>
             </div>
           </div>
