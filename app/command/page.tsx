@@ -933,161 +933,68 @@ export default function CommandPage() {
             </div>
           )}
 
-          {/* ── FULL PROJECT TABLE ────────────────────────────────────── */}
+          {/* ── NEXT ACTIONS — Cross-project task view ────────────── */}
           <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-              <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">
-                All Projects ({tableProjects.length})
-                {stageFilter && (
-                  <span className="text-green-400 ml-2 normal-case font-normal">
-                    filtered: {STAGE_LABELS[stageFilter]}
-                  </span>
-                )}
+              <span className="text-sm text-gray-300 font-bold uppercase tracking-wider">
+                Next Actions
               </span>
+              <a href="/queue" className="text-xs text-green-400 hover:text-green-300 transition-colors">
+                View all in Queue →
+              </a>
             </div>
+            <div className="max-h-[500px] overflow-y-auto">
+              {(() => {
+                // Build cross-project task list: next actionable task per project
+                const actionItems = filtered
+                  .filter(p => !p.blocker) // exclude blocked (shown in stuck tasks above)
+                  .map(p => {
+                    const next = getNextTask(p)
+                    const days = daysAgo(p.stage_date)
+                    return { project: p, nextTask: next, days }
+                  })
+                  .filter(item => item.nextTask && item.nextTask !== '—')
+                  .sort((a, b) => b.days - a.days) // longest waiting first
+                  .slice(0, 20) // top 20
 
-            {/* Table header */}
-            <div className="hidden md:grid grid-cols-[1fr_100px_70px_160px_140px_90px_100px] gap-2 px-4 py-2 border-b border-gray-700 text-xs text-gray-500 uppercase tracking-wider">
-              <button onClick={() => toggleSort('name')} className="text-left hover:text-white transition-colors">
-                Name{sortIcon('name')}
-              </button>
-              <button onClick={() => toggleSort('stage')} className="text-left hover:text-white transition-colors">
-                Stage{sortIcon('stage')}
-              </button>
-              <button onClick={() => toggleSort('days')} className="text-right hover:text-white transition-colors">
-                Days{sortIcon('days')}
-              </button>
-              <button onClick={() => toggleSort('blocker')} className="text-left hover:text-white transition-colors">
-                Blocker{sortIcon('blocker')}
-              </button>
-              <button onClick={() => toggleSort('nextTask')} className="text-left hover:text-white transition-colors">
-                Next Task{sortIcon('nextTask')}
-              </button>
-              <button onClick={() => toggleSort('contract')} className="text-right hover:text-white transition-colors">
-                Contract{sortIcon('contract')}
-              </button>
-              <button onClick={() => toggleSort('followUp')} className="text-right hover:text-white transition-colors">
-                Follow-up{sortIcon('followUp')}
-              </button>
-            </div>
+                if (actionItems.length === 0) {
+                  return (
+                    <div className="px-4 py-8 text-center text-gray-600 text-sm">
+                      No pending actions — all projects are on track or blocked
+                    </div>
+                  )
+                }
 
-            {/* Table rows */}
-            <div className="max-h-[600px] overflow-y-auto">
-              {tableProjects.length === 0 && (
-                <div className="px-4 py-8 text-center text-gray-600 text-sm">
-                  {currentUser?.isSales && filtered.length === 0
-                    ? 'No projects found. Your consultant/advisor name may not match any projects.'
-                    : 'No projects found'}
-                </div>
-              )}
-              {tableProjects.map(p => {
-                const days = daysAgo(p.stage_date)
-                const nextTask = getNextTask(p)
-                return (
+                return actionItems.map(({ project: p, nextTask, days }) => (
                   <div
                     key={p.id}
                     onClick={() => openProject(p)}
-                    className={`grid grid-cols-1 md:grid-cols-[1fr_100px_70px_160px_140px_90px_100px] gap-1 md:gap-2 px-4 py-2.5 cursor-pointer hover:bg-gray-700 border-b border-gray-800/50 transition-colors items-center ${
-                      selectedProject?.id === p.id ? 'bg-gray-700' : ''
-                    }`}
+                    className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-700 border-b border-gray-800/50 transition-colors"
                   >
-                    {/* Name + ID + city (responsive) */}
-                    <div className="min-w-0">
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                      days >= 30 ? 'bg-red-500' : days >= 14 ? 'bg-amber-500' : 'bg-green-500'
+                    }`} />
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                          p.blocker ? 'bg-red-500' : 'bg-green-500'
-                        }`} />
                         <span className="text-sm text-white truncate">{p.name}</span>
+                        <span className="text-xs text-gray-600 flex-shrink-0">{p.id}</span>
                       </div>
-                      <div className="text-xs text-gray-500 ml-3.5 truncate">
-                        {p.id} · {p.city}
-                        {p.pm && !isMyProjects && <span className="text-gray-600 ml-1">· {p.pm}</span>}
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {STAGE_LABELS[p.stage]} · {days}d
+                        {p.pm && !isMyProjects && <span className="text-gray-600"> · {p.pm}</span>}
                       </div>
                     </div>
-
-                    {/* Stage */}
-                    <span className="text-xs text-gray-400 hidden md:block">{STAGE_LABELS[p.stage] ?? p.stage}</span>
-
-                    {/* Days in stage */}
-                    <span className={`text-xs font-mono text-right hidden md:block ${
-                      days >= 30 ? 'text-red-400' : days >= 14 ? 'text-amber-400' : 'text-gray-400'
-                    }`}>
-                      {days}d
-                    </span>
-
-                    {/* Blocker */}
-                    <span className="text-xs text-red-400 truncate hidden md:block">
-                      {p.blocker ?? '—'}
-                    </span>
-
-                    {/* Next Task */}
-                    <span className="text-xs text-gray-400 truncate hidden md:block">{nextTask}</span>
-
-                    {/* Contract */}
-                    <span className="text-xs text-gray-300 text-right font-mono hidden md:block">
-                      {fmt$(Number(p.contract) || 0)}
-                    </span>
-
-                    {/* Follow-up */}
-                    <span className="text-xs text-right hidden md:block">
-                      {renderFollowUp(p.follow_up_date)}
-                    </span>
-
-                    {/* Mobile: show key info inline */}
-                    <div className="flex items-center gap-3 md:hidden text-xs text-gray-500">
-                      <span>{STAGE_LABELS[p.stage]}</span>
-                      <span>{days}d</span>
-                      {p.blocker && <span className="text-red-400 truncate max-w-[120px]">{p.blocker}</span>}
+                    <div className="text-right flex-shrink-0">
+                      <div className="text-sm text-green-400 font-medium">{nextTask}</div>
+                      {p.follow_up_date && (
+                        <div className="text-xs mt-0.5">{renderFollowUp(p.follow_up_date)}</div>
+                      )}
                     </div>
                   </div>
-                )
-              })}
+                ))
+              })()}
             </div>
           </div>
-
-          {/* ── LOYALTY + IN SERVICE (collapsed by default) ──────────── */}
-          {(sections.loyalty.length > 0 || sections.inService.length > 0) && (
-            <div className="space-y-3 mt-2">
-              {sections.loyalty.length > 0 && (
-                <details className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
-                  <summary className="px-4 py-2.5 cursor-pointer hover:bg-gray-700 transition-colors text-xs text-purple-400 font-bold uppercase tracking-wider">
-                    Loyalty ({sections.loyalty.length})
-                  </summary>
-                  {sections.loyalty.map(p => (
-                    <div
-                      key={p.id}
-                      onClick={() => openProject(p)}
-                      className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-gray-700 border-t border-gray-800/50 transition-colors"
-                    >
-                      <div className="w-1.5 h-1.5 rounded-full bg-purple-400 flex-shrink-0" />
-                      <span className="text-sm text-white truncate">{p.name}</span>
-                      <span className="text-xs text-gray-500">{p.id}</span>
-                      <span className="text-xs text-gray-500 ml-auto">{STAGE_LABELS[p.stage]}</span>
-                    </div>
-                  ))}
-                </details>
-              )}
-              {sections.inService.length > 0 && (
-                <details className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
-                  <summary className="px-4 py-2.5 cursor-pointer hover:bg-gray-700 transition-colors text-xs text-gray-500 font-bold uppercase tracking-wider">
-                    In Service ({sections.inService.length})
-                  </summary>
-                  {sections.inService.map(p => (
-                    <div
-                      key={p.id}
-                      onClick={() => openProject(p)}
-                      className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-gray-700 border-t border-gray-800/50 transition-colors"
-                    >
-                      <div className="w-1.5 h-1.5 rounded-full bg-gray-500 flex-shrink-0" />
-                      <span className="text-sm text-white truncate">{p.name}</span>
-                      <span className="text-xs text-gray-500">{p.id}</span>
-                      <span className="text-xs text-gray-500 ml-auto">{STAGE_LABELS[p.stage]}</span>
-                    </div>
-                  ))}
-                </details>
-              )}
-            </div>
-          )}
         </div>
       </div>
 

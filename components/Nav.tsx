@@ -17,14 +17,11 @@ import { useFeatureFlags, isFeatureEnabled } from '@/lib/useFeatureFlags'
 const PRIMARY_LINKS = [
   { label: 'Command',   href: '/command'   },
   { label: 'Queue',     href: '/queue'     },
-  { label: 'NTP',       href: '/ntp'       },
   { label: 'Pipeline',  href: '/pipeline'  },
   { label: 'Schedule',  href: '/schedule'  },
   { label: 'Funding',   href: '/funding'   },
-  { label: 'Analytics', href: '/analytics' },
   { label: 'Tickets',   href: '/tickets'   },
-  { label: 'Inventory', href: '/inventory' },
-  { label: 'Legacy',    href: '/legacy'    },
+  { label: 'Analytics', href: '/analytics' },
 ]
 
 const SALES_LINKS = [
@@ -39,50 +36,43 @@ type LinkSection = { section: string; links: LinkItem[] }
 
 const MORE_SECTIONS: LinkSection[] = [
   {
-    section: 'Operations',
+    section: 'Pipeline',
     links: [
+      { label: 'NTP Requests',  href: '/ntp'       },
+      { label: 'Permits',       href: '/permits'   },
+      { label: 'Engineering',   href: '/engineering' },
+      { label: 'Redesign',      href: '/redesign'  },
       { label: 'Work Orders',   href: '/work-orders' },
       { label: 'Change Orders', href: '/change-orders' },
-      { label: 'Engineering',   href: '/engineering' },
-      { label: 'Audit',         href: '/audit'    },
     ],
   },
   {
-    section: 'Sales',
+    section: 'Financial',
     links: [
-      { label: 'Sales Teams',   href: '/sales'    },
+      { label: 'Invoices',      href: '/invoices'    },
       { label: 'Commissions',   href: '/commissions' },
+      { label: 'Sales Teams',   href: '/sales'       },
     ],
   },
   {
-    section: 'Finance',
+    section: 'Assets',
     links: [
-      { label: 'Invoices',      href: '/invoices' },
-    ],
-  },
-  {
-    section: 'Supply Chain',
-    links: [
-      { label: 'Vendors',       href: '/vendors'  },
+      { label: 'Inventory',     href: '/inventory' },
+      { label: 'Vendors',       href: '/vendors'   },
+      { label: 'Warranty',      href: '/warranty'  },
+      { label: 'Fleet',         href: '/fleet',    flagKey: 'fleet_management' },
+      { label: 'Documents',     href: '/documents' },
     ],
   },
   {
     section: 'Tools',
     links: [
       { label: 'Ramp-Up Planner', href: '/ramp-up' },
-      { label: 'Infographic', href: '/infographic' },
-      { label: 'Project Map', href: '/map'      },
-      { label: 'Atlas',     href: '/reports'  },
-      { label: 'Permits',   href: '/permits'  },
-      { label: 'Documents', href: '/documents' },
-      { label: 'Warranty',  href: '/warranty' },
-      { label: 'Fleet',     href: '/fleet',   flagKey: 'fleet_management' },
-    ],
-  },
-  {
-    section: 'Design',
-    links: [
-      { label: 'Redesign', href: '/redesign' },
+      { label: 'Project Map',     href: '/map'     },
+      { label: 'Atlas AI',        href: '/reports' },
+      { label: 'Audit',           href: '/audit'   },
+      { label: 'Infographic',     href: '/infographic' },
+      { label: 'Legacy Projects', href: '/legacy'  },
     ],
   },
 ]
@@ -237,9 +227,9 @@ export function Nav({ active, right, onNewProject }: NavProps) {
         <div className="hidden md:flex items-center gap-2">
           {navLinks.map(v => (
             <a key={v.label} href={v.href}
-              className={`text-xs px-3 py-1.5 rounded-md transition-colors relative ${
+              className={`text-sm px-3 py-1.5 rounded-md transition-colors relative ${
                 v.label === active
-                  ? 'bg-gray-800 text-white'
+                  ? 'bg-gray-800 text-white font-medium'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               }`}>
               {v.label}
