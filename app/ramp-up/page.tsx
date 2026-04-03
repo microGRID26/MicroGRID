@@ -563,7 +563,7 @@ export default function RampUpPage() {
       const crewJobs = weekSchedule.filter(s => s.crew_name === crew)
       const points: RoutePoint[] = crewJobs.map(s => {
         const p = projects.find(pr => pr.id === s.project_id)
-        return p ? { id: p.id, lat: p.lat, lng: p.lng, label: `${p.name} (${p.id})` } : null
+        return p && p.lat !== 0 && p.lng !== 0 ? { id: p.id, lat: p.lat, lng: p.lng, label: `${p.name} (${p.id})` } : null
       }).filter(Boolean) as RoutePoint[]
       if (points.length > 0) routes.set(crew, optimizeRoute(warehouse, points))
     }
