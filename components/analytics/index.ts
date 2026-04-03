@@ -1,3 +1,6 @@
+export { Executive } from './Executive'
+export { CashFlow } from './CashFlow'
+export { InstallVelocity } from './InstallVelocity'
 export { Leadership } from './Leadership'
 export { PipelineHealth } from './PipelineHealth'
 export { ByPM } from './ByPM'

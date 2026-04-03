@@ -5,23 +5,23 @@ import { Nav } from '@/components/Nav'
 import { useSupabaseQuery, clearQueryCache } from '@/lib/hooks'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import { RefreshCw } from 'lucide-react'
-import { Leadership, PipelineHealth, ByPM, FundingTab, CycleTimes, Dealers, PERIOD_LABELS, setCustomRange } from '@/components/analytics'
+import { Executive, CashFlow, InstallVelocity, Leadership, PipelineHealth, ByPM, FundingTab, CycleTimes, Dealers, PERIOD_LABELS, setCustomRange } from '@/components/analytics'
 import type { Period, AnalyticsData } from '@/components/analytics'
 import type { ProjectFunding } from '@/types/database'
 
 import { OpsTabContent } from '@/app/ops/page'
 
-type Tab = 'leadership' | 'pipeline' | 'pm' | 'funding_analytics' | 'cycle' | 'dealers' | 'ops'
+type Tab = 'executive' | 'cash_flow' | 'velocity' | 'pipeline' | 'pm' | 'sales' | 'ops'
 
 const TAB_LABELS: Record<Tab, string> = {
-  leadership: 'Leadership', pipeline: 'Pipeline Health', pm: 'By PM',
-  funding_analytics: 'Funding', cycle: 'Cycle Times', dealers: 'Dealers', ops: 'Operations',
+  executive: 'Executive', cash_flow: 'Cash Flow', velocity: 'Install Velocity',
+  pipeline: 'Pipeline', pm: 'By PM', sales: 'Sales', ops: 'Operations',
 }
 
 export default function AnalyticsPage() {
   const { user: currentUser, loading: userLoading } = useCurrentUser()
   const [period, setPeriod] = useState<Period>('mtd')
-  const [tab, setTab] = useState<Tab>('leadership')
+  const [tab, setTab] = useState<Tab>('executive')
   const [refreshing, setRefreshing] = useState(false)
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
@@ -137,12 +137,12 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-6" role="tabpanel" id={`panel-${tab}`} aria-label={TAB_LABELS[tab]}>
-        {tab === 'leadership' && <Leadership data={analyticsData} />}
+        {tab === 'executive' && <Executive data={analyticsData} />}
+        {tab === 'cash_flow' && <CashFlow data={analyticsData} />}
+        {tab === 'velocity' && <InstallVelocity data={analyticsData} />}
         {tab === 'pipeline' && <PipelineHealth data={analyticsData} />}
         {tab === 'pm' && <ByPM data={analyticsData} />}
-        {tab === 'funding_analytics' && <FundingTab data={analyticsData} />}
-        {tab === 'cycle' && <CycleTimes data={analyticsData} />}
-        {tab === 'dealers' && <Dealers data={analyticsData} />}
+        {tab === 'sales' && <Dealers data={analyticsData} />}
         {tab === 'ops' && <OpsTabContent />}
       </div>
     </div>
