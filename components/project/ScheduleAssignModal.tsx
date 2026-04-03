@@ -54,11 +54,36 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
   const [projectSearch, setProjectSearch] = useState('')
   const [projectResults, setProjectResults] = useState<Project[]>([])
   const [driveUrl, setDriveUrl] = useState<string | null>(null)
+  const [plansetUrl, setPlansetUrl] = useState<string | null>(null)
+  const [plansetName, setPlansetName] = useState<string | null>(null)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [conflict, setConflict] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // Look up the planset file from project_files (Design/Planset folder)
+  function lookupPlanset(projectId: string) {
+    setPlansetUrl(null)
+    setPlansetName(null)
+    supabase.from('project_files')
+      .select('file_name, file_url, folder_name')
+      .eq('project_id', projectId)
+      .or('folder_name.ilike.%planset%,folder_name.ilike.%design%')
+      .order('file_name')
+      .limit(10)
+      .then(({ data }: any) => {
+        if (!data || data.length === 0) return
+        // Prefer files with "planset" in folder name, then in file name
+        const plansetFile = data.find((f: any) => /planset/i.test(f.folder_name ?? ''))
+          ?? data.find((f: any) => /planset/i.test(f.file_name ?? ''))
+          ?? data[0]
+        if (plansetFile?.file_url) {
+          setPlansetUrl(plansetFile.file_url)
+          setPlansetName(plansetFile.file_name)
+        }
+      })
+  }
 
   function set(field: string, value: string) {
     setForm(f => ({ ...f, [field]: value }))
@@ -109,6 +134,7 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
                 }
                 supabase.from('project_folders').select('folder_url').eq('project_id', proj.id).maybeSingle()
                   .then(({ data: folderData }: { data: { folder_url: string | null } | null }) => { if (folderData?.folder_url) setDriveUrl(folderData.folder_url) })
+                lookupPlanset(proj.id)
               }
             })
         }
@@ -128,6 +154,7 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
         }
         supabase.from('project_folders').select('folder_url').eq('project_id', data.id).maybeSingle()
           .then(({ data: folderData }: { data: { folder_url: string | null } | null }) => { if (folderData?.folder_url) setDriveUrl(folderData.folder_url) })
+        lookupPlanset(data.id)
       }
     })
   }, [projectId])
@@ -345,7 +372,7 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
               <div className="bg-gray-800 rounded-lg px-3 py-2 border border-green-600 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <div className="text-xs font-medium text-white">{selectedProject.name}</div>
-                  <button onClick={() => { setSelectedProject(null); set('project_id', ''); setDriveUrl(null) }}
+                  <button onClick={() => { setSelectedProject(null); set('project_id', ''); setDriveUrl(null); setPlansetUrl(null); setPlansetName(null) }}
                     className="text-gray-500 hover:text-white text-xs">x</button>
                 </div>
                 <div className="text-[10px] text-gray-400">{selectedProject.id} · {selectedProject.city}{selectedProject.zip ? `, ${selectedProject.zip}` : ''}</div>
@@ -372,8 +399,13 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
                   </div>
                 )}
                 <div className="flex gap-2 mt-1 flex-wrap">
+                  {plansetUrl && (
+                    <a href={plansetUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-green-400 hover:text-green-300 font-medium">
+                      📄 {plansetName ?? 'Planset'} →
+                    </a>
+                  )}
                   {driveUrl && (
-                    <a href={driveUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-green-400 hover:text-green-300">Planset Folder →</a>
+                    <a href={driveUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-green-400/70 hover:text-green-300">Project Folder →</a>
                   )}
                   <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${selectedProject.address ?? ''}, ${selectedProject.city ?? ''} TX`)}`}
                     target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-[10px] text-blue-400 hover:text-blue-300">Google Maps →</a>
@@ -395,11 +427,12 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
                   <div className="absolute top-full left-0 right-0 bg-gray-800 border border-gray-700 rounded-lg mt-1 z-10 overflow-hidden">
                     {projectResults.map(p => (
                       <div key={p.id} onClick={() => {
-                        setSelectedProject(p); setProjectSearch(''); setProjectResults([]); setDriveUrl(null); setAhjInfo(null)
+                        setSelectedProject(p); setProjectSearch(''); setProjectResults([]); setDriveUrl(null); setPlansetUrl(null); setPlansetName(null); setAhjInfo(null)
                         const pid = p.id
                         // Load Google Drive folder URL
                         supabase.from('project_folders').select('folder_url').eq('project_id', pid).maybeSingle()
                           .then(({ data }: { data: { folder_url: string | null } | null }) => { if (data?.folder_url) setDriveUrl(data.folder_url) })
+                        lookupPlanset(pid)
                         // Load AHJ info
                         if (p.ahj) {
                           supabase.from('ahjs').select('name, permit_phone, permit_required').eq('name', p.ahj).maybeSingle()
