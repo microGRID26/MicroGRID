@@ -100,7 +100,7 @@ export function PipelineHealth({ data }: { data: AnalyticsData }) {
   const bottleneck = useMemo(() => stageVelocity.reduce((worst, s) => s.avgDays > worst.avgDays ? s : worst, stageVelocity[0] ?? { stage: '', label: '', avgDays: 0, count: 0, blockedCount: 0 }), [stageVelocity])
 
   return (
-    <div className="max-w-6xl space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">{data.onPeriodChange && <PeriodBar period={data.period} onPeriodChange={data.onPeriodChange} />}<ExportButton onClick={handleExport} /></div>
 
       {/* Headline metrics */}

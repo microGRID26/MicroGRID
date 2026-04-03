@@ -573,7 +573,7 @@ export function Dealers({ data }: { data: AnalyticsData }) {
   const velocityColor = headline.velocity > 5 ? 'text-green-400' : headline.velocity > 2 ? 'text-amber-400' : 'text-red-400'
 
   return (
-    <div className="max-w-6xl space-y-8">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         {data.onPeriodChange && <PeriodBar period={data.period} onPeriodChange={data.onPeriodChange} />}

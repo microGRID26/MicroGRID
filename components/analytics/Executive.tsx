@@ -124,7 +124,7 @@ export function Executive({ data }: { data: AnalyticsData }) {
   }
 
   return (
-    <div className="max-w-6xl space-y-8">
+    <div className="space-y-8">
       {data.onPeriodChange && <PeriodBar period={data.period} onPeriodChange={data.onPeriodChange} />}
 
       {/* Hero: 5 headline numbers */}

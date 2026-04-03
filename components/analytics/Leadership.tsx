@@ -80,7 +80,7 @@ export function Leadership({ data }: { data: AnalyticsData }) {
   }
 
   return (
-    <div className="max-w-6xl space-y-8">
+    <div className="space-y-8">
       <div className="flex justify-end"><ExportButton onClick={handleExport} /></div>
 
       {/* Period metrics */}

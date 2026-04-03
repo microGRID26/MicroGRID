@@ -636,7 +636,7 @@ export function Forecasting({ data }: { data: AnalyticsData }) {
   // ── Empty state ─────────────────────────────────────────────────────────────
   if (active.length === 0 && projects.length === 0) {
     return (
-      <div className="max-w-6xl space-y-8">
+      <div className="space-y-8">
         {data.onPeriodChange && <PeriodBar period={period} onPeriodChange={data.onPeriodChange} />}
         <div className="bg-gray-800 rounded-xl p-12 border border-gray-700 text-center">
           <div className="text-gray-500 text-sm">No project data available for forecasting.</div>
@@ -647,7 +647,7 @@ export function Forecasting({ data }: { data: AnalyticsData }) {
   }
 
   return (
-    <div className="max-w-6xl space-y-8">
+    <div className="space-y-8">
       {data.onPeriodChange && <PeriodBar period={period} onPeriodChange={data.onPeriodChange} />}
 
       {/* Hero: 4 headline numbers */}
