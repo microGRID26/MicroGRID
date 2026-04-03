@@ -826,6 +826,31 @@ export default function RampUpPage() {
                 </button>
               )}
               {weekSchedule.length > 0 && (
+                <button onClick={async () => {
+                  // Sync all current week's ramp entries to the main schedule table
+                  let synced = 0
+                  for (const entry of weekSchedule) {
+                    const project = projects.find(p => p.id === entry.project_id)
+                    const crew = allCrews.find(c => c.name === entry.crew_name)
+                    if (!crew || !project) continue
+                    const installDate = entry.scheduled_day ?? selectedWeek
+                    // Check if already exists in schedule
+                    const { data: existing } = await db().from('schedule').select('id').eq('project_id', entry.project_id).eq('crew_id', crew.id).eq('job_type', 'install').gte('date', entry.scheduled_week).limit(1)
+                    if (existing && existing.length > 0) continue
+                    await db().from('schedule').insert({
+                      id: crypto.randomUUID(), project_id: entry.project_id, crew_id: crew.id,
+                      job_type: 'install', date: installDate, status: 'scheduled',
+                      notes: `Ramp-up sync: ${entry.crew_name}`, pm: project.pm,
+                    })
+                    synced++
+                  }
+                  setToast({ message: synced > 0 ? `Synced ${synced} jobs to Schedule page` : 'All jobs already synced', type: 'success' })
+                  setTimeout(() => setToast(null), 3000)
+                }} className="text-[10px] px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-md font-medium ml-1">
+                  Sync to Schedule
+                </button>
+              )}
+              {weekSchedule.length > 0 && (
                 <button onClick={handlePrint} className="text-[10px] px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-md font-medium ml-1">
                   <Printer className="w-3 h-3 inline mr-1" />Print
                 </button>
