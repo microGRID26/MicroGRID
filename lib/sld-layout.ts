@@ -41,6 +41,18 @@ export interface SldConfig {
   contractorPhone: string
   contractorLicense: string
   contractorEmail: string
+  // Wire specs (optional — defaults used if not provided)
+  dcStringWire?: string       // default: '#10 AWG CU PV WIRE'
+  dcConduit?: string          // default: '3/4" EMT TYPE CONDUIT'
+  dcHomerunWire?: string      // default: '(2) #10 AWG CU THWN-2'
+  dcEgc?: string              // default: '(1) #6 AWG BARE CU EGC'
+  dcHomerunConduit?: string   // default: '3/4" EMT TYPE CONDUIT'
+  acInverterWire?: string     // default: '#6 AWG CU THWN-2'
+  acToPanelWire?: string      // default: '(2) #4 AWG CU THWN-2'
+  acConduit?: string          // default: '1-1/4" EMT TYPE CONDUIT'
+  batteryWire?: string        // default: '(2) #4/0 AWG'
+  batteryConduit?: string     // default: '2" EMT'
+  pcsCurrentSetting?: number  // default: 200
 }
 
 // Text width estimation: ~0.52 * fontSize * charCount for Arial
@@ -249,7 +261,7 @@ export function calculateSldLayout(config: SldConfig): SldLayout {
     // Roof array wiring label
     const afterStringsY = stringsTopY + stringsForInv.length * stringRowH + 5
     elements.push({ type: 'text', x: stringsBaseX, y: afterStringsY, text: 'ROOF ARRAY WIRING', fontSize: 5.5, fill: '#444', italic: true })
-    elements.push({ type: 'text', x: stringsBaseX + 10, y: afterStringsY + 10, text: '#10 AWG CU PV WIRE, 3/4" EMT TYPE CONDUIT', fontSize: 5, fill: '#444', italic: true })
+    elements.push({ type: 'text', x: stringsBaseX + 10, y: afterStringsY + 10, text: `${config.dcStringWire ?? '#10 AWG CU PV WIRE'}, ${config.dcConduit ?? '3/4" EMT TYPE CONDUIT'}`, fontSize: 5, fill: '#444', italic: true })
 
     // Junction box — centered under string arrays
     const jbW = 65, jbBoxH = 24
@@ -259,9 +271,9 @@ export function calculateSldLayout(config: SldConfig): SldLayout {
 
     // Wire from JB to DC disconnect
     elements.push({ type: 'line', x1: invCenterX, y1: jbY + jbH + 5, x2: invCenterX, y2: dcDiscY - 15, strokeWidth: 1.5 })
-    elements.push({ type: 'text', x: invCenterX + 8, y: dcDiscY - 30, text: '(2) #10 AWG CU THWN-2', fontSize: 5, fill: '#444', italic: true })
-    elements.push({ type: 'text', x: invCenterX + 8, y: dcDiscY - 22, text: '(1) #6 AWG BARE CU EGC', fontSize: 5, fill: '#444', italic: true })
-    elements.push({ type: 'text', x: invCenterX + 8, y: dcDiscY - 14, text: '3/4" EMT TYPE CONDUIT', fontSize: 5, fill: '#444', italic: true })
+    elements.push({ type: 'text', x: invCenterX + 8, y: dcDiscY - 30, text: config.dcHomerunWire ?? '(2) #10 AWG CU THWN-2', fontSize: 5, fill: '#444', italic: true })
+    elements.push({ type: 'text', x: invCenterX + 8, y: dcDiscY - 22, text: config.dcEgc ?? '(1) #6 AWG BARE CU EGC', fontSize: 5, fill: '#444', italic: true })
+    elements.push({ type: 'text', x: invCenterX + 8, y: dcDiscY - 14, text: config.dcHomerunConduit ?? '3/4" EMT TYPE CONDUIT', fontSize: 5, fill: '#444', italic: true })
 
     // DC Disconnect
     elements.push({ type: 'disconnect', x: invCenterX, y: dcDiscY, label: '(N) DC DISCONNECT' })
@@ -297,8 +309,8 @@ export function calculateSldLayout(config: SldConfig): SldLayout {
     elements.push({ type: 'line', x1: invX, y1: invTopY + invSize.h / 2, x2: battX + battStackSize.w, y2: invTopY + invSize.h / 2, strokeWidth: 1.5 })
     // Wire labels centered between battery box and inverter
     const battWireMidX = battX + battStackSize.w + (invX - battX - battStackSize.w) / 2
-    elements.push({ type: 'text', x: battWireMidX, y: invTopY + invSize.h / 2 - 8, text: '(2) #4/0 AWG', fontSize: 4.5, anchor: 'middle', fill: '#444', italic: true })
-    elements.push({ type: 'text', x: battWireMidX, y: invTopY + invSize.h / 2 + 12, text: '2" EMT', fontSize: 4.5, anchor: 'middle', fill: '#444', italic: true })
+    elements.push({ type: 'text', x: battWireMidX, y: invTopY + invSize.h / 2 - 8, text: config.batteryWire ?? '(2) #4/0 AWG', fontSize: 4.5, anchor: 'middle', fill: '#444', italic: true })
+    elements.push({ type: 'text', x: battWireMidX, y: invTopY + invSize.h / 2 + 12, text: config.batteryConduit ?? '2" EMT', fontSize: 4.5, anchor: 'middle', fill: '#444', italic: true })
     elements.push({ type: 'rect', x: battX, y: battY, w: battStackSize.w, h: battStackSize.h, strokeWidth: 1.5 })
     battStackLines.forEach((line, i) => {
       elements.push({
@@ -327,16 +339,16 @@ export function calculateSldLayout(config: SldConfig): SldLayout {
 
     // AC output from inverter
     elements.push({ type: 'line', x1: invCenterX, y1: invTopY + invSize.h, x2: invCenterX, y2: acDiscY - 15, strokeWidth: 1.5 })
-    elements.push({ type: 'text', x: invCenterX + 8, y: invTopY + invSize.h + 12, text: '#6 AWG CU THWN-2', fontSize: 5, fill: '#444', italic: true })
+    elements.push({ type: 'text', x: invCenterX + 8, y: invTopY + invSize.h + 12, text: config.acInverterWire ?? '#6 AWG CU THWN-2', fontSize: 5, fill: '#444', italic: true })
 
     // AC Disconnect
     elements.push({ type: 'disconnect', x: invCenterX, y: acDiscY, label: '(N) AC DISCONNECT, 200A/2P, 240V' })
 
     // Wire from AC disconnect to bus
     elements.push({ type: 'line', x1: invCenterX, y1: acDiscY + 10, x2: invCenterX, y2: busY, strokeWidth: 1.5 })
-    elements.push({ type: 'text', x: invCenterX + 8, y: acDiscY + 22, text: '(2) #4 AWG CU THWN-2', fontSize: 5, fill: '#444', italic: true })
+    elements.push({ type: 'text', x: invCenterX + 8, y: acDiscY + 22, text: config.acToPanelWire ?? '(2) #4 AWG CU THWN-2', fontSize: 5, fill: '#444', italic: true })
     elements.push({ type: 'text', x: invCenterX + 8, y: acDiscY + 30, text: '(1) #8 AWG CU EGC', fontSize: 5, fill: '#444', italic: true })
-    elements.push({ type: 'text', x: invCenterX + 8, y: acDiscY + 38, text: '1-1/4" EMT TYPE CONDUIT', fontSize: 5, fill: '#444', italic: true })
+    elements.push({ type: 'text', x: invCenterX + 8, y: acDiscY + 38, text: config.acConduit ?? '1-1/4" EMT TYPE CONDUIT', fontSize: 5, fill: '#444', italic: true })
 
     // Backfeed breaker
     elements.push({ type: 'breaker', x: invCenterX, y: busY - 5, label: '(N) 100A BACKFEED', amps: 'BREAKER' })
@@ -436,7 +448,7 @@ export function calculateSldLayout(config: SldConfig): SldLayout {
     `5. BATTERY SYSTEM: (${config.batteryCount}) ${config.batteryModel.toUpperCase()}, ${config.totalStorageKwh} kWh TOTAL.`,
     `6. RACKING: ${config.rackingModel.toUpperCase()}.`,
     '7. ALL WORK SHALL BE IN ACCORD WITH THE 2020 NEC WITH SPECIAL EMPHASIS ON ARTICLE 690.',
-    'NOTE: PCS CONTROLLED CURRENT SETTING: 200A.',
+    `NOTE: PCS CONTROLLED CURRENT SETTING: ${config.pcsCurrentSetting ?? 200}A.`,
     'NOTE: STRING CALCULATIONS REQUIRE PE REVIEW BEFORE PERMITTING.',
   ]
   noteLines.forEach((line, i) => {

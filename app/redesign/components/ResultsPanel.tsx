@@ -303,14 +303,31 @@ export function ResultsPanel({ existing, target, results }: ResultsPanelProps) {
             <FileDown className="w-3.5 h-3.5" />
             Print / Save as PDF
           </button>
-          <a
-            href="/planset"
-            target="_blank"
+          <button
+            onClick={() => {
+              // Bridge redesign results to planset via sessionStorage
+              const projectId = existing.projectName.match(/PROJ-\d+/)?.[0] ?? existing.projectName
+              sessionStorage.setItem(`planset:redesign`, JSON.stringify({
+                existing,
+                target,
+                results,
+                strings: results.stringConfigs.map((sc, i) => ({
+                  id: i + 1,
+                  mppt: sc.mppt,
+                  modules: sc.modules,
+                  roofFace: sc.roofFaceIndex >= 0 ? sc.roofFaceIndex + 1 : 1,
+                  vocCold: sc.vocCold,
+                  vmpNominal: sc.vmpNominal,
+                  current: sc.current,
+                })),
+              }))
+              window.open(`/planset?project=${encodeURIComponent(projectId)}&fromRedesign=1`, '_blank')
+            }}
             className="text-xs text-amber-400 hover:text-amber-300 border border-amber-700 hover:border-amber-500 rounded-md px-3 py-1.5 transition-colors flex items-center gap-1.5 font-medium"
           >
             <FileDown className="w-3.5 h-3.5" />
-            View Full Plan Set (6 Sheets)
-          </a>
+            Generate Plan Set (6 Sheets)
+          </button>
           <a
             href="/batch"
             target="_blank"

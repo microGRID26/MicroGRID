@@ -1,75 +1,42 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Nav } from '@/components/Nav'
 import { calculateSldLayout } from '@/lib/sld-layout'
 import { SldRenderer } from '@/components/SldRenderer'
 import { useCurrentUser } from '@/lib/useCurrentUser'
+import { loadProjectById, searchProjects } from '@/lib/api'
+import { buildPlansetData, DURACELL_DEFAULTS, MICROGRID_CONTRACTOR } from '@/lib/planset-types'
+import type { PlansetData, PlansetOverrides, PlansetString } from '@/lib/planset-types'
+import type { Project } from '@/types/database'
+import { Search, ChevronDown, ChevronUp, X, Loader2, FileText } from 'lucide-react'
 
-// ── HARDCODED PROJECT DATA (PROJ-29857) ─────────────────────────────────────
+// ── AUTO-STRING DISTRIBUTION ────────────────────────────────────────────────
 
-const PROJECT = {
-  id: 'PROJ-29857',
-  owner: 'MIGUEL AGUILERA',
-  address: '7822 Brooks Crossing Dr, Baytown TX 77521',
-  city: 'Baytown',
-  state: 'TX',
-  zip: '77521',
-  panelModel: 'AMP 410W Domestic',
-  panelWattage: 410,
-  panelCount: 53,
-  panelVoc: 37.4,
-  panelVmp: 31.3,
-  panelIsc: 14.0,
-  panelImp: 13.1,
-  systemDcKw: 21.73,
-  systemAcKw: 30.0,
-  inverterModel: 'Duracell Power Center Max Hybrid 15kW',
-  inverterCount: 2,
-  inverterAcPower: 15, // kW per inverter
-  batteryModel: 'Duracell 5kWh LFP',
-  batteryCount: 16,
-  batteryCapacity: 5, // kWh each
-  totalStorageKwh: 80,
-  rackingModel: 'IronRidge XR100',
-  roofType: 'COMP SHINGLE',
-  rafterSize: '2x8 @ 24 OC',
-  stories: 1,
-  buildingType: 'Type V-B',
-  occupancy: 'R',
-  windSpeed: 150,
-  riskCategory: 'II',
-  exposure: 'B',
-  utility: 'CenterPoint Energy',
-  meter: '88 353 523',
-  esid: '1008901020901254810117',
-  contractor: 'MicroGRID Energy',
-  contractorAddress: '15200 E Hardy Rd',
-  contractorCity: 'Houston, TX 77060',
-  contractorPhone: '(888) 485-5551',
-  contractorLicense: '32259',
-  contractorEmail: 'engineering@microgridenergy.com',
-  // Existing system
-  existingPanelModel: 'Silfab SIL-370 HC',
-  existingPanelWattage: 370,
-  existingPanelCount: 20,
-  existingInverterModel: 'Enphase IQ7PLUS',
-  existingInverterCount: 20,
-  // String configurations: 5 strings (3x11, 2x10)
-  strings: [
-    { id: 1, mppt: 1, modules: 9, roofFace: 1 },
-    { id: 2, mppt: 2, modules: 9, roofFace: 1 },
-    { id: 3, mppt: 3, modules: 9, roofFace: 1 },
-    { id: 4, mppt: 4, modules: 9, roofFace: 2 },
-    { id: 5, mppt: 5, modules: 9, roofFace: 2 },
-    { id: 6, mppt: 6, modules: 8, roofFace: 3 },
-  ],
+function autoDistributeStrings(panelCount: number, vocCorrected: number, panelVmp: number, panelImp: number, inverterCount: number, mpptsPerInverter: number, stringsPerMppt: number, maxVoc: number): PlansetString[] {
+  const totalInputs = inverterCount * mpptsPerInverter * stringsPerMppt
+  const maxPerString = Math.floor(maxVoc / vocCorrected)
+  const neededStrings = Math.min(Math.ceil(panelCount / (maxPerString || 1)), totalInputs)
+  if (neededStrings <= 0) return []
+  const baseSize = Math.floor(panelCount / neededStrings)
+  const extra = panelCount % neededStrings
+
+  const strings: PlansetString[] = []
+  for (let i = 0; i < neededStrings; i++) {
+    const modules = baseSize + (i < extra ? 1 : 0)
+    strings.push({
+      id: i + 1,
+      mppt: Math.floor(i / stringsPerMppt) + 1,
+      modules,
+      roofFace: 1,
+      vocCold: parseFloat((modules * vocCorrected).toFixed(1)),
+      vmpNominal: parseFloat((modules * panelVmp).toFixed(1)),
+      current: panelImp,
+    })
+  }
+  return strings
 }
-
-// Computed values
-const VOC_COLD = PROJECT.panelVoc * 1.14 // correction for -5C
-const STRING_VOCS = PROJECT.strings.map(s => s.modules * VOC_COLD)
-const STRING_VMPS = PROJECT.strings.map(s => s.modules * PROJECT.panelVmp)
 
 // ── DATE HELPER ─────────────────────────────────────────────────────────────
 
@@ -94,7 +61,7 @@ function DrawingBorder() {
   )
 }
 
-function TitleBlock({ sheetName, sheetNumber }: { sheetName: string; sheetNumber: string }) {
+function TitleBlock({ sheetName, sheetNumber, data }: { sheetName: string; sheetNumber: string; data: PlansetData }) {
   const bx = SHEET_W - 330 // block X
   const by = SHEET_H - 130 // block Y
   const bw = 310
@@ -111,31 +78,31 @@ function TitleBlock({ sheetName, sheetNumber }: { sheetName: string; sheetNumber
       {/* Vertical divider for stamp area */}
       <line x1={bx + 155} y1={by + 55} x2={bx + 155} y2={by + 80} stroke="#111" strokeWidth="0.5" />
       {/* Contractor */}
-      <text x={bx + 5} y={by + 12} fontSize="7" fontWeight="bold" fill="#111">{PROJECT.contractor}</text>
-      <text x={bx + 5} y={by + 22} fontSize="5.5" fill="#333">{PROJECT.contractorAddress}, {PROJECT.contractorCity}</text>
-      <text x={bx + 200} y={by + 12} fontSize="5.5" fill="#333">Ph: {PROJECT.contractorPhone}</text>
-      <text x={bx + 200} y={by + 22} fontSize="5.5" fill="#333">Lic# {PROJECT.contractorLicense}</text>
+      <text x={bx + 5} y={by + 12} fontSize="7" fontWeight="bold" fill="#111">{data.contractor.name}</text>
+      <text x={bx + 5} y={by + 22} fontSize="5.5" fill="#333">{data.contractor.address}, {data.contractor.city}</text>
+      <text x={bx + 200} y={by + 12} fontSize="5.5" fill="#333">Ph: {data.contractor.phone}</text>
+      <text x={bx + 200} y={by + 22} fontSize="5.5" fill="#333">Lic# {data.contractor.license}</text>
       {/* Project info */}
-      <text x={bx + 5} y={by + 42} fontSize="6.5" fontWeight="bold" fill="#111">{PROJECT.id} {PROJECT.owner}</text>
-      <text x={bx + 5} y={by + 52} fontSize="5.5" fill="#333">{PROJECT.address}</text>
+      <text x={bx + 5} y={by + 42} fontSize="6.5" fontWeight="bold" fill="#111">{data.projectId} {data.owner}</text>
+      <text x={bx + 5} y={by + 52} fontSize="5.5" fill="#333">{data.address}</text>
       {/* Engineer stamp area */}
       <text x={bx + 160} y={by + 65} fontSize="5" fill="#999">ENGINEER&apos;S STAMP</text>
       <rect x={bx + 158} y={by + 57} width="148" height="21" fill="none" stroke="#ccc" strokeWidth="0.5" strokeDasharray="2,2" />
       {/* Drawn info */}
       <text x={bx + 5} y={by + 68} fontSize="5.5" fill="#333">DRAWN BY: MicroGRID</text>
-      <text x={bx + 5} y={by + 76} fontSize="5.5" fill="#333">DATE: {today()}</text>
+      <text x={bx + 5} y={by + 76} fontSize="5.5" fill="#333">DATE: {data.drawnDate}</text>
       {/* Sheet name */}
       <text x={bx + 5} y={by + 92} fontSize="8" fontWeight="bold" fill="#111">{sheetName}</text>
       {/* Sheet number */}
       <text x={bx + 5} y={by + 112} fontSize="14" fontWeight="bold" fill="#111">{sheetNumber}</text>
-      <text x={bx + 65} y={by + 112} fontSize="7" fill="#333">of 6</text>
+      <text x={bx + 65} y={by + 112} fontSize="7" fill="#333">of {data.sheetTotal}</text>
     </g>
   )
 }
 
 // ── SHEET PV-1: COVER PAGE ──────────────────────────────────────────────────
 
-function SheetPV1() {
+function SheetPV1({ data }: { data: PlansetData }) {
   const generalNotes = [
     '1. ALL WORK SHALL COMPLY WITH THE LATEST EDITION OF THE NEC (NFPA 70) AND ALL APPLICABLE LOCAL CODES.',
     '2. ALL WIRING METHODS AND MATERIALS SHALL COMPLY WITH NEC ARTICLES 690, 705, AND 706.',
@@ -204,6 +171,13 @@ function SheetPV1() {
     ['PV-7.1', 'EQUIPMENT PLACARDS'],
   ]
 
+  // Build string config summary
+  const stringGroups: Record<number, number> = {}
+  for (const s of data.strings) {
+    stringGroups[s.modules] = (stringGroups[s.modules] || 0) + 1
+  }
+  const storiesLabel = data.stories === 1 ? 'ONE' : String(data.stories)
+
   return (
     <svg viewBox={`0 0 ${SHEET_W} ${SHEET_H}`} className="w-full bg-white" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
       <rect width={SHEET_W} height={SHEET_H} fill="white" />
@@ -211,10 +185,10 @@ function SheetPV1() {
 
       {/* ── TITLE ── */}
       <text x="25" y="35" fontSize="14" fontWeight="bold" fill="#111">
-        ROOF INSTALLATION OF {PROJECT.systemDcKw.toFixed(2)} KW DC PHOTOVOLTAIC SYSTEM
+        ROOF INSTALLATION OF {data.systemDcKw.toFixed(2)} KW DC PHOTOVOLTAIC SYSTEM
       </text>
       <text x="25" y="50" fontSize="9" fill="#333">
-        WITH {PROJECT.totalStorageKwh} KWH BATTERY ENERGY STORAGE SYSTEM
+        WITH {data.totalStorageKwh} KWH BATTERY ENERGY STORAGE SYSTEM
       </text>
 
       {/* ── PROJECT DATA BOX ── */}
@@ -226,25 +200,25 @@ function SheetPV1() {
         let y = 98
         const ls = 13
         const items = [
-          ['PROJECT:', `${PROJECT.id} ${PROJECT.owner}`],
-          ['ADDRESS:', PROJECT.address],
+          ['PROJECT:', `${data.projectId} ${data.owner}`],
+          ['ADDRESS:', data.address],
           ['', ''],
-          ['SYSTEM SIZE:', `${PROJECT.systemDcKw.toFixed(2)} kWDC / ${PROJECT.systemAcKw.toFixed(3)} kWAC`],
-          ['PV MODULES:', `(${PROJECT.panelCount}) ${PROJECT.panelModel}`],
-          ['INVERTERS:', `(${PROJECT.inverterCount}) ${PROJECT.inverterModel}`],
-          ['BATTERIES:', `(${PROJECT.batteryCount}) ${PROJECT.batteryModel} = ${PROJECT.totalStorageKwh} kWh`],
+          ['SYSTEM SIZE:', `${data.systemDcKw.toFixed(2)} kWDC / ${data.systemAcKw.toFixed(3)} kWAC`],
+          ['PV MODULES:', `(${data.panelCount}) ${data.panelModel}`],
+          ['INVERTERS:', `(${data.inverterCount}) ${data.inverterModel}`],
+          ['BATTERIES:', `(${data.batteryCount}) ${data.batteryModel} = ${data.totalStorageKwh} kWh`],
           ['', ''],
-          ['RACKING:', PROJECT.rackingModel],
+          ['RACKING:', data.rackingModel],
           ['INTERCONNECTION:', 'UTILITY INTERCONNECTION'],
-          ['UTILITY:', PROJECT.utility],
-          ['METER #:', PROJECT.meter],
-          ['ESID:', PROJECT.esid],
+          ['UTILITY:', data.utility],
+          ['METER #:', data.meter],
+          ['ESID:', data.esid],
           ['', ''],
-          ['BUILDING:', `${PROJECT.stories === 1 ? 'ONE' : PROJECT.stories} STORY BUILDING`],
-          ['CONSTRUCTION:', `${PROJECT.buildingType}, Occupancy ${PROJECT.occupancy}`],
-          ['ROOF:', `${PROJECT.roofType}, ${PROJECT.rafterSize}`],
-          ['WIND SPEED:', `${PROJECT.windSpeed} MPH, Risk Cat ${PROJECT.riskCategory}`],
-          ['EXPOSURE:', PROJECT.exposure],
+          ['BUILDING:', `${storiesLabel} STORY BUILDING`],
+          ['CONSTRUCTION:', `${data.buildingType}, Occupancy ${data.occupancy}`],
+          ['ROOF:', `${data.roofType}, ${data.rafterSize}`],
+          ['WIND SPEED:', `${data.windSpeed} MPH, Risk Cat ${data.riskCategory}`],
+          ['EXPOSURE:', data.exposure],
         ]
         return items.map(([label, value], i) => {
           if (!label && !value) { y += 5; return null }
@@ -260,15 +234,19 @@ function SheetPV1() {
       })()}
 
       {/* ── EXISTING SYSTEM BOX ── */}
-      <rect x="25" y="385" width="340" height="70" fill="none" stroke="#111" strokeWidth="1" />
-      <rect x="25" y="385" width="340" height="18" fill="#555" />
-      <text x="195" y="398" fontSize="8" fontWeight="bold" fill="white" textAnchor="middle">EXISTING SYSTEM (TO REMAIN)</text>
-      <text x="32" y="418" fontSize="6" fontWeight="bold" fill="#111">PV MODULES:</text>
-      <text x="110" y="418" fontSize="6" fill="#333">({PROJECT.existingPanelCount}) {PROJECT.existingPanelModel} ({PROJECT.existingPanelWattage}W)</text>
-      <text x="32" y="431" fontSize="6" fontWeight="bold" fill="#111">INVERTERS:</text>
-      <text x="110" y="431" fontSize="6" fill="#333">({PROJECT.existingInverterCount}) {PROJECT.existingInverterModel}</text>
-      <text x="32" y="444" fontSize="6" fontWeight="bold" fill="#111">EXISTING DC:</text>
-      <text x="110" y="444" fontSize="6" fill="#333">{(PROJECT.existingPanelCount * PROJECT.existingPanelWattage / 1000).toFixed(2)} kW</text>
+      {data.existingPanelModel && (
+        <>
+          <rect x="25" y="385" width="340" height="70" fill="none" stroke="#111" strokeWidth="1" />
+          <rect x="25" y="385" width="340" height="18" fill="#555" />
+          <text x="195" y="398" fontSize="8" fontWeight="bold" fill="white" textAnchor="middle">EXISTING SYSTEM (TO REMAIN)</text>
+          <text x="32" y="418" fontSize="6" fontWeight="bold" fill="#111">PV MODULES:</text>
+          <text x="110" y="418" fontSize="6" fill="#333">({data.existingPanelCount ?? 0}) {data.existingPanelModel} ({data.existingPanelWattage ?? 0}W)</text>
+          <text x="32" y="431" fontSize="6" fontWeight="bold" fill="#111">INVERTERS:</text>
+          <text x="110" y="431" fontSize="6" fill="#333">({data.existingInverterCount ?? 0}) {data.existingInverterModel}</text>
+          <text x="32" y="444" fontSize="6" fontWeight="bold" fill="#111">EXISTING DC:</text>
+          <text x="110" y="444" fontSize="6" fill="#333">{((data.existingPanelCount ?? 0) * (data.existingPanelWattage ?? 0) / 1000).toFixed(2)} kW</text>
+        </>
+      )}
 
       {/* ── GENERAL NOTES ── */}
       <rect x="385" y="65" width="345" height="360" fill="none" stroke="#111" strokeWidth="1" />
@@ -324,67 +302,68 @@ function SheetPV1() {
       <rect x="750" y="65" width="330" height="100" fill="none" stroke="#111" strokeWidth="1" />
       <rect x="750" y="65" width="330" height="18" fill="#111" />
       <text x="915" y="78" fontSize="8" fontWeight="bold" fill="white" textAnchor="middle">CONTRACTOR</text>
-      <text x="757" y="98" fontSize="7" fontWeight="bold" fill="#111">{PROJECT.contractor}</text>
-      <text x="757" y="111" fontSize="6" fill="#333">{PROJECT.contractorAddress}</text>
-      <text x="757" y="122" fontSize="6" fill="#333">{PROJECT.contractorCity}</text>
-      <text x="757" y="133" fontSize="6" fill="#333">Phone: {PROJECT.contractorPhone}</text>
-      <text x="757" y="144" fontSize="6" fill="#333">License# {PROJECT.contractorLicense}</text>
-      <text x="757" y="155" fontSize="6" fill="#333">{PROJECT.contractorEmail}</text>
+      <text x="757" y="98" fontSize="7" fontWeight="bold" fill="#111">{data.contractor.name}</text>
+      <text x="757" y="111" fontSize="6" fill="#333">{data.contractor.address}</text>
+      <text x="757" y="122" fontSize="6" fill="#333">{data.contractor.city}</text>
+      <text x="757" y="133" fontSize="6" fill="#333">Phone: {data.contractor.phone}</text>
+      <text x="757" y="144" fontSize="6" fill="#333">License# {data.contractor.license}</text>
+      <text x="757" y="155" fontSize="6" fill="#333">{data.contractor.email}</text>
 
-      <TitleBlock sheetName="COVER PAGE & GENERAL NOTES" sheetNumber="PV-1" />
+      <TitleBlock sheetName="COVER PAGE & GENERAL NOTES" sheetNumber="PV-1" data={data} />
     </svg>
   )
 }
 
 // ── SHEET PV-5: SINGLE LINE DIAGRAM ─────────────────────────────────────────
 
-function SheetPV5() {
-  const battsPerStack = PROJECT.batteryCount / PROJECT.inverterCount
-
+function SheetPV5({ data }: { data: PlansetData }) {
   const config = {
-    projectName: PROJECT.owner,
-    address: PROJECT.address,
-    panelModel: PROJECT.panelModel,
-    panelWattage: PROJECT.panelWattage,
-    panelCount: PROJECT.panelCount,
-    inverterModel: PROJECT.inverterModel,
-    inverterCount: PROJECT.inverterCount,
-    inverterAcKw: PROJECT.inverterAcPower,
-    maxPvPower: 19500,
-    mpptsPerInverter: 3,
-    stringsPerMppt: 2,
-    maxCurrentPerMppt: 26,
-    batteryModel: PROJECT.batteryModel,
-    batteryCount: PROJECT.batteryCount,
-    batteryCapacity: PROJECT.batteryCapacity,
-    batteriesPerStack: battsPerStack,
-    rackingModel: PROJECT.rackingModel,
-    strings: PROJECT.strings.map(s => ({
+    projectName: data.owner,
+    address: data.address,
+    panelModel: data.panelModel,
+    panelWattage: data.panelWattage,
+    panelCount: data.panelCount,
+    inverterModel: data.inverterModel,
+    inverterCount: data.inverterCount,
+    inverterAcKw: data.inverterAcPower,
+    maxPvPower: data.maxPvPower,
+    mpptsPerInverter: data.mpptsPerInverter,
+    stringsPerMppt: data.stringsPerMppt,
+    maxCurrentPerMppt: data.maxCurrentPerMppt,
+    batteryModel: data.batteryModel,
+    batteryCount: data.batteryCount,
+    batteryCapacity: data.batteryCapacity,
+    batteriesPerStack: data.batteriesPerStack,
+    rackingModel: data.rackingModel,
+    strings: data.strings.map(s => ({
       id: s.id,
       modules: s.modules,
       roofFace: s.roofFace,
-      vocCold: s.modules * VOC_COLD,
-      vmp: s.modules * PROJECT.panelVmp,
-      imp: PROJECT.panelImp,
+      vocCold: s.vocCold,
+      vmp: s.vmpNominal,
+      imp: s.current,
     })),
-    stringsPerInverter: [
-      [0, 1, 2],
-      [3, 4, 5],
-    ],
-    meter: PROJECT.meter,
-    esid: PROJECT.esid,
-    utility: PROJECT.utility,
-    systemDcKw: PROJECT.systemDcKw,
-    systemAcKw: PROJECT.systemAcKw,
-    totalStorageKwh: PROJECT.totalStorageKwh,
-    existingPanels: `(${PROJECT.existingPanelCount}) ${PROJECT.existingPanelModel} (${PROJECT.existingPanelWattage}W)`,
-    existingInverters: `(${PROJECT.existingInverterCount}) ${PROJECT.existingInverterModel} (240V)`,
-    existingDcKw: PROJECT.existingPanelCount * PROJECT.existingPanelWattage / 1000,
-    contractor: PROJECT.contractor,
-    contractorAddress: `${PROJECT.contractorAddress}, ${PROJECT.contractorCity}`,
-    contractorPhone: PROJECT.contractorPhone,
-    contractorLicense: PROJECT.contractorLicense,
-    contractorEmail: PROJECT.contractorEmail,
+    stringsPerInverter: data.stringsPerInverter,
+    meter: data.meter,
+    esid: data.esid,
+    utility: data.utility,
+    systemDcKw: data.systemDcKw,
+    systemAcKw: data.systemAcKw,
+    totalStorageKwh: data.totalStorageKwh,
+    existingPanels: data.existingPanelModel
+      ? `(${data.existingPanelCount ?? 0}) ${data.existingPanelModel} (${data.existingPanelWattage ?? 0}W)`
+      : undefined,
+    existingInverters: data.existingInverterModel
+      ? `(${data.existingInverterCount ?? 0}) ${data.existingInverterModel} (240V)`
+      : undefined,
+    existingDcKw: data.existingPanelCount && data.existingPanelWattage
+      ? (data.existingPanelCount * data.existingPanelWattage) / 1000
+      : undefined,
+    contractor: data.contractor.name,
+    contractorAddress: `${data.contractor.address}, ${data.contractor.city}`,
+    contractorPhone: data.contractor.phone,
+    contractorLicense: data.contractor.license,
+    contractorEmail: data.contractor.email,
   }
 
   const layout = calculateSldLayout(config)
@@ -393,14 +372,21 @@ function SheetPV5() {
 
 // ── SHEET PV-5.1: PCS LABELS ────────────────────────────────────────────────
 
-function SheetPV51() {
-  // Per-string Voc calculations
-  const string11Voc = (11 * PROJECT.panelVoc).toFixed(1)
-  const string10Voc = (10 * PROJECT.panelVoc).toFixed(1)
-  const string9VocCold = (9 * VOC_COLD).toFixed(1)
-  const string8VocCold = (8 * VOC_COLD).toFixed(1)
-  const maxStringVoc = Math.max(...STRING_VOCS).toFixed(1)
-  const totalAcAmps = (PROJECT.inverterAcPower * 1000 / 240).toFixed(1)
+function SheetPV51({ data }: { data: PlansetData }) {
+  const maxStringVocCold = data.strings.length > 0
+    ? Math.max(...data.strings.map(s => s.vocCold)).toFixed(1)
+    : '0.0'
+  const totalAcAmps = (data.inverterAcPower * 1000 / 240).toFixed(1)
+
+  // Build dynamic string description
+  const stringGroups: Record<number, number> = {}
+  for (const s of data.strings) {
+    stringGroups[s.modules] = (stringGroups[s.modules] || 0) + 1
+  }
+  const stringDesc = Object.entries(stringGroups)
+    .sort(([, a], [, b]) => b - a)
+    .map(([mods, count]) => `${count}x ${mods}-MODULE (Voc=${(parseInt(mods) * data.vocCorrected).toFixed(1)}V)`)
+    .join(' + ')
 
   interface LabelDef {
     title: string
@@ -423,11 +409,11 @@ function SheetPV51() {
         '',
         'THIS EQUIPMENT IS SUPPLIED BY TWO POWER SOURCES:',
         '1. UTILITY GRID (240V AC, SINGLE PHASE)',
-        `2. PHOTOVOLTAIC SYSTEM (${PROJECT.systemDcKw.toFixed(2)} kW DC)`,
-        `3. BATTERY ENERGY STORAGE (${PROJECT.totalStorageKwh} kWh)`,
+        `2. PHOTOVOLTAIC SYSTEM (${data.systemDcKw.toFixed(2)} kW DC)`,
+        `3. BATTERY ENERGY STORAGE (${data.totalStorageKwh} kWh)`,
         '',
-        `INVERTER: (${PROJECT.inverterCount}) ${PROJECT.inverterModel}`,
-        `RATED AC OUTPUT: ${PROJECT.inverterAcPower} kW PER UNIT, ${PROJECT.systemAcKw} kW TOTAL`,
+        `INVERTER: (${data.inverterCount}) ${data.inverterModel}`,
+        `RATED AC OUTPUT: ${data.inverterAcPower} kW PER UNIT, ${data.systemAcKw} kW TOTAL`,
         `RATED AC CURRENT: ${totalAcAmps}A @ 240V PER UNIT`,
       ],
     },
@@ -440,7 +426,7 @@ function SheetPV51() {
         '',
         'VOLTAGE: 240V AC, SINGLE PHASE',
         `MAX AC CURRENT: ${totalAcAmps}A PER INVERTER`,
-        `TOTAL AC CURRENT: ${(parseFloat(totalAcAmps) * PROJECT.inverterCount).toFixed(1)}A`,
+        `TOTAL AC CURRENT: ${(parseFloat(totalAcAmps) * data.inverterCount).toFixed(1)}A`,
         'DISCONNECT RATING: 200A, NEMA 3R',
         'CAUTION: TURN OFF AC DISCONNECT BEFORE SERVICING INVERTER',
       ],
@@ -452,11 +438,11 @@ function SheetPV51() {
       lines: [
         'DC DISCONNECT — PHOTOVOLTAIC SYSTEM',
         '',
-        `MAXIMUM SYSTEM VOLTAGE (Voc @ -5°C): ${maxStringVoc}V DC`,
-        `MAXIMUM DC CURRENT: ${(PROJECT.panelIsc * 1.25).toFixed(1)}A (125% Isc)`,
-        `STRINGS: 5x 9-MODULE (Voc=${string9VocCold}V) + 1x 8-MODULE (Voc=${string8VocCold}V)`,
-        'CONDUCTOR: #10 AWG CU PV WIRE',
-        'CONDUIT: 3/4" EMT',
+        `MAXIMUM SYSTEM VOLTAGE (Voc @ -5°C): ${maxStringVocCold}V DC`,
+        `MAXIMUM DC CURRENT: ${(data.panelIsc * 1.25).toFixed(1)}A (125% Isc)`,
+        `STRINGS: ${stringDesc}`,
+        `CONDUCTOR: ${data.dcStringWire}`,
+        `CONDUIT: ${data.dcConduit}`,
         'WARNING: SHOCK HAZARD — DC CIRCUITS MAY BE ENERGIZED WHEN MODULES ARE EXPOSED TO LIGHT',
       ],
     },
@@ -467,9 +453,9 @@ function SheetPV51() {
       lines: [
         'WARNING: SOLAR PHOTOVOLTAIC SYSTEM CONNECTED',
         '',
-        `SOLAR SYSTEM: ${PROJECT.systemDcKw.toFixed(2)} kW DC / ${PROJECT.systemAcKw} kW AC`,
-        `BATTERY STORAGE: ${PROJECT.totalStorageKwh} kWh`,
-        `PV BACKFEED BREAKER: (${PROJECT.inverterCount}) 100A, 240V`,
+        `SOLAR SYSTEM: ${data.systemDcKw.toFixed(2)} kW DC / ${data.systemAcKw} kW AC`,
+        `BATTERY STORAGE: ${data.totalStorageKwh} kWh`,
+        `PV BACKFEED BREAKER: (${data.inverterCount}) 100A, 240V`,
         'CAUTION: DO NOT EXCEED BUS RATING WHEN ADDING BREAKERS',
         'SEE NEC 705.12 FOR 120% BUS BAR RATING RULE',
       ],
@@ -481,10 +467,10 @@ function SheetPV51() {
       lines: [
         'NET METERING — PHOTOVOLTAIC SYSTEM',
         '',
-        `UTILITY: ${PROJECT.utility}`,
-        `METER: ${PROJECT.meter}`,
-        `ESID: ${PROJECT.esid}`,
-        `SYSTEM OUTPUT: ${PROJECT.systemAcKw} kW AC`,
+        `UTILITY: ${data.utility}`,
+        `METER: ${data.meter}`,
+        `ESID: ${data.esid}`,
+        `SYSTEM OUTPUT: ${data.systemAcKw} kW AC`,
       ],
     },
     {
@@ -495,8 +481,8 @@ function SheetPV51() {
       lines: [
         'WARNING: BATTERY ENERGY STORAGE SYSTEM',
         '',
-        `BATTERY: (${PROJECT.batteryCount}) ${PROJECT.batteryModel}`,
-        `TOTAL STORAGE: ${PROJECT.totalStorageKwh} kWh, LFP CHEMISTRY`,
+        `BATTERY: (${data.batteryCount}) ${data.batteryModel}`,
+        `TOTAL STORAGE: ${data.totalStorageKwh} kWh, LFP CHEMISTRY`,
         `NOMINAL VOLTAGE: 51.2V DC PER BATTERY`,
         '',
         'CAUTION: CHEMICAL HAZARD — LITHIUM IRON PHOSPHATE BATTERIES',
@@ -553,14 +539,14 @@ function SheetPV51() {
         </g>
       ))}
 
-      <TitleBlock sheetName="PCS LABELS" sheetNumber="PV-5.1" />
+      <TitleBlock sheetName="PCS LABELS" sheetNumber="PV-5.1" data={data} />
     </svg>
   )
 }
 
 // ── SHEET PV-6: WIRING CALCULATIONS ─────────────────────────────────────────
 
-function SheetPV6() {
+function SheetPV6({ data }: { data: PlansetData }) {
   // Wire resistance per 1000ft (ohms) for copper at 75C
   const wireResistance: Record<string, number> = {
     '#14': 3.14, '#12': 1.98, '#10': 1.24, '#8': 0.778, '#6': 0.491,
@@ -568,11 +554,11 @@ function SheetPV6() {
   }
 
   // String calculations
-  const strings = PROJECT.strings.map((s, i) => {
-    const voc = s.modules * PROJECT.panelVoc
-    const vocCold = s.modules * VOC_COLD
-    const vmp = s.modules * PROJECT.panelVmp
-    const isc = PROJECT.panelIsc
+  const strings = data.strings.map((s, i) => {
+    const voc = s.modules * data.panelVoc
+    const vocCold = s.vocCold
+    const vmp = s.vmpNominal
+    const isc = data.panelIsc
     const runFt = 100 // assumed
     const wireSize = '#10'
     const conductor125 = isc * 1.25
@@ -588,7 +574,7 @@ function SheetPV6() {
       isc: isc.toFixed(1),
       conductor125: conductor125.toFixed(1),
       wireSize,
-      conduit: '3/4" EMT',
+      conduit: data.dcConduit,
       runFt,
       vDrop: vDrop.toFixed(2),
       vDropPct: vDropPct.toFixed(2),
@@ -597,7 +583,7 @@ function SheetPV6() {
   })
 
   // AC calculation
-  const acCurrentPerInv = PROJECT.inverterAcPower * 1000 / 240
+  const acCurrentPerInv = data.inverterAcPower * 1000 / 240
   const acCurrent125 = acCurrentPerInv * 1.25
   const acRunFt = 50
   const acVDrop = (2 * acRunFt * acCurrentPerInv * wireResistance['#4']) / 1000
@@ -608,7 +594,7 @@ function SheetPV6() {
   const battCurrent125 = battCurrentPerStack * 1.25
 
   // OCPD
-  const stringFuseCalc = PROJECT.panelIsc * 1.56
+  const stringFuseCalc = data.panelIsc * 1.56
   const stringFuseSize = Math.ceil(stringFuseCalc / 5) * 5 // next 5A increment
 
   // Grounding
@@ -665,13 +651,13 @@ function SheetPV6() {
               <text key={i} x={[25, 100, 175, 265, 340, 420, 530, 580, 640, 710, 775][i]} y={acY + 26} fontSize="5.5" fontWeight="bold" fill="white">{h}</text>
             ))}
 
-            {PROJECT.strings.length > 0 && (
+            {data.strings.length > 0 && (
               <>
                 <rect x="25" y={acY + 15 + rowH} width="840" height={rowH} fill="#f9f9f9" stroke="#ddd" strokeWidth="0.5" />
                 {[
-                  `INV → PANEL (x${PROJECT.inverterCount})`, '240V AC', `${PROJECT.inverterAcPower} kW`,
+                  `INV → PANEL (x${data.inverterCount})`, '240V AC', `${data.inverterAcPower} kW`,
                   `${acCurrentPerInv.toFixed(1)}A`, `${acCurrent125.toFixed(1)}A`,
-                  '#4 AWG CU THWN-2', '1-1/4" EMT', `${acRunFt}`,
+                  data.acWireToPanel, data.acConduit, `${acRunFt}`,
                   `${acVDrop.toFixed(2)}V`, `${acVDropPct.toFixed(2)}%`,
                   acVDropPct < 3 ? 'PASS' : 'FAIL',
                 ].map((val, j) => (
@@ -690,13 +676,13 @@ function SheetPV6() {
             ))}
             <rect x="25" y={acY + 90 + rowH} width="840" height={rowH} fill="#f9f9f9" stroke="#ddd" strokeWidth="0.5" />
             {[
-              `BATT → INV (${PROJECT.batteryCount}x ${PROJECT.batteryModel})`,
+              `BATT → INV (${data.batteryCount}x ${data.batteryModel})`,
               '51.2V DC NOM',
-              `${PROJECT.totalStorageKwh} kWh TOTAL`,
+              `${data.totalStorageKwh} kWh TOTAL`,
               `${battCurrentPerStack.toFixed(1)}A`,
               `${battCurrent125.toFixed(1)}A`,
-              '#4/0 AWG CU THWN-2',
-              '2" EMT',
+              data.batteryWire,
+              data.batteryConduit,
             ].map((val, j) => (
               <text key={j} x={[25, 150, 265, 370, 470, 560, 700][j]}
                 y={acY + 90 + rowH + 11} fontSize="5.5" fill="#333">{val}</text>
@@ -709,9 +695,9 @@ function SheetPV6() {
               <text key={i} x={[25, 200, 420, 560, 700][i]} y={acY + 181} fontSize="5.5" fontWeight="bold" fill="white">{h}</text>
             ))}
             {[
-              ['STRING FUSE', `Isc × 1.56 = ${PROJECT.panelIsc} × 1.56`, `${stringFuseCalc.toFixed(1)}A`, `${stringFuseSize}A`, '600V DC'],
+              ['STRING FUSE', `Isc × 1.56 = ${data.panelIsc} × 1.56`, `${stringFuseCalc.toFixed(1)}A`, `${stringFuseSize}A`, '600V DC'],
               ['PV BREAKER (per INV)', 'Per inverter AC output rating', `${acCurrent125.toFixed(1)}A`, '100A', '240V AC'],
-              ['MAIN BREAKER', 'Per system total AC capacity', `${(acCurrent125 * PROJECT.inverterCount).toFixed(1)}A`, '200A', '240V AC'],
+              ['MAIN BREAKER', 'Per system total AC capacity', `${(acCurrent125 * data.inverterCount).toFixed(1)}A`, '200A', '240V AC'],
             ].map((row, i) => (
               <g key={i}>
                 <rect x="25" y={acY + 170 + rowH + i * rowH} width="840" height={rowH}
@@ -757,16 +743,29 @@ function SheetPV6() {
         )
       })()}
 
-      <TitleBlock sheetName="WIRING CALCULATIONS" sheetNumber="PV-6" />
+      <TitleBlock sheetName="WIRING CALCULATIONS" sheetNumber="PV-6" data={data} />
     </svg>
   )
 }
 
 // ── SHEET PV-7: WARNING LABELS ──────────────────────────────────────────────
 
-function SheetPV7() {
-  const maxVocCold = Math.max(...STRING_VOCS).toFixed(1)
-  const totalAcAmps = (PROJECT.inverterAcPower * 1000 / 240).toFixed(1)
+function SheetPV7({ data }: { data: PlansetData }) {
+  const maxVocCold = data.strings.length > 0
+    ? Math.max(...data.strings.map(s => s.vocCold)).toFixed(1)
+    : '0.0'
+  const totalAcAmps = (data.inverterAcPower * 1000 / 240).toFixed(1)
+
+  // Build dynamic string config summary
+  const stringGroups: Record<number, number> = {}
+  for (const s of data.strings) {
+    stringGroups[s.modules] = (stringGroups[s.modules] || 0) + 1
+  }
+  const stringConfigLabel = Object.entries(stringGroups)
+    .sort(([, a], [, b]) => b - a)
+    .map(([mods, count]) => `${count}x${mods}`)
+    .join(' + ')
+    + ' MODULES'
 
   interface WarningLabel {
     title: string
@@ -791,9 +790,9 @@ function SheetPV7() {
         'THIS ELECTRICAL PANEL IS SUPPLIED BY',
         'A SOLAR PHOTOVOLTAIC SYSTEM.',
         '',
-        `SYSTEM SIZE: ${PROJECT.systemDcKw.toFixed(2)} kW DC`,
-        `AC OUTPUT: ${PROJECT.systemAcKw} kW`,
-        `BATTERY: ${PROJECT.totalStorageKwh} kWh`,
+        `SYSTEM SIZE: ${data.systemDcKw.toFixed(2)} kW DC`,
+        `AC OUTPUT: ${data.systemAcKw} kW`,
+        `BATTERY: ${data.totalStorageKwh} kWh`,
       ],
     },
     {
@@ -836,12 +835,12 @@ function SheetPV7() {
         'PHOTOVOLTAIC POWER SOURCE',
         '',
         `MAX SYSTEM VOLTAGE (Voc COLD): ${maxVocCold}V DC`,
-        `MAX CIRCUIT CURRENT (Isc): ${PROJECT.panelIsc}A`,
-        `RATED OUTPUT: ${PROJECT.systemDcKw.toFixed(2)} kW DC`,
+        `MAX CIRCUIT CURRENT (Isc): ${data.panelIsc}A`,
+        `RATED OUTPUT: ${data.systemDcKw.toFixed(2)} kW DC`,
         '',
-        `MODULES: (${PROJECT.panelCount}) ${PROJECT.panelModel}`,
-        `STRINGS: 5×9 + 1×8 MODULES`,
-        `Voc PER MODULE: ${PROJECT.panelVoc}V`,
+        `MODULES: (${data.panelCount}) ${data.panelModel}`,
+        `STRINGS: ${stringConfigLabel}`,
+        `Voc PER MODULE: ${data.panelVoc}V`,
       ],
     },
     {
@@ -855,8 +854,8 @@ function SheetPV7() {
         'CHEMICAL HAZARD — LITHIUM IRON PHOSPHATE',
         'ELECTRICAL SHOCK HAZARD',
         '',
-        `(${PROJECT.batteryCount}) ${PROJECT.batteryModel}`,
-        `TOTAL: ${PROJECT.totalStorageKwh} kWh`,
+        `(${data.batteryCount}) ${data.batteryModel}`,
+        `TOTAL: ${data.totalStorageKwh} kWh`,
         'DO NOT EXPOSE TO FIRE OR EXTREME HEAT',
         'DO NOT SHORT CIRCUIT BATTERY TERMINALS',
       ],
@@ -901,9 +900,9 @@ function SheetPV7() {
       lines: [
         'POINT OF INTERCONNECTION',
         '',
-        `UTILITY: ${PROJECT.utility}`,
-        `METER: ${PROJECT.meter}`,
-        `SYSTEM: ${PROJECT.systemDcKw.toFixed(2)} kW DC / ${PROJECT.systemAcKw} kW AC`,
+        `UTILITY: ${data.utility}`,
+        `METER: ${data.meter}`,
+        `SYSTEM: ${data.systemDcKw.toFixed(2)} kW DC / ${data.systemAcKw} kW AC`,
         'INTERCONNECTION TYPE: UTILITY INTERACTIVE',
         'WITH BATTERY BACKUP',
       ],
@@ -960,14 +959,24 @@ function SheetPV7() {
       <text x="25" y="549" fontSize="6" fill="#333">3. WARNING LABELS WITH RED BORDERS SHALL USE REFLECTIVE OR HIGH-VISIBILITY MATERIALS.</text>
       <text x="25" y="561" fontSize="6" fill="#333">4. ALL LABELS SHALL BE LEGIBLE FROM A DISTANCE OF AT LEAST 3 FEET.</text>
 
-      <TitleBlock sheetName="WARNING LABELS" sheetNumber="PV-7" />
+      <TitleBlock sheetName="WARNING LABELS" sheetNumber="PV-7" data={data} />
     </svg>
   )
 }
 
 // ── SHEET PV-7.1: PLACARDS ──────────────────────────────────────────────────
 
-function SheetPV71() {
+function SheetPV71({ data }: { data: PlansetData }) {
+  // Build dynamic string config label
+  const stringGroups: Record<number, number> = {}
+  for (const s of data.strings) {
+    stringGroups[s.modules] = (stringGroups[s.modules] || 0) + 1
+  }
+  const stringConfigLabel = Object.entries(stringGroups)
+    .sort(([, a], [, b]) => b - a)
+    .map(([mods, count]) => `${count} STRINGS x ${mods}`)
+    .join(' + ')
+
   interface Placard {
     title: string
     x: number
@@ -982,15 +991,15 @@ function SheetPV71() {
       title: 'INVERTER PLACARD',
       x: 25, y: 70, w: 500, h: 190,
       rows: [
-        ['EQUIPMENT', `(${PROJECT.inverterCount}) ${PROJECT.inverterModel}`],
+        ['EQUIPMENT', `(${data.inverterCount}) ${data.inverterModel}`],
         ['MANUFACTURER', 'DURACELL / HUBBLE TECHNOLOGY'],
         ['TYPE', 'HYBRID INVERTER (PV + ESS)'],
-        ['RATED AC OUTPUT', `${PROJECT.inverterAcPower} kW PER UNIT (${PROJECT.systemAcKw} kW TOTAL)`],
+        ['RATED AC OUTPUT', `${data.inverterAcPower} kW PER UNIT (${data.systemAcKw} kW TOTAL)`],
         ['AC VOLTAGE', '240/120V SPLIT PHASE'],
-        ['MAX PV INPUT', '19,500W PER UNIT'],
+        ['MAX PV INPUT', `${data.maxPvPower.toLocaleString()}W PER UNIT`],
         ['MAX INPUT VOLTAGE', '500V DC'],
         ['MPPT RANGE', '125V — 425V DC'],
-        ['MPPT CHANNELS', '3 PER UNIT, 2 STRINGS EACH'],
+        ['MPPT CHANNELS', `${data.mpptsPerInverter} PER UNIT, ${data.stringsPerMppt} STRINGS EACH`],
         ['LISTING', 'UL 1741SA, IEEE 1547, FCC PART 15'],
         ['ENCLOSURE', 'NEMA 3R, OUTDOOR RATED'],
         ['INSTALLATION', 'WALL-MOUNTED, ACCESSIBLE'],
@@ -1000,14 +1009,14 @@ function SheetPV71() {
       title: 'BATTERY PLACARD',
       x: 550, y: 70, w: 500, h: 190,
       rows: [
-        ['EQUIPMENT', `(${PROJECT.batteryCount}) ${PROJECT.batteryModel}`],
+        ['EQUIPMENT', `(${data.batteryCount}) ${data.batteryModel}`],
         ['MANUFACTURER', 'DURACELL / HUBBLE TECHNOLOGY'],
         ['CHEMISTRY', 'LITHIUM IRON PHOSPHATE (LiFePO4 / LFP)'],
-        ['CAPACITY PER UNIT', `${PROJECT.batteryCapacity} kWh`],
-        ['TOTAL CAPACITY', `${PROJECT.totalStorageKwh} kWh`],
+        ['CAPACITY PER UNIT', `${data.batteryCapacity} kWh`],
+        ['TOTAL CAPACITY', `${data.totalStorageKwh} kWh`],
         ['NOMINAL VOLTAGE', '51.2V DC'],
-        ['CONFIGURATION', `${PROJECT.batteryCount / 2} BATTERIES PER INVERTER`],
-        ['STACKING', `${PROJECT.batteryCount / 2} PER STACK (2 STACKS)`],
+        ['CONFIGURATION', `${data.batteryCount / data.inverterCount} BATTERIES PER INVERTER`],
+        ['STACKING', `${data.batteriesPerStack} PER STACK (${Math.ceil(data.batteryCount / data.batteriesPerStack)} STACKS)`],
         ['LISTING', 'UL 9540, UL 9540A'],
         ['ENCLOSURE', 'NEMA 3R, FLOOR/WALL MOUNT'],
         ['THERMAL PROTECTION', 'INTEGRATED BMS'],
@@ -1018,32 +1027,32 @@ function SheetPV71() {
       title: 'PV MODULE PLACARD',
       x: 25, y: 280, w: 500, h: 165,
       rows: [
-        ['MODULE', `${PROJECT.panelModel}`],
-        ['QUANTITY', `${PROJECT.panelCount} MODULES`],
-        ['WATTAGE', `${PROJECT.panelWattage}W STC`],
-        ['Voc', `${PROJECT.panelVoc}V`],
-        ['Vmp', `${PROJECT.panelVmp}V`],
-        ['Isc', `${PROJECT.panelIsc}A`],
-        ['Imp', `${PROJECT.panelImp}A`],
-        ['CONFIGURATION', '5 STRINGS × 9 + 1 STRING × 8'],
+        ['MODULE', `${data.panelModel}`],
+        ['QUANTITY', `${data.panelCount} MODULES`],
+        ['WATTAGE', `${data.panelWattage}W STC`],
+        ['Voc', `${data.panelVoc}V`],
+        ['Vmp', `${data.panelVmp}V`],
+        ['Isc', `${data.panelIsc}A`],
+        ['Imp', `${data.panelImp}A`],
+        ['CONFIGURATION', stringConfigLabel || 'N/A'],
         ['LISTING', 'UL 61730 / IEC 61215'],
-        ['RACKING', PROJECT.rackingModel],
+        ['RACKING', data.rackingModel],
       ],
     },
     {
       title: 'SYSTEM PLACARD',
       x: 550, y: 280, w: 500, h: 165,
       rows: [
-        ['SYSTEM DC CAPACITY', `${PROJECT.systemDcKw.toFixed(2)} kW DC`],
-        ['SYSTEM AC CAPACITY', `${PROJECT.systemAcKw} kW AC`],
-        ['ENERGY STORAGE', `${PROJECT.totalStorageKwh} kWh`],
-        ['PV MODULES', `(${PROJECT.panelCount}) ${PROJECT.panelModel}`],
-        ['INVERTERS', `(${PROJECT.inverterCount}) ${PROJECT.inverterModel}`],
-        ['BATTERIES', `(${PROJECT.batteryCount}) ${PROJECT.batteryModel}`],
-        ['RACKING', PROJECT.rackingModel],
-        ['UTILITY', PROJECT.utility],
+        ['SYSTEM DC CAPACITY', `${data.systemDcKw.toFixed(2)} kW DC`],
+        ['SYSTEM AC CAPACITY', `${data.systemAcKw} kW AC`],
+        ['ENERGY STORAGE', `${data.totalStorageKwh} kWh`],
+        ['PV MODULES', `(${data.panelCount}) ${data.panelModel}`],
+        ['INVERTERS', `(${data.inverterCount}) ${data.inverterModel}`],
+        ['BATTERIES', `(${data.batteryCount}) ${data.batteryModel}`],
+        ['RACKING', data.rackingModel],
+        ['UTILITY', data.utility],
         ['INTERCONNECTION', 'LINE SIDE TAP / UTILITY INTERACTIVE'],
-        ['AHJ', 'CITY OF BAYTOWN, TX'],
+        ['AHJ', data.ahj || `${data.city}, ${data.state}`],
       ],
     },
     {
@@ -1055,8 +1064,8 @@ function SheetPV71() {
         ['AC DISCONNECT', 'WALL-MOUNTED ADJACENT TO INVERTER(S)'],
         ['DC DISCONNECT', 'INTEGRATED IN INVERTER'],
         ['BATTERY DISCONNECT', 'INTERNAL BMS WITH MANUAL ISOLATION'],
-        ['FIRE DEPT CONTACT', '911 / BAYTOWN FIRE DEPARTMENT'],
-        ['SOLAR CONTRACTOR', `${PROJECT.contractor}: ${PROJECT.contractorPhone}`],
+        ['FIRE DEPT CONTACT', `911 / ${data.city.toUpperCase()} FIRE DEPARTMENT`],
+        ['SOLAR CONTRACTOR', `${data.contractor.name}: ${data.contractor.phone}`],
         ['FIRST RESPONDERS', 'DO NOT CUT OR DAMAGE PV WIRING; DC ENERGIZED WHEN SUN IS UP'],
       ],
     },
@@ -1093,14 +1102,14 @@ function SheetPV71() {
         </g>
       ))}
 
-      <TitleBlock sheetName="EQUIPMENT PLACARDS" sheetNumber="PV-7.1" />
+      <TitleBlock sheetName="EQUIPMENT PLACARDS" sheetNumber="PV-7.1" data={data} />
     </svg>
   )
 }
 
 // ── PRINT HANDLER ───────────────────────────────────────────────────────────
 
-function handlePrintAll() {
+function handlePrintAll(data: PlansetData) {
   const sheets = document.querySelectorAll('.plan-sheet svg')
   if (!sheets.length) return
 
@@ -1115,7 +1124,7 @@ function handlePrintAll() {
   printWindow.document.write(`<!DOCTYPE html>
 <html>
 <head>
-  <title>Plan Set — ${PROJECT.id} ${PROJECT.owner}</title>
+  <title>Plan Set — ${data.projectId} ${data.owner}</title>
   <style>
     @page {
       size: 11in 8.5in landscape;
@@ -1149,11 +1158,380 @@ function handlePrintAll() {
   setTimeout(() => printWindow.print(), 500)
 }
 
+// ── PROJECT SELECTOR ────────────────────────────────────────────────────────
+
+function ProjectSelector({ onSelect }: { onSelect: (id: string) => void }) {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<Pick<Project, 'id' | 'name' | 'city'>[]>([])
+  const [searching, setSearching] = useState(false)
+  const [showDropdown, setShowDropdown] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const doSearch = useCallback(async (q: string) => {
+    if (q.length < 2) { setSearchResults([]); setShowDropdown(false); return }
+    setSearching(true)
+    try {
+      const results = await searchProjects(q, 15)
+      setSearchResults(results)
+      setShowDropdown(results.length > 0)
+    } finally {
+      setSearching(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => doSearch(searchQuery), 300)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [searchQuery, doSearch])
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setShowDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  return (
+    <div className="max-w-2xl mx-auto" ref={containerRef}>
+      <div className="bg-gray-800 rounded-xl p-8 border border-gray-700">
+        <div className="flex items-center gap-3 mb-6">
+          <FileText className="w-8 h-8 text-green-400" />
+          <div>
+            <h2 className="text-xl font-bold text-white">Generate Plan Set</h2>
+            <p className="text-sm text-gray-400 mt-1">Search for a project by ID or homeowner name</p>
+          </div>
+        </div>
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            onFocus={() => { if (searchResults.length > 0) setShowDropdown(true) }}
+            placeholder="e.g. PROJ-29857 or Aguilera"
+            className="w-full pl-10 pr-10 py-3 bg-gray-900 border border-gray-600 rounded-lg text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            autoFocus
+          />
+          {searching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />}
+          {!searching && searchQuery && (
+            <button onClick={() => { setSearchQuery(''); setSearchResults([]); setShowDropdown(false) }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+              <X className="w-4 h-4" />
+            </button>
+          )}
+
+          {showDropdown && (
+            <div className="absolute z-50 mt-1 w-full bg-gray-800 border border-gray-600 rounded-lg shadow-xl max-h-72 overflow-y-auto">
+              {searchResults.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => { onSelect(p.id); setShowDropdown(false); setSearchQuery(`${p.id} ${p.name}`) }}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-700 transition-colors border-b border-gray-700/50 last:border-0"
+                >
+                  <span className="text-xs font-mono text-green-400">{p.id}</span>
+                  <span className="text-sm text-white ml-2">{p.name}</span>
+                  {p.city && <span className="text-xs text-gray-500 ml-2">{p.city}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <p className="text-xs text-gray-500 mt-3">
+          Tip: You can also link directly with <code className="text-gray-400">?project=PROJ-XXXXX</code>
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// ── OVERRIDES PANEL ─────────────────────────────────────────────────────────
+
+function OverridesPanel({ data, strings, onStringsChange, overrides, onOverridesChange }: {
+  data: PlansetData
+  strings: PlansetString[]
+  onStringsChange: (s: PlansetString[]) => void
+  overrides: PlansetOverrides
+  onOverridesChange: (o: PlansetOverrides) => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+
+  const updateStringModules = (idx: number, modules: number) => {
+    const updated = [...strings]
+    updated[idx] = {
+      ...updated[idx],
+      modules,
+      vocCold: parseFloat((modules * data.vocCorrected).toFixed(1)),
+      vmpNominal: parseFloat((modules * data.panelVmp).toFixed(1)),
+    }
+    onStringsChange(updated)
+  }
+
+  const addString = () => {
+    const nextId = strings.length > 0 ? Math.max(...strings.map(s => s.id)) + 1 : 1
+    const nextMppt = strings.length > 0 ? Math.max(...strings.map(s => s.mppt)) + 1 : 1
+    onStringsChange([...strings, {
+      id: nextId,
+      mppt: nextMppt,
+      modules: 9,
+      roofFace: 1,
+      vocCold: parseFloat((9 * data.vocCorrected).toFixed(1)),
+      vmpNominal: parseFloat((9 * data.panelVmp).toFixed(1)),
+      current: data.panelImp,
+    }])
+  }
+
+  const removeString = (idx: number) => {
+    onStringsChange(strings.filter((_, i) => i !== idx))
+  }
+
+  return (
+    <div className="bg-gray-800 rounded-lg border border-gray-700 mb-6">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-300 hover:text-white transition-colors"
+      >
+        <span>Overrides &amp; String Configuration ({strings.length} strings, {strings.reduce((s, x) => s + x.modules, 0)} modules)</span>
+        {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+      </button>
+
+      {expanded && (
+        <div className="px-4 pb-4 border-t border-gray-700 pt-4 space-y-6">
+          {/* Building overrides */}
+          <div>
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Building Info</h3>
+            <div className="grid grid-cols-4 gap-3">
+              {[
+                { label: 'Roof Type', key: 'roofType' as const, val: overrides.roofType ?? data.roofType },
+                { label: 'Rafter Size', key: 'rafterSize' as const, val: overrides.rafterSize ?? data.rafterSize },
+                { label: 'Stories', key: 'stories' as const, val: String(overrides.stories ?? data.stories) },
+                { label: 'Wind Speed (MPH)', key: 'windSpeed' as const, val: String(overrides.windSpeed ?? data.windSpeed) },
+              ].map(f => (
+                <div key={f.key}>
+                  <label className="text-xs text-gray-500 block mb-1">{f.label}</label>
+                  <input
+                    value={f.val}
+                    onChange={e => {
+                      const v = e.target.value
+                      if (f.key === 'stories' || f.key === 'windSpeed') {
+                        onOverridesChange({ ...overrides, [f.key]: parseInt(v) || 0 })
+                      } else {
+                        onOverridesChange({ ...overrides, [f.key]: v })
+                      }
+                    }}
+                    className="w-full px-2 py-1.5 bg-gray-900 border border-gray-600 rounded text-sm text-white focus:ring-1 focus:ring-green-500 focus:outline-none"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Existing system overrides */}
+          <div>
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Existing System (Optional)</h3>
+            <div className="grid grid-cols-5 gap-3">
+              {[
+                { label: 'Panel Model', key: 'existingPanelModel' as const, val: overrides.existingPanelModel ?? data.existingPanelModel ?? '' },
+                { label: 'Panel Count', key: 'existingPanelCount' as const, val: String(overrides.existingPanelCount ?? data.existingPanelCount ?? '') },
+                { label: 'Panel Wattage', key: 'existingPanelWattage' as const, val: String(overrides.existingPanelWattage ?? data.existingPanelWattage ?? '') },
+                { label: 'Inverter Model', key: 'existingInverterModel' as const, val: overrides.existingInverterModel ?? data.existingInverterModel ?? '' },
+                { label: 'Inverter Count', key: 'existingInverterCount' as const, val: String(overrides.existingInverterCount ?? data.existingInverterCount ?? '') },
+              ].map(f => (
+                <div key={f.key}>
+                  <label className="text-xs text-gray-500 block mb-1">{f.label}</label>
+                  <input
+                    value={f.val}
+                    onChange={e => {
+                      const v = e.target.value
+                      if (['existingPanelCount', 'existingPanelWattage', 'existingInverterCount'].includes(f.key)) {
+                        onOverridesChange({ ...overrides, [f.key]: parseInt(v) || undefined })
+                      } else {
+                        onOverridesChange({ ...overrides, [f.key]: v || undefined })
+                      }
+                    }}
+                    className="w-full px-2 py-1.5 bg-gray-900 border border-gray-600 rounded text-sm text-white focus:ring-1 focus:ring-green-500 focus:outline-none"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* String configuration table */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">String Configuration</h3>
+              <button onClick={addString}
+                className="text-xs px-3 py-1 rounded bg-green-600/20 text-green-400 hover:bg-green-600/30 transition-colors">
+                + Add String
+              </button>
+            </div>
+
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-gray-500 border-b border-gray-700">
+                  <th className="text-left py-1 px-2">String</th>
+                  <th className="text-left py-1 px-2">MPPT</th>
+                  <th className="text-left py-1 px-2">Modules</th>
+                  <th className="text-left py-1 px-2">Roof Face</th>
+                  <th className="text-left py-1 px-2">Voc Cold</th>
+                  <th className="text-left py-1 px-2">Vmp</th>
+                  <th className="text-left py-1 px-2">Imp</th>
+                  <th className="text-left py-1 px-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {strings.map((s, i) => (
+                  <tr key={s.id} className="border-b border-gray-700/50">
+                    <td className="py-1 px-2 text-gray-300">S{s.id}</td>
+                    <td className="py-1 px-2">
+                      <input value={s.mppt} onChange={e => {
+                        const updated = [...strings]; updated[i] = { ...s, mppt: parseInt(e.target.value) || 1 }; onStringsChange(updated)
+                      }} className="w-14 px-1 py-0.5 bg-gray-900 border border-gray-700 rounded text-xs text-white" />
+                    </td>
+                    <td className="py-1 px-2">
+                      <input value={s.modules} onChange={e => updateStringModules(i, parseInt(e.target.value) || 0)}
+                        className="w-14 px-1 py-0.5 bg-gray-900 border border-gray-700 rounded text-xs text-white" />
+                    </td>
+                    <td className="py-1 px-2">
+                      <input value={s.roofFace} onChange={e => {
+                        const updated = [...strings]; updated[i] = { ...s, roofFace: parseInt(e.target.value) || 1 }; onStringsChange(updated)
+                      }} className="w-14 px-1 py-0.5 bg-gray-900 border border-gray-700 rounded text-xs text-white" />
+                    </td>
+                    <td className="py-1 px-2 text-gray-400 text-xs">{s.vocCold.toFixed(1)}V</td>
+                    <td className="py-1 px-2 text-gray-400 text-xs">{s.vmpNominal.toFixed(1)}V</td>
+                    <td className="py-1 px-2 text-gray-400 text-xs">{s.current}A</td>
+                    <td className="py-1 px-2">
+                      <button onClick={() => removeString(i)} className="text-red-400/60 hover:text-red-400 text-xs">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {strings.length === 0 && (
+              <p className="text-xs text-gray-500 text-center py-4">No strings configured. Click &quot;+ Add String&quot; or auto-distribute will be used.</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── PAGE COMPONENT ──────────────────────────────────────────────────────────
 
 export default function PlanSetPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-900"><Nav active="Redesign" /></div>}>
+      <PlanSetPageInner />
+    </Suspense>
+  )
+}
+
+function PlanSetPageInner() {
   const { user: currentUser, loading: userLoading } = useCurrentUser()
+  const searchParams = useSearchParams()
   const [toast, setToast] = useState<{message: string, type: 'success'|'error'|'info'} | null>(null)
+
+  // Data state
+  const [projectId, setProjectId] = useState<string>('')
+  const [data, setData] = useState<PlansetData | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [strings, setStrings] = useState<PlansetString[]>([])
+  const [overrides, setOverrides] = useState<PlansetOverrides>({})
+
+  // Load project by ID
+  const loadProject = useCallback(async (id: string) => {
+    setLoading(true)
+    try {
+      const project = await loadProjectById(id)
+      if (!project) {
+        setToast({ message: `Project ${id} not found`, type: 'error' })
+        setTimeout(() => setToast(null), 3000)
+        return
+      }
+
+      // Auto-distribute strings based on panel count
+      const panelCount = overrides.panelCount ?? project.module_qty ?? 0
+      const d = DURACELL_DEFAULTS
+      const panelVoc = overrides.panelVoc ?? d.panelVoc
+      const absCoeff = Math.abs(d.vocTempCoeff / 100)
+      const vocCorrected = panelVoc * (1 + absCoeff * (25 - d.designTempLow))
+      const panelVmp = overrides.panelVmp ?? d.panelVmp
+      const panelImp = overrides.panelImp ?? d.panelImp
+      const inverterCount = overrides.inverterCount ?? project.inverter_qty ?? d.inverterCount
+      const mpptsPerInverter = overrides.mpptsPerInverter ?? d.mpptsPerInverter
+      const stringsPerMppt = overrides.stringsPerMppt ?? d.stringsPerMppt
+      const maxVoc = overrides.maxPvPower ? 500 : d.maxVoc
+
+      const autoStrings = autoDistributeStrings(
+        panelCount, vocCorrected, panelVmp, panelImp,
+        inverterCount, mpptsPerInverter, stringsPerMppt, maxVoc
+      )
+
+      // Use override strings if provided, else auto-distributed
+      const finalStrings = overrides.strings ?? autoStrings
+      setStrings(finalStrings)
+
+      const plansetData = buildPlansetData(project, { ...overrides, strings: finalStrings })
+      setData(plansetData)
+      setProjectId(id)
+    } catch (err) {
+      console.error('Failed to load project:', err)
+      setToast({ message: 'Failed to load project', type: 'error' })
+      setTimeout(() => setToast(null), 3000)
+    } finally {
+      setLoading(false)
+    }
+  }, [overrides])
+
+  // Read project from URL params on mount
+  useEffect(() => {
+    const urlProject = searchParams.get('project')
+    if (urlProject && !projectId) {
+      loadProject(urlProject)
+    }
+  }, [searchParams, projectId, loadProject])
+
+  // Rebuild data when strings or overrides change (only if we have a project loaded)
+  const rebuildData = useCallback(async () => {
+    if (!projectId) return
+    setLoading(true)
+    try {
+      const project = await loadProjectById(projectId)
+      if (!project) return
+      const plansetData = buildPlansetData(project, { ...overrides, strings })
+      setData(plansetData)
+    } finally {
+      setLoading(false)
+    }
+  }, [projectId, strings, overrides])
+
+  // Debounced rebuild on overrides/strings change
+  const rebuildTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (!projectId) return
+    if (rebuildTimerRef.current) clearTimeout(rebuildTimerRef.current)
+    rebuildTimerRef.current = setTimeout(() => rebuildData(), 500)
+    return () => { if (rebuildTimerRef.current) clearTimeout(rebuildTimerRef.current) }
+  }, [projectId, strings, overrides, rebuildData])
+
+  // Clear data to go back to selector
+  const clearProject = () => {
+    setProjectId('')
+    setData(null)
+    setStrings([])
+    setOverrides({})
+  }
 
   // Role gate: Manager+ only
   if (!userLoading && currentUser && !currentUser.isManager) {
@@ -1175,103 +1553,135 @@ export default function PlanSetPage() {
       <Nav active="Redesign" />
 
       <div className="max-w-[1200px] mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-white">
-              Plan Set: {PROJECT.id} {PROJECT.owner}
-            </h1>
-            <p className="text-gray-400 text-sm mt-1">
-              {PROJECT.address} &mdash; {PROJECT.systemDcKw.toFixed(2)} kW DC / {PROJECT.totalStorageKwh} kWh ESS
-            </p>
+        {/* Loading overlay */}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 text-green-400 animate-spin mr-3" />
+            <span className="text-gray-400 text-sm">Loading project data...</span>
           </div>
-          <div className="flex items-center gap-3">
-            <a href="/redesign"
-              className="px-4 py-2 text-sm rounded-md bg-gray-800 text-gray-300 hover:bg-gray-700 transition-colors">
-              Back to Redesign
-            </a>
-            <button
-              onClick={handlePrintAll}
-              className="px-5 py-2 text-sm font-medium rounded-md bg-green-600 hover:bg-green-500 text-white transition-colors">
-              Download as PDF
-            </button>
-            <span className="text-xs text-gray-500">Select &quot;Save as PDF&quot; in the print dialog</span>
-          </div>
-        </div>
+        )}
 
-        {/* Sheets */}
-        <div className="plan-sheet space-y-8">
-          {/* PV-1 */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-bold text-green-400 bg-gray-800 px-2 py-1 rounded">PV-1</span>
-              <span className="text-sm text-gray-400">Cover Page &amp; General Notes</span>
-            </div>
-            <div className="border border-gray-700 rounded-lg overflow-hidden">
-              <SheetPV1 />
-            </div>
-          </div>
+        {/* Project selector when no data */}
+        {!loading && !data && (
+          <ProjectSelector onSelect={loadProject} />
+        )}
 
-          {/* PV-5 */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-bold text-green-400 bg-gray-800 px-2 py-1 rounded">PV-5</span>
-              <span className="text-sm text-gray-400">Single Line Diagram</span>
+        {/* Plan set sheets when data is loaded */}
+        {!loading && data && (
+          <>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-2xl font-bold text-white">
+                  Plan Set: {data.projectId} {data.owner}
+                </h1>
+                <p className="text-gray-400 text-sm mt-1">
+                  {data.address} &mdash; {data.systemDcKw.toFixed(2)} kW DC / {data.totalStorageKwh} kWh ESS
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={clearProject}
+                  className="px-4 py-2 text-sm rounded-md bg-gray-800 text-gray-300 hover:bg-gray-700 transition-colors">
+                  Change Project
+                </button>
+                <a href="/redesign"
+                  className="px-4 py-2 text-sm rounded-md bg-gray-800 text-gray-300 hover:bg-gray-700 transition-colors">
+                  Back to Redesign
+                </a>
+                <button
+                  onClick={() => handlePrintAll(data)}
+                  className="px-5 py-2 text-sm font-medium rounded-md bg-green-600 hover:bg-green-500 text-white transition-colors">
+                  Download as PDF
+                </button>
+                <span className="text-xs text-gray-500">Select &quot;Save as PDF&quot; in the print dialog</span>
+              </div>
             </div>
-            <div className="border border-gray-700 rounded-lg overflow-hidden">
-              <SheetPV5 />
-            </div>
-          </div>
 
-          {/* PV-5.1 */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-bold text-green-400 bg-gray-800 px-2 py-1 rounded">PV-5.1</span>
-              <span className="text-sm text-gray-400">PCS Labels</span>
-            </div>
-            <div className="border border-gray-700 rounded-lg overflow-hidden">
-              <SheetPV51 />
-            </div>
-          </div>
+            {/* Overrides panel */}
+            <OverridesPanel
+              data={data}
+              strings={strings}
+              onStringsChange={setStrings}
+              overrides={overrides}
+              onOverridesChange={setOverrides}
+            />
 
-          {/* PV-6 */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-bold text-green-400 bg-gray-800 px-2 py-1 rounded">PV-6</span>
-              <span className="text-sm text-gray-400">Wiring Calculations</span>
-            </div>
-            <div className="border border-gray-700 rounded-lg overflow-hidden">
-              <SheetPV6 />
-            </div>
-          </div>
+            {/* Sheets */}
+            <div className="plan-sheet space-y-8">
+              {/* PV-1 */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-bold text-green-400 bg-gray-800 px-2 py-1 rounded">PV-1</span>
+                  <span className="text-sm text-gray-400">Cover Page &amp; General Notes</span>
+                </div>
+                <div className="border border-gray-700 rounded-lg overflow-hidden">
+                  <SheetPV1 data={data} />
+                </div>
+              </div>
 
-          {/* PV-7 */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-bold text-green-400 bg-gray-800 px-2 py-1 rounded">PV-7</span>
-              <span className="text-sm text-gray-400">Warning Labels</span>
-            </div>
-            <div className="border border-gray-700 rounded-lg overflow-hidden">
-              <SheetPV7 />
-            </div>
-          </div>
+              {/* PV-5 */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-bold text-green-400 bg-gray-800 px-2 py-1 rounded">PV-5</span>
+                  <span className="text-sm text-gray-400">Single Line Diagram</span>
+                </div>
+                <div className="border border-gray-700 rounded-lg overflow-hidden">
+                  <SheetPV5 data={data} />
+                </div>
+              </div>
 
-          {/* PV-7.1 */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-bold text-green-400 bg-gray-800 px-2 py-1 rounded">PV-7.1</span>
-              <span className="text-sm text-gray-400">Equipment Placards</span>
-            </div>
-            <div className="border border-gray-700 rounded-lg overflow-hidden">
-              <SheetPV71 />
-            </div>
-          </div>
-        </div>
+              {/* PV-5.1 */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-bold text-green-400 bg-gray-800 px-2 py-1 rounded">PV-5.1</span>
+                  <span className="text-sm text-gray-400">PCS Labels</span>
+                </div>
+                <div className="border border-gray-700 rounded-lg overflow-hidden">
+                  <SheetPV51 data={data} />
+                </div>
+              </div>
 
-        {/* Footer */}
-        <div className="mt-8 mb-4 text-center text-xs text-gray-600">
-          Generated by MicroGRID &mdash; {today()} &mdash; For PE Review Only
-        </div>
+              {/* PV-6 */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-bold text-green-400 bg-gray-800 px-2 py-1 rounded">PV-6</span>
+                  <span className="text-sm text-gray-400">Wiring Calculations</span>
+                </div>
+                <div className="border border-gray-700 rounded-lg overflow-hidden">
+                  <SheetPV6 data={data} />
+                </div>
+              </div>
+
+              {/* PV-7 */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-bold text-green-400 bg-gray-800 px-2 py-1 rounded">PV-7</span>
+                  <span className="text-sm text-gray-400">Warning Labels</span>
+                </div>
+                <div className="border border-gray-700 rounded-lg overflow-hidden">
+                  <SheetPV7 data={data} />
+                </div>
+              </div>
+
+              {/* PV-7.1 */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-bold text-green-400 bg-gray-800 px-2 py-1 rounded">PV-7.1</span>
+                  <span className="text-sm text-gray-400">Equipment Placards</span>
+                </div>
+                <div className="border border-gray-700 rounded-lg overflow-hidden">
+                  <SheetPV71 data={data} />
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="mt-8 mb-4 text-center text-xs text-gray-600">
+              Generated by MicroGRID &mdash; {data.drawnDate} &mdash; For PE Review Only
+            </div>
+          </>
+        )}
       </div>
 
       {toast && (
