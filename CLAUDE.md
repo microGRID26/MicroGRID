@@ -167,9 +167,9 @@ Email domain whitelist: `@gomicrogridenergy.com`, `@energydevelopmentgroup.com`,
 - Ops dashboard "Last Year" period only queries active `projects` table, not `legacy_projects`
 - CSP uses `unsafe-inline`/`unsafe-eval` in script-src (Next.js requirement, should move to nonce-based)
 - Role cookie HMAC prefers `ROLE_COOKIE_SECRET` env var, falls back to anon key (set secret in Vercel)
-- `schedule` table `org_id` column added (migration 072, not yet applied to Supabase)
+- `schedule` table now has `org_id` column (migration 072, applied)
 - 8 page/component files still exceed 1000 lines (7 largest were split in S26)
-- Job costing schema (migration 071) created but not yet applied to Supabase
+- Job costing tables exist (migration 071, applied) but no data capture UI yet
 
 ## Co-Author Convention
 
