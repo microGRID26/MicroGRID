@@ -88,7 +88,7 @@ export default function ChatScreen() {
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
             <ActivityIndicator color={colors.accent} />
           </View>
-        ) : messages.length === 0 && customerName ? (
+        ) : messages.length === 0 ? (
           /* Welcome */
           <View style={{ alignItems: 'center', justifyContent: 'center', paddingTop: 80 }}>
             <View style={{
@@ -122,6 +122,20 @@ export default function ChatScreen() {
         ) : (
           /* Messages */
           <>
+            {/* Clear button */}
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                setMessages([])
+                SecureStore.deleteItemAsync(CHAT_HISTORY_KEY).catch(() => {})
+              }}
+              activeOpacity={0.7}
+              style={{ position: 'absolute', top: 56, right: 16, zIndex: 10, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+            >
+              <Feather name="trash-2" size={13} color={colors.textMuted} />
+              <Text style={{ fontSize: 13, color: colors.textMuted, fontFamily: 'Inter_400Regular' }}>Clear</Text>
+            </TouchableOpacity>
+
             {messages.map((msg, i) => (
               <View key={i} style={{
                 alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',

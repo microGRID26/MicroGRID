@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
+import Constants from 'expo-constants'
 import { theme, useThemeColors } from '../../lib/theme'
 import { supabase } from '../../lib/supabase'
 import { getCustomerAccount, loadProject } from '../../lib/api'
@@ -149,6 +150,9 @@ export default function AccountScreen() {
         <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textMuted, fontFamily: 'Inter_500Medium' }}>MicroGRID</Text>
         <Text style={{ fontSize: 10, color: colors.textMuted }}>powered by EDGE</Text>
         <Text style={{ fontSize: 9, color: colors.textMuted, marginTop: 4 }}>Dependable Power. Predictable Cost.</Text>
+        <Text style={{ fontSize: 9, color: colors.textMuted, marginTop: 8, fontFamily: 'Inter_400Regular' }}>
+          Version {Constants.expoConfig?.version ?? '1.0.0'}
+        </Text>
       </View>
     </ScrollView>
   )

@@ -6,6 +6,7 @@ import * as SplashScreen from 'expo-splash-screen'
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter'
 import { supabase } from '../lib/supabase'
 import { ThemeContext, getThemeColors } from '../lib/theme'
+import ErrorBoundary from '../components/ErrorBoundary'
 import { registerForPushNotifications, addNotificationResponseListener } from '../lib/notifications'
 import { loadPersistentCache } from '../lib/cache'
 import type { Session } from '@supabase/supabase-js'
@@ -93,12 +94,14 @@ export default function RootLayout() {
   if (!fontsLoaded || initializing) return null
 
   return (
-    <ThemeContext.Provider value={colors}>
-      <StatusBar style={colors.statusBar} backgroundColor={colors.bg} />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-      </Stack>
-    </ThemeContext.Provider>
+    <ErrorBoundary>
+      <ThemeContext.Provider value={colors}>
+        <StatusBar style={colors.statusBar} backgroundColor={colors.bg} />
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+        </Stack>
+      </ThemeContext.Provider>
+    </ErrorBoundary>
   )
 }

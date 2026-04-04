@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { View, Text, ScrollView, RefreshControl, ActivityIndicator, AppState } from 'react-native'
+import { View, Text, ScrollView, RefreshControl, ActivityIndicator, AppState, TouchableOpacity } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import { theme, useThemeColors } from '../../lib/theme'
 import { getCustomerAccount, loadProject, loadTimeline, loadSchedule } from '../../lib/api'
@@ -93,6 +93,10 @@ export default function DashboardScreen() {
         <Text style={{ color: colors.textMuted, textAlign: 'center', fontFamily: 'Inter_400Regular' }}>
           Unable to load your project.
         </Text>
+        <TouchableOpacity onPress={load} activeOpacity={0.7}
+          style={{ marginTop: 16, backgroundColor: colors.accent, borderRadius: theme.radius.xl, paddingHorizontal: 24, paddingVertical: 12 }}>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.accentText, fontFamily: 'Inter_600SemiBold' }}>Tap to retry</Text>
+        </TouchableOpacity>
       </View>
     )
   }
@@ -264,7 +268,11 @@ export default function DashboardScreen() {
             Timeline
           </Text>
         </View>
-        {milestones.map((m, i) => {
+        {milestones.every(m => !m.date) ? (
+          <Text style={{ fontSize: 13, color: colors.textMuted, fontFamily: 'Inter_400Regular', textAlign: 'center', paddingVertical: 12 }}>
+            Your project timeline will update as each milestone is reached.
+          </Text>
+        ) : milestones.map((m, i) => {
           const completed = !!m.date
           const isNext = !completed && i > 0 && !!milestones[i - 1]?.date
           return (
@@ -323,44 +331,50 @@ export default function DashboardScreen() {
             Your System
           </Text>
         </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {project.systemkw && (
-            <View style={{ width: '48%', backgroundColor: colors.surfaceAlt, borderRadius: theme.radius.lg, padding: 12 }}>
-              <Feather name="sun" size={18} color={colors.warm} />
-              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginTop: 4, fontFamily: 'Inter_700Bold' }}>
-                {project.systemkw} kW
-              </Text>
-              <Text style={{ fontSize: 10, color: colors.textMuted }}>System Size</Text>
-            </View>
-          )}
-          {project.module && (
-            <View style={{ width: '48%', backgroundColor: colors.surfaceAlt, borderRadius: theme.radius.lg, padding: 12 }}>
-              <Feather name="sun" size={18} color={colors.accent} />
-              <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginTop: 4, fontFamily: 'Inter_700Bold' }}>
-                {project.module_qty ?? ''} Panels
-              </Text>
-              <Text style={{ fontSize: 10, color: colors.textMuted }} numberOfLines={1}>{project.module}</Text>
-            </View>
-          )}
-          {project.battery && (
-            <View style={{ width: '48%', backgroundColor: colors.surfaceAlt, borderRadius: theme.radius.lg, padding: 12 }}>
-              <Feather name="battery-charging" size={18} color={colors.accent} />
-              <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginTop: 4, fontFamily: 'Inter_700Bold' }}>
-                Battery
-              </Text>
-              <Text style={{ fontSize: 10, color: colors.textMuted }} numberOfLines={1}>{project.battery}</Text>
-            </View>
-          )}
-          {project.inverter && (
-            <View style={{ width: '48%', backgroundColor: colors.surfaceAlt, borderRadius: theme.radius.lg, padding: 12 }}>
-              <Feather name="zap" size={18} color={colors.info} />
-              <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginTop: 4, fontFamily: 'Inter_700Bold' }}>
-                Inverter
-              </Text>
-              <Text style={{ fontSize: 10, color: colors.textMuted }} numberOfLines={1}>{project.inverter}</Text>
-            </View>
-          )}
-        </View>
+        {!project.systemkw && !project.module && !project.battery && !project.inverter ? (
+          <Text style={{ fontSize: 13, color: colors.textMuted, fontFamily: 'Inter_400Regular', textAlign: 'center', paddingVertical: 12 }}>
+            Equipment details will appear once your system is designed.
+          </Text>
+        ) : (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {project.systemkw && (
+              <View style={{ width: '48%', backgroundColor: colors.surfaceAlt, borderRadius: theme.radius.lg, padding: 12 }}>
+                <Feather name="sun" size={18} color={colors.warm} />
+                <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginTop: 4, fontFamily: 'Inter_700Bold' }}>
+                  {project.systemkw} kW
+                </Text>
+                <Text style={{ fontSize: 10, color: colors.textMuted }}>System Size</Text>
+              </View>
+            )}
+            {project.module && (
+              <View style={{ width: '48%', backgroundColor: colors.surfaceAlt, borderRadius: theme.radius.lg, padding: 12 }}>
+                <Feather name="sun" size={18} color={colors.accent} />
+                <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginTop: 4, fontFamily: 'Inter_700Bold' }}>
+                  {project.module_qty ?? ''} Panels
+                </Text>
+                <Text style={{ fontSize: 10, color: colors.textMuted }} numberOfLines={1}>{project.module}</Text>
+              </View>
+            )}
+            {project.battery && (
+              <View style={{ width: '48%', backgroundColor: colors.surfaceAlt, borderRadius: theme.radius.lg, padding: 12 }}>
+                <Feather name="battery-charging" size={18} color={colors.accent} />
+                <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginTop: 4, fontFamily: 'Inter_700Bold' }}>
+                  Battery
+                </Text>
+                <Text style={{ fontSize: 10, color: colors.textMuted }} numberOfLines={1}>{project.battery}</Text>
+              </View>
+            )}
+            {project.inverter && (
+              <View style={{ width: '48%', backgroundColor: colors.surfaceAlt, borderRadius: theme.radius.lg, padding: 12 }}>
+                <Feather name="zap" size={18} color={colors.info} />
+                <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginTop: 4, fontFamily: 'Inter_700Bold' }}>
+                  Inverter
+                </Text>
+                <Text style={{ fontSize: 10, color: colors.textMuted }} numberOfLines={1}>{project.inverter}</Text>
+              </View>
+            )}
+          </View>
+        )}
       </View>
 
       {/* Address */}
