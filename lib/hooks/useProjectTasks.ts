@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { db } from '@/lib/db'
 import { TASKS, ALL_TASKS_MAP, ALL_TASKS_FLAT, TASK_TO_STAGE, TASK_DATE_FIELDS, getSameStageDownstream, isTaskRequired } from '@/lib/tasks'
 import { STAGE_LABELS, STAGE_ORDER } from '@/lib/utils'
+import { sendCustomerPush } from '@/lib/api/push'
 import type { Project, Note } from '@/types/database'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -546,6 +547,7 @@ export function useProjectTasks(opts: UseProjectTasksOptions): UseProjectTasksRe
         setProject(p => ({ ...p, stage: nextStage as Project['stage'], stage_date: today }))
         onProjectUpdated()
         edgeSync.notifyStageChanged(pid, project.stage, nextStage)
+        sendCustomerPush(pid, 'Project Update', `Your project has moved to ${STAGE_LABELS[nextStage]}!`, { type: 'stage_advance', stage: nextStage })
         showToast(`All tasks done — advanced to ${STAGE_LABELS[nextStage]}`)
       }
     }

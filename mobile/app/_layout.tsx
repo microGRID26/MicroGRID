@@ -6,7 +6,7 @@ import * as SplashScreen from 'expo-splash-screen'
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter'
 import { supabase } from '../lib/supabase'
 import { ThemeContext, getThemeColors } from '../lib/theme'
-import { registerForPushNotifications } from '../lib/notifications'
+import { registerForPushNotifications, addNotificationResponseListener } from '../lib/notifications'
 import { loadPersistentCache } from '../lib/cache'
 import type { Session } from '@supabase/supabase-js'
 
@@ -69,6 +69,26 @@ export default function RootLayout() {
       registerForPushNotifications().catch(() => {})
     }
   }, [session, segments, initializing])
+
+  // Handle notification taps — route to relevant screen
+  useEffect(() => {
+    const subscription = addNotificationResponseListener((response) => {
+      const data = response.notification.request.content.data as Record<string, string> | undefined
+      if (!data?.type) return
+
+      switch (data.type) {
+        case 'ticket_reply':
+          if (data.ticketId) router.push(`/ticket/${data.ticketId}`)
+          break
+        case 'stage_advance':
+        case 'schedule_created':
+          router.push('/(tabs)')
+          break
+      }
+    })
+
+    return () => subscription.remove()
+  }, [])
 
   if (!fontsLoaded || initializing) return null
 

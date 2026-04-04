@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react'
 import { db } from '@/lib/db'
 import { escapeIlike } from '@/lib/utils'
-import { JOB_TYPES, JOB_SCHEDULE_TASK, JOB_COMPLETE_TASK, JOB_COMPLETE_DATE } from '@/lib/tasks'
+import { JOB_TYPES, JOB_LABELS, JOB_SCHEDULE_TASK, JOB_COMPLETE_TASK, JOB_COMPLETE_DATE } from '@/lib/tasks'
 import { clearQueryCache } from '@/lib/hooks'
+import { sendCustomerPush } from '@/lib/api/push'
 import type { Crew, Project } from '@/types/database'
 
 interface Props {
@@ -297,6 +298,13 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
 
     // Clear query cache so useSupabaseQuery hooks refetch fresh data
     clearQueryCache()
+
+    // Push notification to customer when a new job is scheduled
+    if (!scheduleId && form.date) {
+      const jobLabel = JOB_LABELS[form.job_type] ?? form.job_type
+      const dateStr = new Date(form.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+      sendCustomerPush(pid, 'Job Scheduled', `Your ${jobLabel} has been scheduled for ${dateStr}.`, { type: 'schedule_created', date: form.date })
+    }
 
     // When saving with status 'complete' (edit or new), auto-complete the job task
     if (form.status === 'complete') {

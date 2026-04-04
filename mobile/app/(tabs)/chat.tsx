@@ -1,11 +1,14 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { View, Text, ScrollView, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
+import * as SecureStore from 'expo-secure-store'
 import { theme, useThemeColors } from '../../lib/theme'
 import { getCustomerAccount, sendAtlasMessage } from '../../lib/api'
 import { ATLAS_SUGGESTIONS } from '../../lib/constants'
 import type { ChatMessage } from '../../lib/types'
+
+const CHAT_HISTORY_KEY = 'atlas_chat_history'
 
 export default function ChatScreen() {
   const colors = useThemeColors()
@@ -15,10 +18,26 @@ export default function ChatScreen() {
   const [customerName, setCustomerName] = useState<string | null>(null)
   const scrollRef = useRef<ScrollView>(null)
 
+  // Load persisted chat history on mount
   useEffect(() => {
     getCustomerAccount().then(acct => {
       setCustomerName(acct ? acct.name.split(' ')[0] : 'there')
     })
+    SecureStore.getItemAsync(CHAT_HISTORY_KEY).then(stored => {
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored) as ChatMessage[]
+          if (Array.isArray(parsed) && parsed.length > 0) setMessages(parsed)
+        } catch {}
+      }
+    })
+  }, [])
+
+  // Persist chat history after each change
+  const persistMessages = useCallback((msgs: ChatMessage[]) => {
+    // Keep last 50 messages to avoid SecureStore size limits
+    const toSave = msgs.slice(-50)
+    SecureStore.setItemAsync(CHAT_HISTORY_KEY, JSON.stringify(toSave)).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -37,14 +56,17 @@ export default function ChatScreen() {
 
     try {
       const response = await sendAtlasMessage(updated)
-      setMessages(prev => [...prev, { role: 'assistant', content: response }])
+      const withResponse = [...updated, { role: 'assistant' as const, content: response }]
+      setMessages(withResponse)
+      persistMessages(withResponse)
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     } catch (err) {
       console.error('[atlas] chat failed:', err)
-      setMessages(prev => [...prev, {
-        role: 'assistant',
+      const withError = [...updated, {
+        role: 'assistant' as const,
         content: 'I\'m having trouble connecting right now. Please try again, or use the Support tab to create a ticket.',
-      }])
+      }]
+      setMessages(withError)
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
     } finally {
       setSending(false)
