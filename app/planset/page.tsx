@@ -45,7 +45,7 @@ const PRINT_CSS = `
   size: 17in 11in;
   margin: 0.25in;
 }
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
 body { background: white; }
 .sheet {
   width: 16.5in;
