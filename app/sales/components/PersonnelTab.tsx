@@ -15,6 +15,7 @@ import {
   Search, CheckCircle,
 } from 'lucide-react'
 import { AddRepModal } from './AddRepModal'
+import { RepFilesPanel } from './RepFilesPanel'
 
 export function PersonnelTab({ reps, teams, payScales, requirements, orgId, isAdmin, onRefresh }: {
   reps: SalesRep[]
@@ -300,7 +301,7 @@ export function PersonnelTab({ reps, teams, payScales, requirements, orgId, isAd
                     {isExpanded && (
                       <tr>
                         <td colSpan={8} className="px-4 py-4 bg-gray-900/50 border-b border-gray-700">
-                          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
                             <div className="space-y-2">
                               <div className="flex items-center justify-between">
                                 <h4 className="text-[10px] uppercase text-gray-500 font-medium tracking-wider">Contact</h4>
@@ -425,6 +426,11 @@ export function PersonnelTab({ reps, teams, payScales, requirements, orgId, isAd
                                 )
                               })()}
                             </div>
+                            <RepFilesPanel
+                              repId={rep.id}
+                              isAdmin={isAdmin}
+                              userName={document.cookie.match(/mg_user_name=([^;]+)/)?.[1] ? decodeURIComponent(document.cookie.match(/mg_user_name=([^;]+)/)![1]) : 'Admin'}
+                            />
                           </div>
 
                           {/* Rep Scorecard */}

@@ -552,6 +552,54 @@ export async function deleteRepNote(noteId: string): Promise<boolean> {
   return true
 }
 
+// ── Rep Files ─────────────────────────────────────────────────────────────
+
+export interface RepFile {
+  id: string
+  rep_id: string
+  file_type: string
+  file_name: string
+  file_url: string
+  uploaded_by: string | null
+  notes: string | null
+  created_at: string
+}
+
+export const REP_FILE_TYPES = ['license_front', 'license_back', 'w9', 'ica', 'photo', 'other'] as const
+export const REP_FILE_TYPE_LABELS: Record<string, string> = {
+  license_front: 'License (Front)',
+  license_back: 'License (Back)',
+  w9: 'W-9',
+  ica: 'ICA',
+  photo: 'Photo',
+  other: 'Other',
+}
+
+export async function loadRepFiles(repId: string): Promise<RepFile[]> {
+  const { data, error } = await db().from('rep_files')
+    .select('id, rep_id, file_type, file_name, file_url, uploaded_by, notes, created_at')
+    .eq('rep_id', repId)
+    .order('created_at', { ascending: false })
+    .limit(100)
+  if (error) { console.error('[loadRepFiles]', error); return [] }
+  return (data ?? []) as RepFile[]
+}
+
+export async function addRepFile(file: Omit<RepFile, 'id' | 'created_at'>): Promise<RepFile | null> {
+  const { data, error } = await db().from('rep_files')
+    .insert(file)
+    .select()
+    .single()
+  if (error) { console.error('[addRepFile]', error); return null }
+  return data as RepFile
+}
+
+export async function deleteRepFile(fileId: string): Promise<boolean> {
+  const { error } = await db().from('rep_files').delete().eq('id', fileId)
+  if (error) { console.error('[deleteRepFile]', error); return false }
+  return true
+}
+
 // ── Rep Scorecard ──────────────────────────────────────────────────────────
 
 export interface RepScorecard {
