@@ -163,8 +163,13 @@ Email domain whitelist: `@gomicrogridenergy.com`, `@energydevelopmentgroup.com`,
 - `active` field on `crews` is string not boolean
 - `useSupabaseQuery` cannot query views or untyped tables — use `lib/api/` or `db()`
 - SubHub webhook requires `SUPABASE_SECRET_KEY` env var
-- `as any` casts remain in production code (mostly from `db()` helper and untyped tables)
+- 31 `as any` casts remain in production code (mostly from `db()` helper and untyped tables)
 - Ops dashboard "Last Year" period only queries active `projects` table, not `legacy_projects`
+- CSP uses `unsafe-inline`/`unsafe-eval` in script-src (Next.js requirement, should move to nonce-based)
+- Role cookie HMAC uses `NEXT_PUBLIC_SUPABASE_ANON_KEY` as signing secret (should use private key)
+- `schedule` table lacks `org_id` column — no multi-tenant filtering on schedule data
+- 15 page/component files exceed 1000 lines — candidates for extraction
+- Job costing schema (migration 071) created but not yet applied to Supabase
 
 ## Co-Author Convention
 
