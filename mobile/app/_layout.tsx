@@ -7,6 +7,7 @@ import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_7
 import { supabase } from '../lib/supabase'
 import { ThemeContext, getThemeColors } from '../lib/theme'
 import ErrorBoundary from '../components/ErrorBoundary'
+import { OfflineBanner } from '../components/OfflineBanner'
 import { registerForPushNotifications, addNotificationResponseListener } from '../lib/notifications'
 import { loadPersistentCache } from '../lib/cache'
 import type { Session } from '@supabase/supabase-js'
@@ -97,6 +98,7 @@ export default function RootLayout() {
     <ErrorBoundary>
       <ThemeContext.Provider value={colors}>
         <StatusBar style={colors.statusBar} backgroundColor={colors.bg} />
+        <OfflineBanner />
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" />

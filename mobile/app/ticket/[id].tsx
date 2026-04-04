@@ -312,7 +312,7 @@ export default function TicketDetailScreen() {
                               // Download file locally then open native share sheet
                               const url = c.image_url!
                               const ext = url.split('.').pop()?.split('?')[0] ?? 'file'
-                              const localUri = FileSystem.cacheDirectory + `attachment_${Date.now()}.${ext}`
+                              const localUri = (FileSystem.cacheDirectory ?? '') + `attachment_${Date.now()}.${ext}`
                               const { uri } = await FileSystem.downloadAsync(url, localUri)
                               if (await Sharing.isAvailableAsync()) {
                                 await Sharing.shareAsync(uri)
