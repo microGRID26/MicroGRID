@@ -164,11 +164,13 @@ function SheetPV1({ data }: { data: PlansetData }) {
 
   const sheetIndex = [
     ['PV-1', 'COVER PAGE & GENERAL NOTES'],
+    ['PV-2', 'PROJECT DATA'],
     ['PV-5', 'SINGLE LINE DIAGRAM'],
     ['PV-5.1', 'PCS LABELS'],
     ['PV-6', 'WIRING CALCULATIONS'],
     ['PV-7', 'WARNING LABELS'],
     ['PV-7.1', 'EQUIPMENT PLACARDS'],
+    ['PV-8', 'CONDUCTOR SCHEDULE & BOM'],
   ]
 
   // Build string config summary
@@ -310,6 +312,211 @@ function SheetPV1({ data }: { data: PlansetData }) {
       <text x="757" y="155" fontSize="6" fill="#333">{data.contractor.email}</text>
 
       <TitleBlock sheetName="COVER PAGE & GENERAL NOTES" sheetNumber="PV-1" data={data} />
+    </svg>
+  )
+}
+
+// ── SHEET PV-2: PROJECT DATA PAGE ───────────────────────────────────────────
+
+function SheetPV2({ data }: { data: PlansetData }) {
+  const storiesLabel = data.stories === 1 ? 'ONE' : data.stories === 2 ? 'TWO' : String(data.stories)
+
+  // Group strings by roof face
+  const roofGroups: Record<number, { modules: number; tilt: string; azimuth: string }> = {}
+  for (const s of data.strings) {
+    if (!roofGroups[s.roofFace]) {
+      roofGroups[s.roofFace] = { modules: 0, tilt: '—', azimuth: '—' }
+    }
+    roofGroups[s.roofFace].modules += s.modules
+  }
+  const roofRows = Object.entries(roofGroups).map(([face, info]) => ({
+    roof: `ROOF ${face}`,
+    tilt: info.tilt,
+    azimuth: info.azimuth,
+    modules: info.modules,
+  }))
+
+  const codeRefs = [
+    ['2020 (NEC)', 'NATIONAL ELECTRICAL CODE'],
+    ['2018 (IBC)', 'INTERNATIONAL BUILDING CODE'],
+    ['2018 (IRC)', 'INTERNATIONAL RESIDENTIAL CODE'],
+    ['2018 (IMC)', 'INTERNATIONAL MECHANICAL CODE'],
+    ['2018 (IPC)', 'INTERNATIONAL PLUMBING CODE'],
+    ['2018 (IFC)', 'INTERNATIONAL FIRE CODE'],
+    ['2018 (IECC)', 'INTERNATIONAL ENERGY CONSERVATION CODE'],
+  ]
+
+  const sectionHeaderH = 18
+  const rowH = 14
+
+  return (
+    <svg viewBox={`0 0 ${SHEET_W} ${SHEET_H}`} className="w-full bg-white" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
+      <rect width={SHEET_W} height={SHEET_H} fill="white" />
+      <DrawingBorder />
+
+      <text x="25" y="35" fontSize="14" fontWeight="bold" fill="#111">PROJECT DATA PAGE</text>
+      <text x="25" y="50" fontSize="8" fill="#555">
+        {data.systemDcKw.toFixed(2)} KW DC PHOTOVOLTAIC SYSTEM WITH {data.totalStorageKwh} KWH BATTERY ENERGY STORAGE
+      </text>
+
+      {/* ── PROJECT DATA TABLE (top left) ── */}
+      <rect x="25" y="70" width="350" height="260" fill="none" stroke="#111" strokeWidth="1" />
+      <rect x="25" y="70" width="350" height={sectionHeaderH} fill="#111" />
+      <text x="200" y="83" fontSize="8" fontWeight="bold" fill="white" textAnchor="middle">PROJECT DATA</text>
+
+      {(() => {
+        let y = 102
+        const ls = 14
+        const items: [string, string][] = [
+          ['PROJECT ADDRESS:', `${data.address}`],
+          ['', `${data.city}, TX ${data.zip}`],
+          ['OWNER:', data.owner],
+          ['', ''],
+          ['SYSTEM SIZE (DC):', `${data.systemDcKw.toFixed(2)} kWdc`],
+          ['SYSTEM SIZE (AC):', `${(data.panelCount * data.panelWattage / 1000).toFixed(2)} kWac`],
+          ['', ''],
+        ]
+        return items.map(([label, value], i) => {
+          if (!label && !value) { y += 6; return null }
+          const el = (
+            <g key={`pd-${i}`}>
+              {label && <text x="32" y={y} fontSize="6" fontWeight="bold" fill="#111">{label}</text>}
+              <text x={label ? 120 : 32} y={y} fontSize="7" fill="#333">{value}</text>
+            </g>
+          )
+          y += ls
+          return el
+        })
+      })()}
+
+      {/* SCOPE OF WORK sub-table */}
+      <rect x="30" y="200" width="340" height={sectionHeaderH} fill="#333" />
+      <text x="200" y="213" fontSize="7" fontWeight="bold" fill="white" textAnchor="middle">SCOPE OF WORK</text>
+      <rect x="30" y={200 + sectionHeaderH} width="80" height="14" fill="#eee" stroke="#ccc" strokeWidth="0.5" />
+      <rect x="110" y={200 + sectionHeaderH} width="260" height="14" fill="#eee" stroke="#ccc" strokeWidth="0.5" />
+      <text x="35" y={200 + sectionHeaderH + 10} fontSize="5.5" fontWeight="bold" fill="#111">QUANTITY</text>
+      <text x="115" y={200 + sectionHeaderH + 10} fontSize="5.5" fontWeight="bold" fill="#111">DESCRIPTION</text>
+
+      {[
+        [`${data.panelCount}`, data.panelModel],
+        [`${data.inverterCount}`, data.inverterModel],
+        [`${data.batteryCount}`, data.batteryModel],
+      ].map(([qty, desc], i) => {
+        const ry = 200 + sectionHeaderH + 14 + i * rowH
+        return (
+          <g key={`sow-${i}`}>
+            <rect x="30" y={ry} width="80" height={rowH} fill={i % 2 === 0 ? '#f9f9f9' : 'white'} stroke="#ccc" strokeWidth="0.5" />
+            <rect x="110" y={ry} width="260" height={rowH} fill={i % 2 === 0 ? '#f9f9f9' : 'white'} stroke="#ccc" strokeWidth="0.5" />
+            <text x="70" y={ry + 10} fontSize="6" fill="#333" textAnchor="middle">{qty}</text>
+            <text x="115" y={ry + 10} fontSize="6" fill="#333">{desc}</text>
+          </g>
+        )
+      })}
+
+      {/* ── NEW SYSTEM ROOF DESCRIPTION (top center) ── */}
+      <rect x="400" y="70" width="360" height={sectionHeaderH + 14 + roofRows.length * rowH} fill="none" stroke="#111" strokeWidth="1" />
+      <rect x="400" y="70" width="360" height={sectionHeaderH} fill="#111" />
+      <text x="580" y="83" fontSize="8" fontWeight="bold" fill="white" textAnchor="middle">NEW SYSTEM ROOF DESCRIPTION</text>
+
+      {/* Column headers */}
+      <rect x="400" y={70 + sectionHeaderH} width="90" height="14" fill="#eee" stroke="#ccc" strokeWidth="0.5" />
+      <rect x="490" y={70 + sectionHeaderH} width="90" height="14" fill="#eee" stroke="#ccc" strokeWidth="0.5" />
+      <rect x="580" y={70 + sectionHeaderH} width="90" height="14" fill="#eee" stroke="#ccc" strokeWidth="0.5" />
+      <rect x="670" y={70 + sectionHeaderH} width="90" height="14" fill="#eee" stroke="#ccc" strokeWidth="0.5" />
+      <text x="445" y={70 + sectionHeaderH + 10} fontSize="5.5" fontWeight="bold" fill="#111" textAnchor="middle">ROOF</text>
+      <text x="535" y={70 + sectionHeaderH + 10} fontSize="5.5" fontWeight="bold" fill="#111" textAnchor="middle">ARRAY TILT</text>
+      <text x="625" y={70 + sectionHeaderH + 10} fontSize="5.5" fontWeight="bold" fill="#111" textAnchor="middle">AZIMUTH</text>
+      <text x="715" y={70 + sectionHeaderH + 10} fontSize="5.5" fontWeight="bold" fill="#111" textAnchor="middle"># OF MODULES</text>
+
+      {roofRows.map((row, i) => {
+        const ry = 70 + sectionHeaderH + 14 + i * rowH
+        return (
+          <g key={`roof-${i}`}>
+            <rect x="400" y={ry} width="90" height={rowH} fill={i % 2 === 0 ? '#f9f9f9' : 'white'} stroke="#ccc" strokeWidth="0.5" />
+            <rect x="490" y={ry} width="90" height={rowH} fill={i % 2 === 0 ? '#f9f9f9' : 'white'} stroke="#ccc" strokeWidth="0.5" />
+            <rect x="580" y={ry} width="90" height={rowH} fill={i % 2 === 0 ? '#f9f9f9' : 'white'} stroke="#ccc" strokeWidth="0.5" />
+            <rect x="670" y={ry} width="90" height={rowH} fill={i % 2 === 0 ? '#f9f9f9' : 'white'} stroke="#ccc" strokeWidth="0.5" />
+            <text x="445" y={ry + 10} fontSize="6" fill="#333" textAnchor="middle">{row.roof}</text>
+            <text x="535" y={ry + 10} fontSize="6" fill="#333" textAnchor="middle">{row.tilt}</text>
+            <text x="625" y={ry + 10} fontSize="6" fill="#333" textAnchor="middle">{row.azimuth}</text>
+            <text x="715" y={ry + 10} fontSize="6" fill="#333" textAnchor="middle">{row.modules}</text>
+          </g>
+        )
+      })}
+
+      {/* ── ELECTRICAL INFORMATION (right side) ── */}
+      <rect x="800" y="70" width="280" height="200" fill="none" stroke="#111" strokeWidth="1" />
+      <rect x="800" y="70" width="280" height={sectionHeaderH} fill="#111" />
+      <text x="940" y="83" fontSize="8" fontWeight="bold" fill="white" textAnchor="middle">ELECTRICAL INFORMATION</text>
+
+      {[
+        ['VOLTAGE', data.voltage],
+        ['MSP BUS RATING', `${data.mspBusRating}A`],
+        ['MAIN BREAKER', data.mainBreaker],
+        ['METER #', data.meter],
+        ['ESID', data.esid],
+        ['INTERCONNECTION TYPE', 'UTILITY INTERCONNECTION'],
+      ].map(([label, value], i) => {
+        const ry = 70 + sectionHeaderH + i * rowH
+        return (
+          <g key={`elec-${i}`}>
+            <rect x="800" y={ry + sectionHeaderH} width="280" height={rowH}
+              fill={i % 2 === 0 ? '#f9f9f9' : 'white'} stroke="#ccc" strokeWidth="0.5" />
+            <text x="808" y={ry + sectionHeaderH + 10} fontSize="6" fontWeight="bold" fill="#999">{label}</text>
+            <text x="920" y={ry + sectionHeaderH + 10} fontSize="7" fill="#111">{value}</text>
+          </g>
+        )
+      })}
+
+      {/* ── BUILDING INFORMATION (below left) ── */}
+      <rect x="25" y="350" width="350" height="150" fill="none" stroke="#111" strokeWidth="1" />
+      <rect x="25" y="350" width="350" height={sectionHeaderH} fill="#111" />
+      <text x="200" y="363" fontSize="8" fontWeight="bold" fill="white" textAnchor="middle">BUILDING INFORMATION</text>
+
+      {[
+        ['BUILDING TYPE', `${storiesLabel} STORY BUILDING`],
+        ['CONSTRUCTION TYPE', data.buildingType],
+        ['OCCUPANCY', data.occupancy],
+        ['ROOF TYPE', data.roofType],
+        ['RAFTERS', data.rafterSize],
+      ].map(([label, value], i) => {
+        const ry = 350 + sectionHeaderH + i * 18
+        return (
+          <g key={`bldg-${i}`}>
+            <text x="32" y={ry + 16} fontSize="6" fontWeight="bold" fill="#999">{label}</text>
+            <text x="140" y={ry + 16} fontSize="7" fill="#111">{value}</text>
+          </g>
+        )
+      })}
+
+      {/* ── RACKING INFORMATION (below center) ── */}
+      <rect x="400" y="350" width="360" height="150" fill="none" stroke="#111" strokeWidth="1" />
+      <rect x="400" y="350" width="360" height={sectionHeaderH} fill="#111" />
+      <text x="580" y="363" fontSize="8" fontWeight="bold" fill="white" textAnchor="middle">RACKING INFORMATION</text>
+
+      <text x="408" y="386" fontSize="7" fill="#111">{data.rackingModel}</text>
+
+      <text x="408" y="410" fontSize="8" fontWeight="bold" fill="#111">DESIGN CRITERIA</text>
+      <text x="408" y="426" fontSize="6" fontWeight="bold" fill="#999">EXPOSURE CATEGORY</text>
+      <text x="530" y="426" fontSize="7" fill="#111">{data.exposure}</text>
+      <text x="408" y="442" fontSize="6" fontWeight="bold" fill="#999">WIND SPEED</text>
+      <text x="530" y="442" fontSize="7" fill="#111">{data.windSpeed} MPH</text>
+      <text x="408" y="458" fontSize="6" fontWeight="bold" fill="#999">RISK CATEGORY</text>
+      <text x="530" y="458" fontSize="7" fill="#111">{data.riskCategory}</text>
+
+      {/* ── CODE REFERENCES (below right) ── */}
+      <rect x="800" y="350" width="280" height="150" fill="none" stroke="#111" strokeWidth="1" />
+      <rect x="800" y="350" width="280" height={sectionHeaderH} fill="#111" />
+      <text x="940" y="363" fontSize="8" fontWeight="bold" fill="white" textAnchor="middle">CODE REFERENCES</text>
+
+      {codeRefs.map(([code, desc], i) => (
+        <g key={`code-${i}`}>
+          <text x="808" y={386 + i * 14} fontSize="6" fontWeight="bold" fill="#111">{code}</text>
+          <text x="880" y={386 + i * 14} fontSize="6" fill="#333">{desc}</text>
+        </g>
+      ))}
+
+      <TitleBlock sheetName="PROJECT DATA" sheetNumber="PV-2" data={data} />
     </svg>
   )
 }
@@ -731,12 +938,58 @@ function SheetPV6({ data }: { data: PlansetData }) {
               </g>
             ))}
 
+            {/* ── AMPACITY CORRECTION (NEC 310.12) ── */}
+            <text x="25" y={acY + 345} fontSize="10" fontWeight="bold" fill="#111">AMPACITY CORRECTION — NEC 310.12 (83% RULE)</text>
+
+            {(() => {
+              const ampY = acY + 360
+              const ampHeaders = ['CONDUCTOR', 'AMPACITY (A)', 'CONDUIT FILL', 'AMBIENT (°C)', 'TEMP CF', 'CORRECTED (A)', '75°C MAX (A)', 'USABLE (A)']
+              const ampColX2 = [25, 180, 310, 420, 530, 660, 780, 840]
+              // Ampacity data: wire size → [base ampacity at 90C, 75C terminal max]
+              const ampRows: [string, number, number, number, number][] = [
+                ['#10 AWG CU (DC STRING)', 40, 0.70, 37, 30],
+                ['#4 AWG CU (BATTERY)', 95, 0.70, 37, 85],
+                ['#1 AWG CU (INVERTER AC)', 145, 0.70, 37, 130],
+                ['#6 AWG CU (EGC)', 75, 1.0, 37, 65],
+              ]
+              const tempCF = 0.91 // THWN-2 at 37°C
+              return (
+                <g>
+                  <rect x="25" y={ampY} width="840" height={rowH} fill="#111" />
+                  {ampHeaders.map((h, i) => (
+                    <text key={i} x={ampColX2[i]} y={ampY + 11} fontSize="5.5" fontWeight="bold" fill="white">{h}</text>
+                  ))}
+                  {ampRows.map((row, i) => {
+                    const ry2 = ampY + rowH + i * rowH
+                    const corrected = parseFloat((row[1] * row[2] * tempCF).toFixed(1))
+                    const usable = Math.min(corrected, row[4])
+                    return (
+                      <g key={`amp-${i}`}>
+                        <rect x="25" y={ry2} width="840" height={rowH}
+                          fill={i % 2 === 0 ? '#f9f9f9' : 'white'} stroke="#ddd" strokeWidth="0.5" />
+                        {[
+                          row[0], String(row[1]), String(row[2]), String(row[3]),
+                          String(tempCF), String(corrected), String(row[4]), String(usable),
+                        ].map((val, j) => (
+                          <text key={j} x={ampColX2[j]} y={ry2 + 11} fontSize="5.5"
+                            fill={parseFloat(val) > 0 && j === 7 ? '#006600' : '#333'}>{val}</text>
+                        ))}
+                      </g>
+                    )
+                  })}
+                  <text x="25" y={ampY + rowH + ampRows.length * rowH + 14} fontSize="5.5" fill="#555">
+                    Temp correction factor 0.91 for THWN-2 copper at 37°C ambient (NEC Table 310.15(B)(1)). Conduit fill factor per NEC 310.15(C)(1).
+                  </text>
+                </g>
+              )
+            })()}
+
             {/* Voltage drop formula */}
-            <text x="25" y={acY + 345} fontSize="7" fontWeight="bold" fill="#111">VOLTAGE DROP FORMULA:</text>
-            <text x="25" y={acY + 360} fontSize="6.5" fill="#333">
+            <text x="25" y={acY + 470} fontSize="7" fontWeight="bold" fill="#111">VOLTAGE DROP FORMULA:</text>
+            <text x="25" y={acY + 485} fontSize="6.5" fill="#333">
               V_drop = 2 × L × I × R / 1000 where L = length (ft), I = current (A), R = resistance (ohms/1000ft)
             </text>
-            <text x="25" y={acY + 373} fontSize="6.5" fill="#333">
+            <text x="25" y={acY + 498} fontSize="6.5" fill="#333">
               DC circuits: V_drop must be &lt; 2% of Vmp | AC circuits: V_drop must be &lt; 3% of nominal voltage
             </text>
           </g>
@@ -1103,6 +1356,193 @@ function SheetPV71({ data }: { data: PlansetData }) {
       ))}
 
       <TitleBlock sheetName="EQUIPMENT PLACARDS" sheetNumber="PV-7.1" data={data} />
+    </svg>
+  )
+}
+
+// ── SHEET PV-8: CONDUCTOR SCHEDULE & BOM ────────────────────────────────────
+
+function SheetPV8({ data }: { data: PlansetData }) {
+  const rowH = 13
+  const headerH = 16
+
+  // Conductor & conduit schedule rows
+  const stringCount = data.strings.length
+  const panelImp = data.panelImp
+  const fla125 = panelImp * 1.25
+  const stringOcpd = Math.ceil(fla125 / 5) * 5
+  const ambientTemp = 37
+  const tempFactor = 0.91
+  const conduitFillFactor = 0.70
+
+  // Ampacity for #10 AWG CU THWN-2 at 90C = 40A
+  const string10Ampacity = 40
+  const stringCorrected = parseFloat((string10Ampacity * conduitFillFactor * tempFactor).toFixed(1))
+  const string75CMax = 30 // #10 AWG at 75C terminal
+  const stringUsable = Math.min(stringCorrected, string75CMax)
+
+  // Battery: #4 AWG
+  const battFla = 63.16
+  const battFla125 = parseFloat((battFla * 1.25).toFixed(1))
+  const batt4Ampacity = 95
+  const battCorrected = parseFloat((batt4Ampacity * conduitFillFactor * tempFactor).toFixed(1))
+  const batt75CMax = 85
+  const battUsable = Math.min(battCorrected, batt75CMax)
+
+  // Inverter: #1 AWG
+  const invFla = parseFloat((data.inverterAcPower * 1000 / 240).toFixed(1))
+  const invFla125 = parseFloat((invFla * 1.25).toFixed(1))
+  const inv1Ampacity = 145
+  const invCorrected = parseFloat((inv1Ampacity * conduitFillFactor * tempFactor).toFixed(1))
+  const inv75CMax = 130 // #1 AWG at 75C
+  const invUsable = Math.min(invCorrected, inv75CMax)
+
+  // Generation disconnect
+  const genFla = 100
+  const genFla125 = 125
+
+  type CondRow = [string, string, string, string, string, string, string, string, string, string, string, string, string, string, string, string, string]
+
+  const condRows: CondRow[] = []
+
+  // RSD row
+  condRows.push([
+    'RSD', 'RSD DEVICES', 'N/A', 'N/A', 'N/A',
+    String(stringCount * 2), '#10 AWG', '1', '#6 AWG BARE', 'PV WIRE', 'FREE AIR',
+    String(string10Ampacity), String(ambientTemp), String(tempFactor), String(stringCorrected),
+    String(string75CMax), String(stringUsable),
+  ])
+
+  // String rows
+  data.strings.forEach((s) => {
+    condRows.push([
+      `S${s.id}`, `STRING ${s.id} (${s.modules} MOD)`,
+      panelImp.toFixed(1), fla125.toFixed(1), String(stringOcpd),
+      '8', '#10 AWG', '1', '#8 AWG', 'THWN-2', '3/4" EMT',
+      String(string10Ampacity), String(ambientTemp), String(tempFactor), String(stringCorrected),
+      String(string75CMax), String(stringUsable),
+    ])
+  })
+
+  // Battery row
+  if (data.batteryCount > 0) {
+    condRows.push([
+      'BATT', `BATTERY (${data.batteryCount}x ${data.batteryModel})`,
+      battFla.toFixed(1), battFla125.toFixed(1), '80',
+      '3', '#4 AWG', '1', '#6 AWG', 'THWN-2', '3/4" EMT',
+      String(batt4Ampacity), String(ambientTemp), String(tempFactor), String(battCorrected),
+      String(batt75CMax), String(battUsable),
+    ])
+  }
+
+  // Inverter row
+  condRows.push([
+    'INV', `INVERTER (${data.inverterCount}x ${data.inverterModel.split(' ').slice(0, 3).join(' ')})`,
+    invFla.toFixed(1), invFla125.toFixed(1), '100',
+    '3', '#1 AWG', '1', '#6 AWG', 'THWN-2', '1-1/4" EMT',
+    String(inv1Ampacity), String(ambientTemp), String(tempFactor), String(invCorrected),
+    String(inv75CMax), String(invUsable),
+  ])
+
+  // Generation disconnect row
+  condRows.push([
+    'GEN', 'GENERATION DISCONNECT',
+    String(genFla), String(genFla125), '125',
+    '3', '#1 AWG', '1', '#6 AWG', 'THWN-2', '1-1/4" EMT',
+    String(inv1Ampacity), String(ambientTemp), String(tempFactor), String(invCorrected),
+    String(inv75CMax), String(invUsable),
+  ])
+
+  const condColHeaders = [
+    'TAG', 'CIRCUIT ORIGIN', 'FLA (A)', 'FLA×1.25', 'OCPD (A)',
+    '# WIRES', 'WIRE SIZE', '# GND', 'GND SIZE', 'WIRE TYPE', 'CONDUIT',
+    'AMPACITY', 'AMB °C', 'TEMP CF', 'CORR AMP', '75°C MAX', 'USABLE',
+  ]
+  const condColX = [12, 45, 200, 245, 295, 340, 380, 430, 465, 525, 580, 655, 710, 760, 810, 870, 930]
+
+  // BOM rows
+  const attachments = Math.ceil(data.panelCount * 2.2)
+  const rails = Math.ceil(data.panelCount * 0.7)
+  const railSplices = Math.ceil(data.panelCount * 0.4)
+  const midClamps = Math.ceil(data.panelCount * 1.5)
+  const endClamps = Math.ceil(data.panelCount * 1.0)
+
+  const bomRows: [string, string, string][] = [
+    ['SOLAR PV MODULE', String(data.panelCount), data.panelModel],
+    ['RAPID SHUTDOWN DEVICE', String(data.panelCount), 'APSMART RSD-D-20'],
+    ['EMERGENCY POWER OFF', '1', 'DURACELL EMERGENCY STOP BUTTON'],
+    ['INVERTER', String(data.inverterCount), data.inverterModel],
+    ['BATTERY', String(data.batteryCount), data.batteryModel],
+    ['JUNCTION BOX', '2', 'JUNCTION BOXES'],
+    ['AC DISCONNECT', '1', '200A/2P NON-FUSIBLE DISCONNECT 240V N3R'],
+    ['ATTACHMENT', String(attachments), `${data.rackingModel} ROOF ATTACHMENT`],
+    ['RAIL CLICKER', String(attachments), `${data.rackingModel} RAIL CLICKER`],
+    ['RAIL', String(rails), 'CF LTE US RAIL AL MLL 165.4" 2012034'],
+    ['RAIL SPLICE', String(railSplices), 'CF RAIL SPLICE SS 2012013'],
+    ['MID CLAMPS', String(midClamps), 'MID CLAMP ASSEMBLY'],
+    ['END CLAMPS', String(endClamps), 'END CLAMP ASSEMBLY'],
+    ['GROUNDING LUG', '5', 'GROUNDING LUGS'],
+  ]
+
+  const tableStartY = 55
+  const condTableEndY = tableStartY + headerH + condRows.length * rowH + 10
+  const bomStartY = condTableEndY + 15
+
+  return (
+    <svg viewBox={`0 0 ${SHEET_W} ${SHEET_H}`} className="w-full bg-white" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
+      <rect width={SHEET_W} height={SHEET_H} fill="white" />
+      <DrawingBorder />
+
+      {/* ── CONDUCTOR AND CONDUIT SCHEDULE ── */}
+      <text x="12" y="25" fontSize="7" fontWeight="bold" fill="#111">
+        CONDUCTOR AND CONDUIT SCHEDULE WITH AMPACITY CALCULATIONS
+      </text>
+      <text x="12" y="37" fontSize="5" fill="#555">
+        WIRES ARE 90°C RATED THWN-2 @ 30°C (CU) | CONDUIT HEIGHT ABOVE ROOF IS OVER 7/8&quot; | NEC 310.12 (83% RULE)
+      </text>
+
+      {/* Header row */}
+      <rect x="12" y={tableStartY} width="960" height={headerH} fill="#111" />
+      {condColHeaders.map((h, i) => (
+        <text key={i} x={condColX[i]} y={tableStartY + 11} fontSize="4.5" fontWeight="bold" fill="white">{h}</text>
+      ))}
+
+      {/* Data rows */}
+      {condRows.map((row, ri) => {
+        const ry = tableStartY + headerH + ri * rowH
+        return (
+          <g key={`cond-${ri}`}>
+            <rect x="12" y={ry} width="960" height={rowH}
+              fill={ri % 2 === 0 ? '#f9f9f9' : 'white'} stroke="#ddd" strokeWidth="0.3" />
+            {row.map((val, ci) => (
+              <text key={ci} x={condColX[ci]} y={ry + 9} fontSize="4.5" fill="#333">{val}</text>
+            ))}
+          </g>
+        )
+      })}
+
+      {/* ── BILL OF MATERIALS ── */}
+      <text x="12" y={bomStartY} fontSize="10" fontWeight="bold" fill="#111">BILL OF MATERIALS</text>
+
+      <rect x="12" y={bomStartY + 10} width="960" height={headerH} fill="#111" />
+      {['EQUIPMENT', 'QTY', 'DESCRIPTION'].map((h, i) => (
+        <text key={i} x={[17, 250, 320][i]} y={bomStartY + 21} fontSize="5.5" fontWeight="bold" fill="white">{h}</text>
+      ))}
+
+      {bomRows.map((row, i) => {
+        const ry = bomStartY + 10 + headerH + i * rowH
+        return (
+          <g key={`bom-${i}`}>
+            <rect x="12" y={ry} width="960" height={rowH}
+              fill={i % 2 === 0 ? '#f9f9f9' : 'white'} stroke="#ddd" strokeWidth="0.3" />
+            <text x="17" y={ry + 9} fontSize="5.5" fontWeight="bold" fill="#111">{row[0]}</text>
+            <text x="260" y={ry + 9} fontSize="5.5" fill="#333" textAnchor="middle">{row[1]}</text>
+            <text x="320" y={ry + 9} fontSize="5.5" fill="#333">{row[2]}</text>
+          </g>
+        )
+      })}
+
+      <TitleBlock sheetName="CONDUCTOR SCHEDULE & BOM" sheetNumber="PV-8" data={data} />
     </svg>
   )
 }
@@ -1620,6 +2060,17 @@ function PlanSetPageInner() {
                 </div>
               </div>
 
+              {/* PV-2 */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-bold text-green-400 bg-gray-800 px-2 py-1 rounded">PV-2</span>
+                  <span className="text-sm text-gray-400">Project Data</span>
+                </div>
+                <div className="border border-gray-700 rounded-lg overflow-hidden">
+                  <SheetPV2 data={data} />
+                </div>
+              </div>
+
               {/* PV-5 */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
@@ -1672,6 +2123,17 @@ function PlanSetPageInner() {
                 </div>
                 <div className="border border-gray-700 rounded-lg overflow-hidden">
                   <SheetPV71 data={data} />
+                </div>
+              </div>
+
+              {/* PV-8 */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-bold text-green-400 bg-gray-800 px-2 py-1 rounded">PV-8</span>
+                  <span className="text-sm text-gray-400">Conductor Schedule &amp; BOM</span>
+                </div>
+                <div className="border border-gray-700 rounded-lg overflow-hidden">
+                  <SheetPV8 data={data} />
                 </div>
               </div>
             </div>

@@ -351,7 +351,7 @@ export function buildPlansetData(project: Project, overrides: PlansetOverrides =
     contractor: MICROGRID_CONTRACTOR,
     vocCorrected: parseFloat(vocCorrected.toFixed(2)),
     pcsCurrentSetting,
-    sheetTotal: 6,
+    sheetTotal: 8,
     drawnDate,
   }
 }
