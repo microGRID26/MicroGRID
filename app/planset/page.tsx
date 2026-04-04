@@ -924,6 +924,9 @@ function SheetPV51({ data }: { data: PlansetData }) {
   const maxStringVocCold = data.strings.length > 0
     ? Math.max(...data.strings.map(s => s.vocCold)).toFixed(1) : '0.0'
   const totalAcAmps = (data.inverterAcPower * 1000 / 240).toFixed(1)
+  const totalAcAmpsAll = (parseFloat(totalAcAmps) * data.inverterCount).toFixed(1)
+  const maxDcCurrent125 = (data.panelIsc * 1.25).toFixed(1)
+  const shortCircuitCurrent = data.panelIsc.toFixed(1)
 
   const stringGroups: Record<number, number> = {}
   for (const s of data.strings) {
@@ -934,57 +937,72 @@ function SheetPV51({ data }: { data: PlansetData }) {
     .map(([mods, count]) => `${count}x ${mods}-MODULE (Voc=${(parseInt(mods) * data.vocCorrected).toFixed(1)}V)`)
     .join(' + ')
 
-  interface LabelDef {
+  // Label type: warning (red), caution (amber), info (blue/black)
+  type LabelType = 'warning' | 'caution' | 'info'
+  interface PcsLabel {
     title: string
     nec: string
+    type: LabelType
     lines: string[]
-    borderColor?: string
+    valueBoxes?: { label: string; value: string; color?: string }[]
   }
 
-  const leftLabels: LabelDef[] = [
+  const borderColors: Record<LabelType, string> = { warning: '#cc0000', caution: '#cc9900', info: '#1a6cb5' }
+  const headerBgs: Record<LabelType, string> = { warning: '#cc0000', caution: '#cc9900', info: '#1a6cb5' }
+  const lightBgs: Record<LabelType, string> = { warning: '#fff5f5', caution: '#fffbf0', info: '#f0f7ff' }
+
+  const leftLabels: PcsLabel[] = [
     {
-      title: 'INVERTER LABEL', nec: 'NEC 690.54',
+      title: 'INVERTER LABEL', nec: 'NEC 690.54', type: 'caution',
       lines: [
-        'CAUTION: DUAL POWER SOURCE', '',
-        'THIS EQUIPMENT IS SUPPLIED BY TWO POWER SOURCES:',
-        `1. UTILITY GRID (240V AC, SINGLE PHASE)`,
+        'CAUTION: DUAL POWER SOURCE',
+        'THIS EQUIPMENT IS SUPPLIED BY MULTIPLE POWER SOURCES:',
+        '1. UTILITY GRID (240V AC, SINGLE PHASE)',
         `2. PHOTOVOLTAIC SYSTEM (${data.systemDcKw.toFixed(2)} kW DC)`,
-        `3. BATTERY ENERGY STORAGE (${data.totalStorageKwh} kWh)`, '',
+        `3. BATTERY ENERGY STORAGE (${data.totalStorageKwh} kWh)`,
         `INVERTER: (${data.inverterCount}) ${data.inverterModel}`,
-        `RATED AC OUTPUT: ${data.inverterAcPower} kW PER UNIT, ${data.systemAcKw} kW TOTAL`,
-        `RATED AC CURRENT: ${totalAcAmps}A @ 240V PER UNIT`,
+      ],
+      valueBoxes: [
+        { label: 'RATED AC OUTPUT', value: `${data.systemAcKw} kW` },
+        { label: 'RATED AC CURRENT', value: `${totalAcAmps}A @ 240V` },
+        { label: 'UNITS', value: `${data.inverterCount}` },
       ],
     },
     {
-      title: 'AC DISCONNECT LABEL', nec: 'NEC 690.14(C)',
+      title: 'AC DISCONNECT LABEL', nec: 'NEC 690.14(C)', type: 'warning',
       lines: [
-        'AC DISCONNECT \u2014 SOLAR PHOTOVOLTAIC SYSTEM', '',
+        'AC DISCONNECT \u2014 SOLAR PHOTOVOLTAIC SYSTEM',
         'VOLTAGE: 240V AC, SINGLE PHASE',
-        `MAX AC CURRENT: ${totalAcAmps}A PER INVERTER`,
-        `TOTAL AC CURRENT: ${(parseFloat(totalAcAmps) * data.inverterCount).toFixed(1)}A`,
         'DISCONNECT RATING: 200A, NEMA 3R',
         'CAUTION: TURN OFF AC DISCONNECT BEFORE SERVICING INVERTER',
       ],
+      valueBoxes: [
+        { label: 'RATED AC OUTPUT CURRENT', value: `${totalAcAmpsAll}A`, color: '#cc0000' },
+        { label: 'NOMINAL OPERATING AC VOLTAGE', value: '240 Vac', color: '#cc0000' },
+      ],
     },
     {
-      title: 'PV DISCONNECT LABEL', nec: 'NEC 690.13',
+      title: 'PV DISCONNECT LABEL', nec: 'NEC 690.13', type: 'warning',
       lines: [
-        'DC DISCONNECT \u2014 PHOTOVOLTAIC SYSTEM', '',
-        `MAXIMUM SYSTEM VOLTAGE (Voc @ -5\u00B0C): ${maxStringVocCold}V DC`,
-        `MAXIMUM DC CURRENT: ${(data.panelIsc * 1.25).toFixed(1)}A (125% Isc)`,
+        'DC DISCONNECT \u2014 PHOTOVOLTAIC SYSTEM',
         `STRINGS: ${stringDesc}`,
         `CONDUCTOR: ${data.dcStringWire}`,
         `CONDUIT: ${data.dcConduit}`,
         'WARNING: SHOCK HAZARD \u2014 DC CIRCUITS MAY BE ENERGIZED WHEN MODULES ARE EXPOSED TO LIGHT',
       ],
+      valueBoxes: [
+        { label: 'MAX SYSTEM VOLTAGE', value: `${maxStringVocCold}V DC`, color: '#cc0000' },
+        { label: 'SHORT CIRCUIT CURRENT', value: `${shortCircuitCurrent}A`, color: '#cc0000' },
+        { label: 'MAX DC CURRENT (125% Isc)', value: `${maxDcCurrent125}A`, color: '#cc0000' },
+      ],
     },
   ]
 
-  const rightLabels: LabelDef[] = [
+  const rightLabels: PcsLabel[] = [
     {
-      title: 'MAIN PANEL LABEL', nec: 'NEC 705.12',
+      title: 'MAIN PANEL LABEL', nec: 'NEC 705.12', type: 'warning',
       lines: [
-        'WARNING: SOLAR PHOTOVOLTAIC SYSTEM CONNECTED', '',
+        'WARNING: SOLAR PHOTOVOLTAIC SYSTEM CONNECTED',
         `SOLAR SYSTEM: ${data.systemDcKw.toFixed(2)} kW DC / ${data.systemAcKw} kW AC`,
         `BATTERY STORAGE: ${data.totalStorageKwh} kWh`,
         `PV BACKFEED BREAKER: (${data.inverterCount}) 100A, 240V`,
@@ -993,58 +1011,75 @@ function SheetPV51({ data }: { data: PlansetData }) {
       ],
     },
     {
-      title: 'UTILITY METER LABEL', nec: 'NEC 705.10',
+      title: 'UTILITY METER LABEL', nec: 'NEC 705.10', type: 'info',
       lines: [
-        'NET METERING \u2014 PHOTOVOLTAIC SYSTEM', '',
-        `UTILITY: ${data.utility}`,
-        `METER: ${data.meter}`,
-        `ESID: ${data.esid}`,
-        `SYSTEM OUTPUT: ${data.systemAcKw} kW AC`,
+        'NET METERING \u2014 PHOTOVOLTAIC SYSTEM',
+      ],
+      valueBoxes: [
+        { label: 'UTILITY', value: data.utility },
+        { label: 'METER', value: data.meter },
+        { label: 'ESID', value: data.esid },
+        { label: 'SYSTEM OUTPUT', value: `${data.systemAcKw} kW AC` },
       ],
     },
     {
-      title: 'BATTERY WARNING LABEL', nec: 'NEC 706.30', borderColor: '#cc0000',
+      title: 'BATTERY WARNING LABEL', nec: 'NEC 706.30', type: 'warning',
       lines: [
-        'WARNING: BATTERY ENERGY STORAGE SYSTEM', '',
+        'WARNING: BATTERY ENERGY STORAGE SYSTEM',
         `BATTERY: (${data.batteryCount}) ${data.batteryModel}`,
         `TOTAL STORAGE: ${data.totalStorageKwh} kWh, LFP CHEMISTRY`,
-        'NOMINAL VOLTAGE: 51.2V DC PER BATTERY', '',
+        'NOMINAL VOLTAGE: 51.2V DC PER BATTERY',
         'CAUTION: CHEMICAL HAZARD \u2014 LITHIUM IRON PHOSPHATE BATTERIES',
-        'CAUTION: ELECTRICAL SHOCK HAZARD \u2014 DC CIRCUITS MAY BE ENERGIZED',
         'DO NOT OPEN BATTERY ENCLOSURE \u2014 NO USER-SERVICEABLE PARTS',
       ],
     },
     {
-      title: 'RAPID SHUTDOWN LABEL', nec: 'NEC 690.12', borderColor: '#cc0000',
+      title: 'RAPID SHUTDOWN LABEL', nec: 'NEC 690.12', type: 'warning',
       lines: [
-        'RAPID SHUTDOWN SYSTEM', '',
-        'THIS SYSTEM IS EQUIPPED WITH MODULE-LEVEL RAPID SHUTDOWN',
-        'COMPLIANT WITH NEC 690.12(B)(2)', '',
-        'TO INITIATE RAPID SHUTDOWN: TURN OFF AC DISCONNECT',
-        'ARRAY VOLTAGE WILL REDUCE TO <30V WITHIN 30 SECONDS',
+        'RAPID SHUTDOWN SYSTEM',
+        'MODULE-LEVEL RAPID SHUTDOWN',
+        'COMPLIANT WITH NEC 690.12(B)(2)',
+        'TO INITIATE: TURN OFF AC DISCONNECT',
+        'ARRAY VOLTAGE <30V WITHIN 30 SECONDS',
       ],
     },
   ]
 
-  function renderLabel(label: LabelDef, i: number) {
-    const bc = label.borderColor || '#111'
-    const isRed = bc === '#cc0000'
+  function renderPcsLabel(label: PcsLabel, i: number) {
+    const bc = borderColors[label.type]
+    const hdrBg = headerBgs[label.type]
+    const bgLight = lightBgs[label.type]
     return (
-      <div key={i} style={{ border: `${isRed ? '2px' : '1.5px'} solid ${bc}`, marginBottom: '8px', overflow: 'hidden' }}>
-        <div style={{ background: bc, color: 'white', padding: '3px 6px', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center', position: 'relative' }}>
-          {label.title}
-          <span style={{ position: 'absolute', right: '5px', top: '3px', fontSize: '6pt', color: '#ddd', fontWeight: 'normal' }}>{label.nec}</span>
+      <div key={i} style={{ borderLeft: `4px solid ${bc}`, marginBottom: '7px', overflow: 'hidden', background: '#fff', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }}>
+        {/* Header bar */}
+        <div style={{ background: hdrBg, color: 'white', padding: '3px 8px', fontSize: '7pt', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>{label.title}</span>
+          <span style={{ fontSize: '6.5pt', fontWeight: 'bold', background: 'rgba(255,255,255,0.2)', padding: '0 4px', borderRadius: '2px' }}>{label.nec}</span>
         </div>
-        <div style={{ padding: '5px 8px', fontSize: '6.5pt', lineHeight: 1.6 }}>
+        {/* Body */}
+        <div style={{ padding: '4px 8px', fontSize: '6.5pt', lineHeight: 1.55, background: bgLight }}>
           {label.lines.map((line, j) => {
             if (!line) return <br key={j} />
-            const isWarn = line.startsWith('CAUTION') || line.startsWith('WARNING') || line.startsWith('DO NOT')
+            const isWarn = line.startsWith('CAUTION') || line.startsWith('WARNING') || line.startsWith('DO NOT') || line.startsWith('DANGER')
             return (
-              <div key={j} style={{ fontWeight: j === 0 ? 'bold' : 'normal', color: isWarn ? '#cc0000' : '#333' }}>
-                {line}
-              </div>
+              <div key={j} style={{
+                fontWeight: j === 0 ? 'bold' : 'normal',
+                color: isWarn ? '#cc0000' : '#333',
+                fontSize: j === 0 ? '7pt' : '6.5pt',
+              }}>{line}</div>
             )
           })}
+          {/* Value boxes */}
+          {label.valueBoxes && (
+            <div style={{ display: 'flex', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
+              {label.valueBoxes.map((vb, vi) => (
+                <div key={vi} style={{ border: `2px solid ${vb.color || bc}`, padding: '2px 8px', textAlign: 'center', background: '#fff', minWidth: '60px' }}>
+                  <div style={{ fontSize: '4.5pt', color: '#666', textTransform: 'uppercase' as const, letterSpacing: '0.3px' }}>{vb.label}</div>
+                  <div style={{ fontSize: '8pt', fontWeight: 'bold', color: vb.color || bc }}>{vb.value}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     )
@@ -1054,11 +1089,18 @@ function SheetPV51({ data }: { data: PlansetData }) {
     <div className="sheet" style={{ display: 'grid', gridTemplateColumns: '1fr 2.5in', border: '2px solid #000', fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '8pt', width: '16.5in', height: '10.5in', overflow: 'hidden', position: 'relative' }}>
       <div className="sheet-content" style={{ padding: '0.15in 0.2in', overflow: 'hidden' }}>
         <div style={{ fontSize: '14pt', fontWeight: 'bold', color: '#111' }}>PCS LABELS &mdash; NEC REQUIRED EQUIPMENT LABELS</div>
-        <div style={{ fontSize: '8pt', color: '#555', marginBottom: '8pt' }}>ALL LABELS SHALL BE PERMANENT, WEATHER-RESISTANT, AND INSTALLED AT POINT OF APPLICATION</div>
+        <div style={{ fontSize: '7.5pt', color: '#555', marginBottom: '6pt' }}>ALL LABELS SHALL BE PERMANENT, WEATHER-RESISTANT, AND INSTALLED AT POINT OF APPLICATION</div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-          <div>{leftLabels.map((l, i) => renderLabel(l, i))}</div>
-          <div>{rightLabels.map((l, i) => renderLabel(l, i))}</div>
+        {/* Legend */}
+        <div style={{ display: 'flex', gap: '16px', marginBottom: '6px', fontSize: '6pt', color: '#555' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: '12px', height: '4px', background: '#cc0000', borderRadius: '1px' }} /> WARNING</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: '12px', height: '4px', background: '#cc9900', borderRadius: '1px' }} /> CAUTION</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: '12px', height: '4px', background: '#1a6cb5', borderRadius: '1px' }} /> INFORMATION</div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div>{leftLabels.map((l, i) => renderPcsLabel(l, i))}</div>
+          <div>{rightLabels.map((l, i) => renderPcsLabel(l, i))}</div>
         </div>
       </div>
       <TitleBlockHtml sheetName="PCS LABELS" sheetNumber="PV-5.1" data={data} />
@@ -1304,106 +1346,189 @@ function SheetPV7({ data }: { data: PlansetData }) {
   const maxVocCold = data.strings.length > 0
     ? Math.max(...data.strings.map(s => s.vocCold)).toFixed(1) : '0.0'
   const totalAcAmps = (data.inverterAcPower * 1000 / 240).toFixed(1)
+  const totalAcAmpsAll = (parseFloat(totalAcAmps) * data.inverterCount).toFixed(1)
 
-  const stringGroupsMap = new Map<number, number>()
-  data.strings.forEach(s => stringGroupsMap.set(s.modules, (stringGroupsMap.get(s.modules) ?? 0) + 1))
-  const stringSummary = Array.from(stringGroupsMap.entries()).map(([m, c]) => `${c}\u00D7${m}`).join(' + ')
-  const stringConfigLabel = stringSummary ? `${stringSummary} MODULES` : 'N/A'
+  // Shared label-box renderer
+  type LabelColor = 'red' | 'yellow' | 'black'
+  interface WLabel { title: string; nec: string; lines: string[]; color: LabelColor; valueBoxes?: { label: string; value: string }[] }
 
-  interface WarningLabel {
-    title: string; nec: string; lines: string[]; color: 'red' | 'yellow' | 'black'
+  function renderLabelBox(label: WLabel, idx: number) {
+    const bc = label.color === 'red' ? '#cc0000' : label.color === 'yellow' ? '#cc9900' : '#111'
+    const headerBg = label.color === 'red' ? '#cc0000' : label.color === 'yellow' ? '#cc9900' : '#222'
+    return (
+      <div key={idx} style={{ border: `2.5px solid ${bc}`, padding: '2px', flex: '1 1 0', minWidth: 0 }}>
+        <div style={{ border: `1px solid ${bc}`, overflow: 'hidden' }}>
+          <div style={{ background: headerBg, color: 'white', padding: '2px 6px', fontSize: '6pt', fontWeight: 'bold', textAlign: 'center' }}>
+            {label.title}
+          </div>
+          <div style={{ padding: '3px 6px', fontSize: '5.5pt', lineHeight: 1.5 }}>
+            {label.lines.map((line, j) => {
+              if (!line) return <br key={j} />
+              const isWarn = line === 'WARNING' || line === 'DANGER' || line.startsWith('WARNING') || line.startsWith('DANGER')
+              return <div key={j} style={{ fontWeight: j === 0 ? 'bold' : 'normal', color: isWarn ? '#cc0000' : '#333', fontSize: j === 0 ? '6pt' : '5.5pt' }}>{line}</div>
+            })}
+            {label.valueBoxes && (
+              <div style={{ display: 'flex', gap: '6px', marginTop: '3px', flexWrap: 'wrap' }}>
+                {label.valueBoxes.map((vb, vi) => (
+                  <div key={vi} style={{ border: `2px solid ${bc}`, padding: '1px 6px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '4.5pt', color: '#666', textTransform: 'uppercase' as const }}>{vb.label}</div>
+                    <div style={{ fontSize: '7pt', fontWeight: 'bold', color: bc }}>{vb.value}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div style={{ borderTop: `1px solid ${bc}`, padding: '1px 6px', fontSize: '4.5pt', color: '#888', textAlign: 'right' }}>{label.nec}</div>
+        </div>
+      </div>
+    )
   }
 
-  const labels: WarningLabel[] = [
+  // Location-based rows
+  interface LocationRow {
+    location: string
+    labels: WLabel[]
+  }
+
+  const locations: LocationRow[] = [
     {
-      title: 'SOLAR PV SYSTEM CONNECTED', nec: 'NEC 690.54', color: 'red',
-      lines: ['WARNING', '', 'THIS ELECTRICAL PANEL IS SUPPLIED BY', 'A SOLAR PHOTOVOLTAIC SYSTEM.', '',
-        `SYSTEM SIZE: ${data.systemDcKw.toFixed(2)} kW DC`, `AC OUTPUT: ${data.systemAcKw} kW`, `BATTERY: ${data.totalStorageKwh} kWh`],
+      location: 'EMT / CONDUIT RACEWAYS',
+      labels: [
+        {
+          title: '\u26A0\uFE0F PHOTOVOLTAIC POWER SOURCE', nec: 'NEC 690.31(D)(2)', color: 'red',
+          lines: ['WARNING', 'PHOTOVOLTAIC POWER SOURCE', 'CONDUIT CONTAINS ENERGIZED', 'PV SOURCE CIRCUIT CONDUCTORS.', 'DISCONNECT PV SYSTEM BEFORE', 'WORKING ON THIS RACEWAY.'],
+        },
+        {
+          title: 'PV CIRCUIT IDENTIFICATION', nec: 'NEC 690.31(B)(1)', color: 'black',
+          lines: ['PV SYSTEM CIRCUIT', '', `SYSTEM: ${data.systemDcKw.toFixed(2)} kW DC`, `VOLTAGE: ${maxVocCold}V DC MAX`, `CONDUCTOR: ${data.dcStringWire}`, `CONDUIT: ${data.dcConduit}`],
+        },
+      ],
     },
     {
-      title: 'ELECTRIC SHOCK HAZARD', nec: 'NEC 690.31(G)', color: 'red',
-      lines: ['DANGER', '', 'ELECTRIC SHOCK HAZARD', 'DO NOT TOUCH TERMINALS.', 'TERMINALS ON BOTH THE LINE',
-        'AND LOAD SIDES MAY BE', 'ENERGIZED IN THE OPEN POSITION.'],
+      location: 'COMBINER BOX',
+      labels: [
+        {
+          title: '\u26A0\uFE0F ELECTRICAL SHOCK HAZARD', nec: 'NEC 706.15(C)(4), NEC 690.13(B)', color: 'red',
+          lines: ['WARNING', 'ELECTRICAL SHOCK HAZARD', 'DC CIRCUITS MAY BE ENERGIZED', 'WHEN MODULES ARE EXPOSED', 'TO LIGHT. DO NOT TOUCH', 'UNINSULATED CONDUCTORS.'],
+        },
+        {
+          title: '\u26A0\uFE0F TURN OFF AC DISCONNECT', nec: 'NEC 110.27(C), OSHA 1910.145(f)(7)', color: 'yellow',
+          lines: ['CAUTION', 'TURN OFF AC DISCONNECT', 'BEFORE SERVICING EQUIPMENT.', 'VERIFY ALL CIRCUITS ARE', 'DE-ENERGIZED BEFORE CONTACT.'],
+        },
+        {
+          title: 'PV/AC AGGREGATE PANEL', nec: 'NEC 690.54', color: 'black',
+          lines: ['PV/AC AGGREGATE PANEL', 'DO NOT REMOVE THIS LABEL', '', `SYSTEM: ${data.systemDcKw.toFixed(2)} kW DC`, `AC OUTPUT: ${data.systemAcKw} kW`, `BATTERY: ${data.totalStorageKwh} kWh`],
+        },
+      ],
     },
     {
-      title: 'DUAL POWER SOURCE', nec: 'NEC 705.12', color: 'yellow',
-      lines: ['CAUTION', '', 'DUAL POWER SOURCE', 'THIS EQUIPMENT IS SUPPLIED BY', 'TWO POWER SOURCES: UTILITY GRID',
-        'AND PHOTOVOLTAIC SYSTEM.', 'DISCONNECT BOTH BEFORE SERVICING.'],
+      location: 'PV AC DISCONNECT',
+      labels: [
+        {
+          title: '\u26A0\uFE0F ELECTRICAL SHOCK HAZARD', nec: 'NEC 706.15(C)(4)', color: 'red',
+          lines: ['WARNING', 'ELECTRICAL SHOCK HAZARD', 'TERMINALS ON BOTH LINE AND', 'LOAD SIDES MAY BE ENERGIZED', 'IN THE OPEN POSITION.'],
+        },
+        {
+          title: '\u{1F534} RAPID SHUTDOWN EQUIPPED', nec: 'NEC 690.56(C)(1)(a)', color: 'red',
+          lines: ['SOLAR PV SYSTEM EQUIPPED', 'WITH RAPID SHUTDOWN', '', 'COMPLIANT WITH NEC 690.12(B)(2)', 'INITIATE: TURN OFF AC DISCONNECT', 'ARRAY VOLTAGE <30V IN 30 SECONDS'],
+        },
+        {
+          title: 'PHOTOVOLTAIC AC DISCONNECT', nec: 'NEC 690.54', color: 'black',
+          lines: ['PHOTOVOLTAIC AC DISCONNECT', '', 'SOLAR PHOTOVOLTAIC SYSTEM', 'VOLTAGE: 240V AC, SINGLE PHASE'],
+          valueBoxes: [
+            { label: 'RATED CURRENT', value: `${totalAcAmpsAll}A` },
+            { label: 'RATED VOLTAGE', value: '240 Vac' },
+          ],
+        },
+      ],
     },
     {
-      title: 'PHOTOVOLTAIC POWER SOURCE', nec: 'NEC 690.53', color: 'black',
-      lines: ['PHOTOVOLTAIC POWER SOURCE', '', `MAX SYSTEM VOLTAGE (Voc COLD): ${maxVocCold}V DC`,
-        `MAX CIRCUIT CURRENT (Isc): ${data.panelIsc}A`, `RATED OUTPUT: ${data.systemDcKw.toFixed(2)} kW DC`, '',
-        `MODULES: (${data.panelCount}) ${data.panelModel}`, `STRINGS: ${stringConfigLabel}`, `Voc PER MODULE: ${data.panelVoc}V`],
+      location: 'BREAKER PANEL / PULL BOXES',
+      labels: [
+        {
+          title: '\u26A0\uFE0F ELECTRICAL SHOCK HAZARD', nec: 'NEC 690.31(G)', color: 'red',
+          lines: ['DANGER', 'ELECTRIC SHOCK HAZARD', 'DO NOT TOUCH TERMINALS.', 'TERMINALS ON BOTH THE LINE', 'AND LOAD SIDES MAY BE', 'ENERGIZED IN THE OPEN POSITION.'],
+        },
+        {
+          title: '\u26A0\uFE0F TURN OFF AC DISCONNECT', nec: 'NEC 690.13(B)', color: 'yellow',
+          lines: ['CAUTION', 'TURN OFF AC DISCONNECT', 'BEFORE SERVICING THIS PANEL.', 'VERIFY DE-ENERGIZED BEFORE', 'WORKING ON CIRCUITS.'],
+        },
+        {
+          title: '\u26A0\uFE0F THREE POWER SOURCES', nec: 'NEC 705.10', color: 'red',
+          lines: ['WARNING', 'THREE POWER SOURCES', '', '1. UTILITY GRID (240V AC)', `2. PV SYSTEM (${data.systemDcKw.toFixed(2)} kW DC)`, `3. BATTERY (${data.totalStorageKwh} kWh)`, 'DISCONNECT ALL BEFORE SERVICING'],
+        },
+      ],
     },
     {
-      title: 'BATTERY STORAGE WARNING', nec: 'NEC 706.30', color: 'red',
-      lines: ['WARNING: BATTERY STORAGE SYSTEM', '', 'CHEMICAL HAZARD \u2014 LITHIUM IRON PHOSPHATE',
-        'ELECTRICAL SHOCK HAZARD', '', `(${data.batteryCount}) ${data.batteryModel}`,
-        `TOTAL: ${data.totalStorageKwh} kWh`, 'DO NOT EXPOSE TO FIRE OR EXTREME HEAT', 'DO NOT SHORT CIRCUIT BATTERY TERMINALS'],
-    },
-    {
-      title: 'RAPID SHUTDOWN SWITCH', nec: 'NEC 690.12', color: 'red',
-      lines: ['RAPID SHUTDOWN', '', 'PHOTOVOLTAIC SYSTEM EQUIPPED WITH', 'RAPID SHUTDOWN PER NEC 690.12', '',
-        'TO SHUT DOWN PV SYSTEM:', '1. OPEN AC DISCONNECT', '2. ARRAY WILL DE-ENERGIZE IN 30 SEC', 'CONTROLLED TO <30V WITHIN ARRAY'],
-    },
-    {
-      title: 'AC DISCONNECT', nec: 'NEC 690.14', color: 'yellow',
-      lines: ['AC DISCONNECT', '', 'SOLAR PHOTOVOLTAIC AC DISCONNECT', 'VOLTAGE: 240V AC, SINGLE PHASE',
-        `CURRENT: ${totalAcAmps}A PER INVERTER`, 'TURN OFF BEFORE SERVICING', 'EQUIPMENT ON EITHER SIDE'],
-    },
-    {
-      title: 'POINT OF INTERCONNECTION', nec: 'NEC 705.10', color: 'black',
-      lines: ['POINT OF INTERCONNECTION', '', `UTILITY: ${data.utility}`, `METER: ${data.meter}`,
-        `SYSTEM: ${data.systemDcKw.toFixed(2)} kW DC / ${data.systemAcKw} kW AC`,
-        'INTERCONNECTION TYPE: UTILITY INTERACTIVE', 'WITH BATTERY BACKUP'],
+      location: 'MAIN SERVICE DISCONNECT',
+      labels: [
+        {
+          title: '\u26A0\uFE0F ELECTRICAL SHOCK HAZARD', nec: 'NEC 690.54', color: 'red',
+          lines: ['WARNING', 'ELECTRICAL SHOCK HAZARD', 'THIS PANEL IS SUPPLIED BY', 'A PHOTOVOLTAIC SYSTEM.'],
+        },
+        {
+          title: '\u26A0\uFE0F POWER SOURCE OUTPUT', nec: 'NEC 705.12', color: 'yellow',
+          lines: ['CAUTION', 'DUAL POWER SOURCE', 'THIS EQUIPMENT IS SUPPLIED BY', 'UTILITY GRID AND PV SYSTEM.', 'DISCONNECT BOTH BEFORE SERVICING.'],
+          valueBoxes: [
+            { label: 'PV AC OUTPUT', value: `${data.systemAcKw} kW` },
+            { label: 'BACKFEED', value: '100A' },
+          ],
+        },
+        {
+          title: '\u26A0 BACKFED CIRCUIT', nec: 'NEC 690.13(F)', color: 'yellow',
+          lines: ['CAUTION', 'PHOTOVOLTAIC SYSTEM CIRCUIT', 'IS BACKFED THROUGH THIS BREAKER.', 'BREAKER MUST BE SECURED PER', 'NEC 690.13(F). DO NOT RELOCATE.'],
+        },
+        {
+          title: '\u26A0\uFE0F THREE POWER SOURCES', nec: 'NEC 705.10', color: 'red',
+          lines: ['WARNING', 'THREE POWER SOURCES', 'AT UTILITY METER', '', '1. UTILITY GRID', `2. PV SYSTEM (${data.systemAcKw} kW AC)`, `3. BATTERY ESS (${data.totalStorageKwh} kWh)`],
+        },
+      ],
     },
   ]
 
   return (
     <div className="sheet" style={{ display: 'grid', gridTemplateColumns: '1fr 2.5in', border: '2px solid #000', fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '8pt', width: '16.5in', height: '10.5in', overflow: 'hidden', position: 'relative' }}>
-      <div className="sheet-content" style={{ padding: '0.15in 0.2in', overflow: 'hidden' }}>
-        <div style={{ fontSize: '14pt', fontWeight: 'bold', color: '#111' }}>WARNING LABELS &mdash; NEC 690 / 705 / 706</div>
-        <div style={{ fontSize: '8pt', color: '#555', marginBottom: '8pt' }}>ALL LABELS SHALL BE PERMANENT, UV-RESISTANT, AND AFFIXED WITH ADHESIVE OR MECHANICAL FASTENER</div>
+      <div className="sheet-content" style={{ padding: '0.12in 0.18in', overflow: 'hidden' }}>
+        <div style={{ fontSize: '13pt', fontWeight: 'bold', color: '#111' }}>WARNING LABELS &mdash; NEC 690 / 705 / 706</div>
+        <div style={{ fontSize: '7pt', color: '#555', marginBottom: '5pt' }}>ALL LABELS SHALL BE PERMANENT, UV-RESISTANT, AND AFFIXED WITH ADHESIVE OR MECHANICAL FASTENER AT EACH EQUIPMENT LOCATION</div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', gridAutoRows: 'auto' }}>
-          {labels.map((label, i) => {
-            const borderColor = label.color === 'red' ? '#cc0000' : label.color === 'yellow' ? '#cc9900' : '#111'
-            return (
-              <div key={i} style={{ border: `3px solid ${borderColor}`, padding: '3px' }}>
-                <div style={{ border: `1.5px solid ${borderColor}`, overflow: 'hidden' }}>
-                  <div style={{ background: borderColor, color: 'white', padding: '3px 6px', fontSize: '7pt', fontWeight: 'bold', textAlign: 'center', position: 'relative' }}>
-                    {label.title}
-                    <span style={{ position: 'absolute', right: '4px', top: '3px', fontSize: '5pt', color: '#eee', fontWeight: 'normal' }}>{label.nec}</span>
+        {/* Location rows */}
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '6pt' }}>
+          <thead>
+            <tr style={{ background: '#111' }}>
+              <th style={{ color: 'white', padding: '3px 6px', fontSize: '6pt', fontWeight: 'bold', textAlign: 'left', width: '1.5in', textTransform: 'uppercase' as const }}>EQUIPMENT LOCATION</th>
+              <th style={{ color: 'white', padding: '3px 6px', fontSize: '6pt', fontWeight: 'bold', textAlign: 'left', textTransform: 'uppercase' as const }}>REQUIRED WARNING / INFORMATION LABELS</th>
+            </tr>
+          </thead>
+          <tbody>
+            {locations.map((loc, li) => (
+              <tr key={li} style={{ borderBottom: '1px solid #ccc', verticalAlign: 'top' }}>
+                <td style={{ padding: '5px 6px', fontWeight: 'bold', fontSize: '6.5pt', color: '#111', background: li % 2 === 0 ? '#f4f4f4' : '#fff', borderRight: '2px solid #333', whiteSpace: 'nowrap' as const }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#333', display: 'inline-block', flexShrink: 0 }} />
+                    {loc.location}
                   </div>
-                  <div style={{ padding: '5px 8px', fontSize: '6pt', lineHeight: 1.6 }}>
-                    {label.lines.map((line, j) => {
-                      if (!line) return <br key={j} />
-                      const isFirstLine = j === 0
-                      const isWarn = line === 'WARNING' || line === 'DANGER'
-                      const isCaution = line === 'CAUTION'
-                      return (
-                        <div key={j} style={{
-                          fontWeight: isFirstLine ? 'bold' : 'normal',
-                          fontSize: isFirstLine ? '7pt' : '6pt',
-                          color: isWarn ? '#cc0000' : isCaution ? '#cc9900' : '#333',
-                        }}>{line}</div>
-                      )
-                    })}
+                </td>
+                <td style={{ padding: '4px', background: li % 2 === 0 ? '#f9f9f9' : '#fff' }}>
+                  <div style={{ display: 'flex', gap: '5px' }}>
+                    {loc.labels.map((label, idx) => renderLabelBox(label, idx))}
                   </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
 
-        <div style={{ marginTop: '8px', fontSize: '7pt' }}>
-          <strong>INSTALLATION NOTES:</strong>
-          <div style={{ fontSize: '6pt', color: '#333', lineHeight: 1.6, marginTop: '2px' }}>
-            1. ALL LABELS SHALL BE CLEARLY VISIBLE AND NOT OBSTRUCTED BY EQUIPMENT OR WIRING.<br />
-            2. LABELS SHALL BE INSTALLED AT EACH DISCONNECT MEANS, JUNCTION BOX, AND POINT OF CONNECTION.<br />
-            3. WARNING LABELS WITH RED BORDERS SHALL USE REFLECTIVE OR HIGH-VISIBILITY MATERIALS.<br />
-            4. ALL LABELS SHALL BE LEGIBLE FROM A DISTANCE OF AT LEAST 3 FEET.
+        {/* NEC Article References */}
+        <div style={{ marginTop: '6px', borderTop: '2px solid #111', paddingTop: '4px' }}>
+          <div style={{ fontWeight: 'bold', fontSize: '7.5pt', color: '#111', marginBottom: '2px' }}>NEC ARTICLE REFERENCES</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 12px', fontSize: '5pt', color: '#444', lineHeight: 1.5 }}>
+            <div><strong>NEC 690.13(B):</strong> Each PV system disconnecting means shall plainly indicate whether in the open or closed position and shall be externally operable.</div>
+            <div><strong>NEC 690.31(B)(1):</strong> PV system circuit conductors installed in accessible locations shall be guarded, or be of a type identified as sunlight resistant, and shall be identified at all points of termination, connection, and splices.</div>
+            <div><strong>NEC 690.31(D)(2):</strong> Unless located and arranged so the purpose is evident, PV source and output circuit conductors shall be identified at intervals not exceeding 10 ft with labels reading &ldquo;Photovoltaic Power Source.&rdquo;</div>
+            <div><strong>NEC 690.54:</strong> All interactive system(s) points of interconnection with other sources shall be marked at an accessible location with the rated AC output current and nominal operating AC voltage.</div>
+            <div><strong>NEC 690.56(C):</strong> Buildings with both rapid shutdown and PV systems shall have a label indicating the type of system installed, located at the PV system disconnect or main service disconnect.</div>
+            <div><strong>NEC 690.13(F):</strong> A PV system circuit breaker that can be fed from either direction shall be labeled &ldquo;WARNING: BACKFED&rdquo; and secured in the closed position per listing requirements.</div>
           </div>
         </div>
       </div>
