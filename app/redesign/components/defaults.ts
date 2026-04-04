@@ -1,0 +1,55 @@
+import type { ExistingSystem, TargetSystem } from './types'
+
+// ── DEFAULTS (PROJ-29857) ────────────────────────────────────────────────────
+
+export const DEFAULT_EXISTING: ExistingSystem = {
+  projectName: 'PROJ-29857 Miguel Aguilera',
+  address: '7822 Brooks Crossing Dr, Baytown TX 77521',
+  panelModel: 'Seraphim SRP-440-BTD-BG',
+  panelWattage: 440,
+  panelCount: 53,
+  panelVoc: 41.5,
+  panelVmp: 34.8,
+  panelIsc: 13.5,
+  panelImp: 12.65,
+  inverterModel: 'EcoFlow OCEAN Pro',
+  inverterCount: 1,
+  inverterAcPower: 24,
+  batteryModel: 'EcoFlow OCEAN Pro 10kWh',
+  batteryCount: 8,
+  batteryCapacity: 10,
+  rackingType: 'EcoFasten Clickfit SmartFoot',
+  roofFaceCount: 3,
+  roofFaces: [
+    { panelCount: 30, azimuth: 351, tilt: 26, roofArea: 645 },
+    { panelCount: 10, azimuth: 81, tilt: 27, roofArea: 216 },
+    { panelCount: 13, azimuth: 171, tilt: 26, roofArea: 280 },
+  ],
+}
+
+export const DEFAULT_TARGET: TargetSystem = {
+  panelModel: 'AMP 410W Domestic',
+  panelWattage: 410,
+  panelVoc: 37.4,
+  panelVmp: 31.3,
+  panelIsc: 14.0,
+  panelImp: 13.1,
+  panelLengthMm: 1722,
+  panelWidthMm: 1134,
+  inverterModel: 'Duracell Power Center Max Hybrid 15kW',
+  inverterCount: 2,
+  maxPvPower: 19500,
+  maxVoc: 500,
+  mpptMin: 125,
+  mpptMax: 425,
+  mpptsPerInverter: 3,
+  stringsPerMppt: 2,
+  maxCurrentPerMppt: 26,
+  batteryModel: 'Duracell 5kWh LFP',
+  batteryCount: 16,
+  batteryCapacity: 5,
+  batteriesPerStack: 8,
+  rackingModel: 'IronRidge XR100',
+  designTempLow: -5,
+  vocTempCoeff: -0.28,
+}
