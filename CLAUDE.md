@@ -4,6 +4,17 @@ Built and maintained by Atlas (AI assistant) for MicroGRID Energy / EDGE.
 
 Essential guidance for Claude Code. Detailed reference in `ARCHITECTURE.md`.
 
+## Session Startup (auto-orient)
+
+At the start of EVERY new conversation, before doing anything else:
+1. Read the latest session state memory file (check MEMORY.md for the most recent `session*_state.md`)
+2. Read feedback files: `feedback_audit_rubric.md`, `feedback_self_prompt_protocol.md`, `feedback_straight_talk.md`
+3. Run `git log --oneline -5` and `npm test -- --run` (tail last 5 lines)
+4. Report: latest commit, test count, any failures, last session summary, blocked items
+5. Ask Greg what he wants to work on
+
+Keep the report under 20 lines. If tests fail or TS errors exist, flag prominently.
+
 ## Project
 
 MicroGRID — solar project management system for MicroGRID Energy / EDGE. Tracks ~938 active residential solar installation projects through a 7-stage pipeline (evaluation → survey → design → permit → install → inspection → complete). Built for PMs who each own a set of projects. Migrated from NetSuite. 14,705 legacy In Service projects in `legacy_projects` table.
