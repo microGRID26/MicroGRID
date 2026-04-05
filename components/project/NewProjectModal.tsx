@@ -383,7 +383,7 @@ export function NewProjectModal({ onClose, onCreated, existingIds, pms }: Props)
                 <select className={inputCls} value={form.dealer} onChange={e => set('dealer', e.target.value)}>
                   <option value="">Select Dealer...</option>
                   <option>MicroGRID</option>
-                  <option>TriSMART Solar</option>
+                  <option>MicroGRID Energy</option>
                   <option>Other</option>
                 </select>
               </div>

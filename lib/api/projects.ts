@@ -110,7 +110,7 @@ export async function loadProjectsByIds(projectIds: string[]): Promise<Project[]
   }
   const results = await Promise.all(
     chunks.map(chunk =>
-      supabase.from('projects').select('id, name').in('id', chunk)
+      supabase.from('projects').select('id, name').in('id', chunk).limit(100)
     )
   )
   const allProjects: Project[] = []

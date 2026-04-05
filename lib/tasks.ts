@@ -287,7 +287,7 @@ export const REVISION_REASONS: Record<string, string[]> = {
     'HOA Denied','Incident','Inspection Delay','Missing Material','Missing Photos',
     'Need Reroof','OSR Required','Pending Battery Completion',
     'Ran Out of Daylight','System Commissioning Error',
-    'TriSMART Reschedule','Utility No-Show','Waiting for HOA Approval','Weather',
+    'MicroGRID Reschedule','Utility No-Show','Waiting for HOA Approval','Weather',
   ],
   inspection: [
     'AHJ Reschedule / Cancel','Battery Corrections Needed','City No-Show',
@@ -306,7 +306,7 @@ export const REVISION_REASONS: Record<string, string[]> = {
     'New AHJ Requirement','Not Scheduled with AHJ','OSR Required',
     'Pending Battery Completion','Ran Out of Daylight',
     'Rejected - Need Engineer Stamped Plans','Rough Inspection Required',
-    'System Commissioning Error','Trench','TriSMART Rescheduled',
+    'System Commissioning Error','Trench','MicroGRID Rescheduled',
     'Utility No-Show','Weather','Wire Management','Workmanship',
   ],
   complete: ['Need PTO Letter','Needs to Reschedule','Tech Required'],

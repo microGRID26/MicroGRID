@@ -53,7 +53,7 @@ export const EC_DEFAULTS = {
 /** Load all commission config as a key-value record */
 export async function loadCommissionConfig(orgId?: string): Promise<Record<string, string>> {
   const supabase = db()
-  let query = supabase.from('commission_config').select('config_key, value')
+  let query = supabase.from('commission_config').select('config_key, value').limit(500)
   if (orgId) {
     query = query.or(`org_id.eq.${orgId},org_id.is.null`)
   }

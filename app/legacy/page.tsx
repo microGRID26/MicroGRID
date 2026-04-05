@@ -178,7 +178,7 @@ export default function LegacyPage() {
           <h1 className="text-2xl font-bold text-white">Legacy Projects</h1>
         </div>
         <p className="text-gray-400 text-sm mb-4">
-          TriSMART historical projects — read-only archive
+          Historical projects — read-only archive
         </p>
 
         <div className="relative max-w-xl">

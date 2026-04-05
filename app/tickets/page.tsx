@@ -24,6 +24,12 @@ import { ProjectPanel } from '@/components/project/ProjectPanel'
 import { MentionNoteInput } from '@/components/project/MentionNoteInput'
 import { useRealtimeSubscription } from '@/lib/hooks'
 import { Plus, Search, X, Send, Download, Pencil } from 'lucide-react'
+// Extracted sub-components (available for future wiring)
+// import { StatCards } from './components/StatCards'
+// import { AnalyticsPanel } from './components/AnalyticsPanel'
+// import { CreateTicketModal } from './components/CreateTicketModal'
+// import { ResolveModal } from './components/ResolveModal'
+// import { TicketRow } from './components/TicketRow'
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 

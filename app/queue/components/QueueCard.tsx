@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import React, { useState, useCallback } from 'react'
 import { daysAgo, STAGE_LABELS } from '@/lib/utils'
 import { Calendar, X, MessageSquare } from 'lucide-react'
 import { SelectCheckbox } from '@/components/BulkActionBar'
@@ -13,7 +13,7 @@ import { FundingBadge } from './FundingBadge'
 import { LastActivity } from './LastActivity'
 import { renderCardField } from './renderCardField'
 
-export function QueueCard({ p, taskMap, onOpen, cardFields, selectMode, isSelected, onToggleSelect, fundingMap, currentUser, onRefresh, todayStr }: {
+export const QueueCard = React.memo(function QueueCard({ p, taskMap, onOpen, cardFields, selectMode, isSelected, onToggleSelect, fundingMap, currentUser, onRefresh, todayStr }: {
   p: Project
   taskMap: Record<string, TaskEntry>
   onOpen: (p: Project) => void
@@ -289,4 +289,4 @@ export function QueueCard({ p, taskMap, onOpen, cardFields, selectMode, isSelect
       )}
     </div>
   )
-}
+})

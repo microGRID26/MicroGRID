@@ -24,7 +24,7 @@ function RedesignCalculator() {
 function LegacyProjects() {
   return (
     <div>
-      <p className="text-xs text-gray-400 mb-3">Read-only archive of 14,705 historical TriSMART &quot;In Service&quot; projects at <span className="text-green-400 font-mono">/legacy</span>.</p>
+      <p className="text-xs text-gray-400 mb-3">Read-only archive of 14,705 historical MicroGRID &quot;In Service&quot; projects at <span className="text-green-400 font-mono">/legacy</span>.</p>
       <div className="space-y-1 text-xs">
         {[
           'Search by name, phone, email, address, city, or project ID',
@@ -82,9 +82,9 @@ export const designToolsTopics: HelpTopicData[] = [
   {
     id: 'legacy-projects',
     title: 'Legacy Projects',
-    description: '14,705 TriSMART records with BluChat history',
+    description: '14,705 legacy records with BluChat history',
     category: 'Design Tools',
-    keywords: ['legacy', 'trismart', 'historical', 'archive', 'bluchat', 'old', 'in service'],
+    keywords: ['legacy', 'microgrid', 'historical', 'archive', 'bluchat', 'old', 'in service'],
     tryItLink: '/legacy',
     content: LegacyProjects,
   },

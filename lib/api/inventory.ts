@@ -402,23 +402,17 @@ export async function createPurchaseOrder(
     }
   }
 
-  // Update linked project_materials with the PO number
-  const materialErrors: string[] = []
-  for (const item of items) {
-    if (item.material_id) {
-      const { error: matErr } = await supabase
-        .from('project_materials')
-        .update({ po_number: createdPO.po_number, status: 'ordered', updated_at: new Date().toISOString() })
-        .eq('id', item.material_id)
-      if (matErr) {
-        materialErrors.push(`material ${item.material_id}: ${matErr.message}`)
-      }
+  // Update linked project_materials with the PO number (batched)
+  const materialIds = items.map(i => i.material_id).filter((id): id is string => !!id)
+  if (materialIds.length > 0) {
+    const { error: matErr } = await supabase
+      .from('project_materials')
+      .update({ po_number: createdPO.po_number, status: 'ordered', updated_at: new Date().toISOString() })
+      .in('id', materialIds)
+    if (matErr) {
+      console.error('[createPurchaseOrder] material update error:', matErr.message)
+      createdPO._materialWarning = `Failed to link ${materialIds.length} material(s) to PO`
     }
-  }
-  if (materialErrors.length > 0) {
-    console.error('[createPurchaseOrder] material update errors:', materialErrors.join('; '))
-    // PO created but some materials failed to link — attach warning
-    createdPO._materialWarning = `${materialErrors.length} material(s) failed to link to PO`
   }
 
   return createdPO
@@ -460,21 +454,18 @@ export async function updatePurchaseOrderStatus(id: string, status: string): Pro
       .select('material_id')
       .eq('po_id', id)
     const today = new Date().toISOString().split('T')[0]
-    const deliveryErrors: string[] = []
-    for (const item of (lineItems ?? []) as { material_id: string | null }[]) {
-      if (item.material_id) {
-        const { error: matErr } = await supabase
-          .from('project_materials')
-          .update({ status: 'delivered', delivered_date: today, updated_at: now })
-          .eq('id', item.material_id)
-        if (matErr) {
-          deliveryErrors.push(`material ${item.material_id}: ${matErr.message}`)
-        }
+    const deliveryMaterialIds = ((lineItems ?? []) as { material_id: string | null }[])
+      .map(i => i.material_id)
+      .filter((id): id is string => !!id)
+    if (deliveryMaterialIds.length > 0) {
+      const { error: matErr } = await supabase
+        .from('project_materials')
+        .update({ status: 'delivered', delivered_date: today, updated_at: now })
+        .in('id', deliveryMaterialIds)
+      if (matErr) {
+        console.error('[updatePurchaseOrderStatus] delivery update error:', matErr.message)
+        return false
       }
-    }
-    if (deliveryErrors.length > 0) {
-      console.error('[updatePurchaseOrderStatus] delivery update errors:', deliveryErrors.join('; '))
-      return false
     }
 
     // Auto-update project readiness: equipment_ready = true

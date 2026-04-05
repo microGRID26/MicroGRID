@@ -165,7 +165,7 @@ export default function RampUpPage() {
           autoR.ext_scope_clear = false
         }
         // Redesign is NEVER auto-checked — must be manually confirmed
-        // Old TriSMART engineering/stamps don't count under MicroGRID
+        // Old legacy engineering/stamps don't count under MicroGRID
       }
       const readiness = (dbReadiness ?? autoR) as ProjectReadiness
       const readinessScore = computeReadinessScore(readiness)

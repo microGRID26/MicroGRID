@@ -19,6 +19,11 @@ import { WarrantyTab } from './WarrantyTab'
 import { TicketsTab } from './TicketsTab'
 import { ScheduleAssignModal } from './ScheduleAssignModal'
 import { createWorkOrderFromProject } from '@/lib/api/work-orders'
+// Extracted sub-components (available for future wiring)
+// import { AhjEditModal, UtilEditModal, HoaEditModal, FinancierEditModal } from './RefEditModals'
+// import { CascadeConfirmModal } from './CascadeConfirmModal'
+// import { ChangeOrderSuggestModal } from './ChangeOrderSuggestModal'
+// import { WorkOrderCreateModal } from './WorkOrderCreateModal'
 
 // ── STAGE ADVANCE LOGIC ───────────────────────────────────────────────────────
 function canAdvance(stage: string, taskStates: Record<string, string>, ahj?: string | null): { ok: boolean; missing: string[] } {

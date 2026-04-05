@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { STAGE_LABELS, STAGE_ORDER, SLA_THRESHOLDS, daysAgo } from '@/lib/utils'
+import { STAGE_LABELS, STAGE_ORDER, SLA_THRESHOLDS, daysAgo, fmtDate } from '@/lib/utils'
 import { TASKS, TASK_STATUSES, STATUS_STYLE, PENDING_REASONS, REVISION_REASONS, ALL_TASKS_MAP, TASK_TO_STAGE, isTaskRequired } from '@/lib/tasks'
 import { createClient } from '@/lib/supabase/client'
 import { db } from '@/lib/db'
@@ -464,10 +464,7 @@ export function TasksTab({
                         {/* Completed date */}
                         {completedDate && (
                           <span className="text-[10px] text-gray-500 flex-shrink-0">
-                            {(() => {
-                              const d = new Date(String(completedDate))
-                              return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                            })()}
+                            {fmtDate(String(completedDate))}
                           </span>
                         )}
 
@@ -604,7 +601,7 @@ export function TasksTab({
                           <div className="space-y-1">
                             {history.map((entry, i) => {
                               const when = entry.changed_at
-                                ? new Date(entry.changed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                                ? fmtDate(entry.changed_at)
                                 : ''
                               const time = entry.changed_at
                                 ? new Date(entry.changed_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })

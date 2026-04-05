@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { STAGE_LABELS, fmt$, escapeIlike, INTERNAL_DOMAINS } from '@/lib/utils'
+import { STAGE_LABELS, fmt$, fmtDate, escapeIlike, INTERNAL_DOMAINS } from '@/lib/utils'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import { X, Plus } from 'lucide-react'
 import type { Project } from '@/types/database'
@@ -30,7 +30,7 @@ function EditRow({ label, field, value, draft, editing, onChange, small, type = 
   if (!editing) {
     if (!value) return null
     const display = type === 'date' && value
-      ? new Date(value + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      ? fmtDate(value)
       : type === 'currency' && value
       ? fmt$(Number(value))
       : value
@@ -830,7 +830,7 @@ export function InfoTab({ project, editMode, editDraft, setEditDraft, ahjInfo, u
                     )
                   }
                   if (def.field_type === 'date' && savedValue) {
-                    const display = new Date(savedValue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    const display = fmtDate(savedValue)
                     return (
                       <div key={def.id} className="flex gap-2 py-0.5">
                         <span className="text-gray-500 text-xs w-28 flex-shrink-0">{def.label}</span>
@@ -897,7 +897,7 @@ export function InfoTab({ project, editMode, editDraft, setEditDraft, ahjInfo, u
             <Section title="Stage History">
               {stageHistory.map((h, i) => (
                 <div key={i} className="flex gap-2 py-0.5 text-xs">
-                  <span className="text-gray-500 w-28 flex-shrink-0">{h.entered ? new Date(h.entered + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}</span>
+                  <span className="text-gray-500 w-28 flex-shrink-0">{h.entered ? fmtDate(h.entered) : ''}</span>
                   <span className="text-gray-300">{h.stage}</span>
                 </div>
               ))}
