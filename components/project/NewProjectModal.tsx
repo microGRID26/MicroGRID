@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { db } from '@/lib/db'
 import { escapeIlike } from '@/lib/utils'
+import { handleApiError } from '@/lib/errors'
 
 interface Props {
   onClose: () => void
@@ -243,7 +244,7 @@ export function NewProjectModal({ onClose, onCreated, existingIds, pms }: Props)
           status: 'Ready To Start',
         }))
       )
-      if (taskErr) console.error('task_state insert failed:', taskErr)
+      if (taskErr) handleApiError(taskErr, '[NewProject] task_state insert')
     }
 
     // ── Auto-create Google Drive folder structure ────────────────────────
@@ -263,13 +264,13 @@ export function NewProjectModal({ onClose, onCreated, existingIds, pms }: Props)
             { onConflict: 'project_id' }
           )
         } else {
-          console.error('Drive folder creation failed:', driveData.error ?? driveText)
+          handleApiError(driveData.error ?? driveText, '[NewProject] Drive folder creation')
         }
       } catch {
         console.error('Drive response not JSON:', driveText)
       }
     } catch (driveErr) {
-      console.error('Drive folder creation error:', driveErr)
+      handleApiError(driveErr, '[NewProject] Drive folder creation')
     }
 
     setSaving(false)

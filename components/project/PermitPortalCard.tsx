@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { db } from '@/lib/db'
+import { handleApiError } from '@/lib/errors'
 import { escapeIlike } from '@/lib/utils'
 import { ExternalLink, Eye, EyeOff, Phone, Clock, Globe, Shield } from 'lucide-react'
 
@@ -225,7 +226,7 @@ export function OpenPortalButton({ ahjName }: { ahjName: string }) {
       .then(({ data }: { data: { permit_website: string | null } | null }) => {
         if (data?.permit_website) setUrl(data.permit_website)
       })
-      .catch((e: any) => console.error('[PermitPortalCard] AHJ lookup failed:', e))
+      .catch((e: any) => handleApiError(e, '[PermitPortalCard] AHJ lookup'))
   }, [ahjName])
 
   if (!url) return null

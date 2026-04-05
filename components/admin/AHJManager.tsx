@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { db } from '@/lib/db'
+import { handleApiError } from '@/lib/errors'
 import { escapeIlike } from '@/lib/utils'
 import { AHJ, Input, Textarea, Modal, SaveBtn, SearchBar } from './shared'
 
@@ -48,7 +49,7 @@ export function AHJManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       password: draft.password,
     }).eq('id', editing.id)
     setSaving(false)
-    if (error) { console.error('AHJ save failed:', error); return }
+    if (error) { handleApiError(error, '[AHJManager] save'); return }
     setEditing(null)
     setToast('AHJ saved')
     setTimeout(() => setToast(''), 2500)
@@ -216,7 +217,7 @@ export function AHJManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                 onClick={async () => {
                   if (!confirm(`DELETE AHJ "${editing.name}"? Projects referencing it will keep the name as text.`)) return
                   const { error } = await supabase.from('ahjs').delete().eq('id', editing.id)
-                  if (error) { console.error('AHJ delete failed:', error); return }
+                  if (error) { handleApiError(error, '[AHJManager] delete'); return }
                   setEditing(null)
                   setToast('AHJ deleted')
                   setTimeout(() => setToast(''), 2500)

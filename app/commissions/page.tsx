@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { Nav } from '@/components/Nav'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import { useOrg } from '@/lib/hooks'
+import { handleApiError } from '@/lib/errors'
 import { Calculator, DollarSign, TrendingUp, Trophy, Banknote } from 'lucide-react'
 import { loadCommissionRates } from '@/lib/api'
 import type { CommissionRate } from '@/types/database'
@@ -34,7 +35,7 @@ export default function CommissionsPage() {
       const data = await loadCommissionRates(orgId)
       setRates(data)
     } catch (err) {
-      console.error('Failed to load rates:', err)
+      handleApiError(err, '[commissions] loadRates')
     }
     setRatesLoading(false)
   }, [orgId])

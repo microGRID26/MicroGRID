@@ -5,6 +5,7 @@ import { updateProject, loadUsers } from '@/lib/api/projects'
 import { db } from '@/lib/db'
 import { INTERNAL_DOMAINS } from '@/lib/utils'
 import { clearQueryCache } from '@/lib/hooks'
+import { handleApiError } from '@/lib/errors'
 import { Users, ShieldAlert, Tag, Calendar, X, Loader2, CheckSquare, Square } from 'lucide-react'
 import type { Project } from '@/types/database'
 
@@ -120,7 +121,7 @@ async function logAudit(projectId: string, field: string, oldValue: string | nul
     changed_by: currentUser?.name ?? currentUser?.email?.split('@')[0] ?? 'unknown',
     changed_by_id: currentUser?.id ?? null,
   })
-  if (error) console.error('Audit log failed:', error)
+  if (error) handleApiError(error, '[BulkAction] audit_log')
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
@@ -198,7 +199,7 @@ export function BulkActionBar({
           await logAudit(proj.id, 'pm_id', proj.pm_id, pm.id, currentUser)
           await updateProject(proj.id, { pm: pm.name, pm_id: pm.id })
         } catch (err) {
-          console.error(`Failed to update ${proj.id}:`, err)
+          handleApiError(err, `[BulkAction] update ${proj.id}`)
           failures.push(proj.id)
         }
       }
@@ -235,7 +236,7 @@ export function BulkActionBar({
           await logAudit(proj.id, 'blocker', proj.blocker, blocker, currentUser)
           await updateProject(proj.id, { blocker })
         } catch (err) {
-          console.error(`Failed to update ${proj.id}:`, err)
+          handleApiError(err, `[BulkAction] update ${proj.id}`)
           failures.push(proj.id)
         }
       }
@@ -275,7 +276,7 @@ export function BulkActionBar({
           await logAudit(proj.id, 'disposition', proj.disposition, bulkDisposition, currentUser)
           await updateProject(proj.id, { disposition: bulkDisposition })
         } catch (err) {
-          console.error(`Failed to update ${proj.id}:`, err)
+          handleApiError(err, `[BulkAction] update ${proj.id}`)
           failures.push(proj.id)
         }
       }
@@ -311,7 +312,7 @@ export function BulkActionBar({
           await logAudit(proj.id, 'follow_up_date', proj.follow_up_date ?? null, dateVal, currentUser)
           await updateProject(proj.id, { follow_up_date: dateVal })
         } catch (err) {
-          console.error(`Failed to update ${proj.id}:`, err)
+          handleApiError(err, `[BulkAction] update ${proj.id}`)
           failures.push(proj.id)
         }
       }
@@ -543,7 +544,7 @@ export function BulkActionBar({
                                   await logAudit(proj.id, 'follow_up_date', proj.follow_up_date ?? null, null, currentUser)
                                   await updateProject(proj.id, { follow_up_date: null })
                                 } catch (err) {
-                                  console.error(`Failed to update ${proj.id}:`, err)
+                                  handleApiError(err, `[BulkAction] update ${proj.id}`)
                                   failures.push(proj.id)
                                 }
                               }

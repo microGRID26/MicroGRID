@@ -16,6 +16,7 @@ import {
 } from '@/lib/api/inventory'
 import type { ProjectMaterial, MaterialStatus } from '@/lib/api/inventory'
 import { Package, Plus, Wand2, Trash2, ChevronDown, ChevronUp, X, ShoppingCart, Check } from 'lucide-react'
+import { handleApiError } from '@/lib/errors'
 import { VendorAutocomplete } from '@/components/VendorAutocomplete'
 import type { Vendor } from '@/lib/api/vendors'
 
@@ -272,7 +273,7 @@ export function MaterialsTab({ project }: MaterialsTabProps) {
         showToastMsg('Failed to create purchase order')
       }
     } catch (err) {
-      console.error('[handleCreatePO]', err)
+      handleApiError(err, '[MaterialsTab] createPO')
       showToastMsg('Failed to create purchase order')
     }
     setPOCreating(false)

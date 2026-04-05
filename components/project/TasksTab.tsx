@@ -5,6 +5,7 @@ import { STAGE_LABELS, STAGE_ORDER, SLA_THRESHOLDS, daysAgo, fmtDate } from '@/l
 import { TASKS, TASK_STATUSES, STATUS_STYLE, PENDING_REASONS, REVISION_REASONS, ALL_TASKS_MAP, TASK_TO_STAGE, isTaskRequired } from '@/lib/tasks'
 import { createClient } from '@/lib/supabase/client'
 import { db } from '@/lib/db'
+import { handleApiError } from '@/lib/errors'
 import type { Project } from '@/types/database'
 import { MessageSquare } from 'lucide-react'
 import React from 'react'
@@ -171,7 +172,7 @@ export function TasksTab({
         setDbPendingReasons(pending)
         setDbRevisionReasons(revision)
       })
-      .catch((err: unknown) => { console.error('Failed to load task reasons from DB, using hardcoded fallback:', err) })
+      .catch((err: unknown) => { handleApiError(err, '[TasksTab] loadTaskReasons') })
   }, [])
 
   const activePendingReasons = dbPendingReasons ?? PENDING_REASONS

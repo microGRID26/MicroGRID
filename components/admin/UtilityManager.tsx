@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { db } from '@/lib/db'
+import { handleApiError } from '@/lib/errors'
 import { escapeIlike } from '@/lib/utils'
 import { Utility, Input, Textarea, Modal, SaveBtn, SearchBar } from './shared'
 
@@ -35,7 +36,7 @@ export function UtilityManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       website: draft.website,
       notes: draft.notes,
     }).eq('id', editing.id)
-    if (error) { console.error('Utility save failed:', error); setSaving(false); return }
+    if (error) { handleApiError(error, '[UtilityManager] save'); setSaving(false); return }
     setSaving(false)
     setEditing(null)
     setToast('Utility saved')
@@ -116,7 +117,7 @@ export function UtilityManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                 onClick={async () => {
                   if (!confirm(`DELETE Utility "${editing.name}"? Projects referencing it will keep the name as text.`)) return
                   const { error } = await supabase.from('utilities').delete().eq('id', editing.id)
-                  if (error) { console.error('Utility delete failed:', error); return }
+                  if (error) { handleApiError(error, '[UtilityManager] delete'); return }
                   setEditing(null)
                   setToast('Utility deleted')
                   setTimeout(() => setToast(''), 2500)

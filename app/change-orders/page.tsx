@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { db } from '@/lib/db'
 import { loadChangeOrders, loadProjectById, searchProjects } from '@/lib/api'
 import { cn, fmtDate, fmt$ } from '@/lib/utils'
+import { handleApiError } from '@/lib/errors'
 import { Nav } from '@/components/Nav'
 import { ProjectPanel } from '@/components/project/ProjectPanel'
 import { useCurrentUser } from '@/lib/useCurrentUser'
@@ -450,7 +451,7 @@ function ChangeOrderDetailPanel({ order, users, currentUser, onClose, onUpdated,
     const updates = { [field]: value, updated_at: new Date().toISOString() }
     const { error } = await db().from('change_orders').update(updates).eq('id', co.id)
     if (error) {
-      console.error('change_orders update failed:', error)
+      handleApiError(error, '[change-orders] update')
       showToast('Save failed')
       return
     }
@@ -482,7 +483,7 @@ function ChangeOrderDetailPanel({ order, users, currentUser, onClose, onUpdated,
 
     const { error } = await db().from('change_orders').update(updates).eq('id', co.id)
     if (error) {
-      console.error('Failed to update workflow step:', error)
+      handleApiError(error, '[change-orders] workflow step')
       return
     }
     const updated = { ...co, ...updates }
@@ -776,7 +777,7 @@ function NewChangeOrderModal({ users, currentUser, onClose, onCreated }: {
     if (data) {
       onCreated(data as ChangeOrder)
     } else {
-      console.error('Failed to create change order:', error)
+      handleApiError(error, '[change-orders] create')
     }
   }
 

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Nav } from '@/components/Nav'
 import { useCurrentUser } from '@/lib/useCurrentUser'
+import { handleApiError } from '@/lib/errors'
 import { Calculator, Sun } from 'lucide-react'
 import type { ExistingSystem, TargetSystem, RoofFace, Results } from './components/types'
 import { DEFAULT_EXISTING, DEFAULT_TARGET } from './components/defaults'
@@ -251,7 +252,7 @@ export default function RedesignPage() {
       document.getElementById('redesign-results')?.scrollIntoView({ behavior: 'smooth' })
     }, 100)
     } catch (err) {
-      console.error('Redesign calculate error:', err)
+      handleApiError(err, '[redesign] calculate')
       setToast({ message: 'Calculation error: ' + (err instanceof Error ? err.message : String(err)), type: 'error' }); setTimeout(() => setToast(null), 3000)
     }
   }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { db } from '@/lib/db'
+import { handleApiError } from '@/lib/errors'
 import type { CalendarSettings, CalendarSyncEntry } from '@/lib/api/calendar'
 
 interface CrewRow {
@@ -113,10 +114,10 @@ export function CalendarSyncManager() {
       })
       const data = await res.json()
       if (!res.ok) {
-        console.error('Full sync failed:', data)
+        handleApiError(data, '[CalendarSync] full sync')
       }
     } catch (err) {
-      console.error('Full sync error:', err)
+      handleApiError(err, '[CalendarSync] full sync')
     }
     setSyncing(null)
     load()

@@ -10,6 +10,7 @@ import { ScheduleAssignModal } from '@/components/project/ScheduleAssignModal'
 import { JobBriefPanel } from '@/components/project/JobBriefPanel'
 import { ProjectPanel } from '@/components/project/ProjectPanel'
 import { cn } from '@/lib/utils'
+import { handleApiError } from '@/lib/errors'
 import { useSupabaseQuery, useRealtimeSubscription } from '@/lib/hooks'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import type { Schedule, Crew, Project } from '@/types/database'
@@ -117,7 +118,7 @@ export default function SchedulePage() {
         setSyncEntries(updated)
       }
     } catch (err) {
-      console.error('Calendar sync failed:', err)
+      handleApiError(err, '[schedule] calendar sync')
     }
     setCalSyncing(false)
   }
@@ -316,7 +317,7 @@ export default function SchedulePage() {
             }
           }
         } catch (e) {
-          console.error('Batch complete task sync failed:', e)
+          handleApiError(e, '[schedule] batch complete task sync')
         }
       }
     }

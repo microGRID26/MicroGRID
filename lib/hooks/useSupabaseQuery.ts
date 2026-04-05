@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRealtimeSubscription } from './useRealtimeSubscription'
+import { handleApiError } from '@/lib/errors'
 import type { Database } from '@/types/database'
 
 type TableName = keyof Database['public']['Tables']
@@ -83,6 +84,11 @@ interface UseSupabaseQueryOptions {
    * Also included in cache key and realtime filter.
    */
   orgId?: string | null
+  /**
+   * Called when the query fails. Receives the user-facing error message.
+   * Use with useErrorToast().showError for automatic toast display.
+   */
+  onError?: (userMessage: string) => void
 }
 
 interface UseSupabaseQueryResult<T> {
@@ -193,6 +199,7 @@ export function useSupabaseQuery<T extends TableName>(
     enabled = true,
     realtimeFilter,
     orgId,
+    onError,
   } = options
 
   const [data, setData] = useState<Row[]>([])
@@ -262,9 +269,11 @@ export function useSupabaseQuery<T extends TableName>(
           setError(null)
         }
       } catch (e) {
+        const classified = handleApiError(e, `useSupabaseQuery(${table})`)
         if (mountedRef.current && fetchIdRef.current === thisFetchId) {
-          setError(e instanceof Error ? e.message : 'Query failed')
+          setError(classified.message)
           setLoading(false)
+          onError?.(classified.userMessage)
         }
       }
       return
@@ -390,9 +399,11 @@ export function useSupabaseQuery<T extends TableName>(
         if (!background) setLoading(false)
       }
     } catch (e) {
+      const classified = handleApiError(e, `useSupabaseQuery(${table})`)
       if (mountedRef.current && fetchIdRef.current === thisFetchId) {
-        setError(e instanceof Error ? e.message : 'Query failed')
+        setError(classified.message)
         if (!background) setLoading(false)
+        onError?.(classified.userMessage)
       }
     } finally {
       inflight.delete(cacheKey)

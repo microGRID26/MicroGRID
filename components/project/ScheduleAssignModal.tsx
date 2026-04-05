@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import { escapeIlike } from '@/lib/utils'
 import { JOB_TYPES, JOB_LABELS, JOB_SCHEDULE_TASK, JOB_COMPLETE_TASK, JOB_COMPLETE_DATE } from '@/lib/tasks'
 import { clearQueryCache } from '@/lib/hooks'
+import { handleApiError } from '@/lib/errors'
 import { sendCustomerPush } from '@/lib/api/push'
 import type { Crew, Project } from '@/types/database'
 
@@ -291,7 +292,7 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
           }, { onConflict: 'project_id,task_id' })
         } catch (e) {
           // Best-effort — don't block the save callback
-          console.error('Failed to mark scheduling task:', e)
+          handleApiError(e, '[ScheduleAssign] mark scheduling task')
         }
       }
     }
@@ -333,11 +334,11 @@ export function ScheduleAssignModal({ crewId, date, scheduleId, projectId, jobTy
             const { data: proj } = await supabase.from('projects').select(dateField).eq('id', pid).single()
             if (proj && !(proj as Record<string, unknown>)[dateField]) {
               const { error: dateErr } = await supabase.from('projects').update({ [dateField]: today }).eq('id', pid)
-              if (dateErr) console.error('date field update failed:', dateErr)
+              if (dateErr) handleApiError(dateErr, '[ScheduleAssign] date field update')
             }
           }
         } catch (e) {
-          console.error('Failed to auto-complete task:', e)
+          handleApiError(e, '[ScheduleAssign] auto-complete task')
         }
       }
     }

@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { fmt$, fmtDate } from '@/lib/utils'
+import { handleApiError } from '@/lib/errors'
 
 interface EditableCellProps {
   value: string | number | null
@@ -35,7 +36,7 @@ export function EditableCell({ value, onSave, type = 'text', placeholder = '\u20
     try {
       await onSave(newVal)
     } catch (err) {
-      console.error('EditableCell save error:', err)
+      handleApiError(err, '[EditableCell] save')
     }
     setSaving(false)
     setEditing(false)

@@ -6,6 +6,7 @@ import { Nav } from '@/components/Nav'
 import { calculateSldLayout } from '@/lib/sld-layout'
 import { SldRenderer } from '@/components/SldRenderer'
 import { useCurrentUser } from '@/lib/useCurrentUser'
+import { handleApiError } from '@/lib/errors'
 import { loadProjectById, searchProjects } from '@/lib/api'
 import { buildPlansetData, DURACELL_DEFAULTS } from '@/lib/planset-types'
 import type { PlansetData, PlansetOverrides, PlansetString, PlansetRoofFace } from '@/lib/planset-types'
@@ -2395,7 +2396,7 @@ function PlanSetPageInner() {
       setData(plansetData)
       setProjectId(id)
     } catch (err) {
-      console.error('Failed to load project:', err)
+      handleApiError(err, '[planset] loadProject')
       setToast({ message: 'Failed to load project', type: 'error' })
       setTimeout(() => setToast(null), 3000)
     } finally {

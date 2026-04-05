@@ -9,6 +9,7 @@ import {
   deleteCommissionRate,
   DEFAULT_ROLES,
 } from '@/lib/api'
+import { handleApiError } from '@/lib/errors'
 import { Input, Modal, SaveBtn, SearchBar } from './shared'
 import type { CommissionRate } from '@/types/database'
 
@@ -31,7 +32,7 @@ export function CommissionRatesManager({ isSuperAdmin }: { isSuperAdmin: boolean
       const data = await loadCommissionRates(undefined, false) // Include inactive rates for admin management
       setRates(data)
     } catch (err) {
-      console.error('Failed to load commission rates:', err)
+      handleApiError(err, '[CommissionRates] load')
     }
   }, [])
 

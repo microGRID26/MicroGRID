@@ -7,6 +7,7 @@ import { Pagination } from '@/components/Pagination'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import { useOrg } from '@/lib/hooks'
 import { fmtDate, cn, INTERNAL_DOMAINS } from '@/lib/utils'
+import { handleApiError } from '@/lib/errors'
 import { db } from '@/lib/db'
 import { loadProjectById, loadUsers, searchProjects } from '@/lib/api'
 import {
@@ -121,13 +122,13 @@ function TicketsPageInner() {
   }, [orgId])
 
   useEffect(() => { loadAll() }, [loadAll])
-  useEffect(() => { loadUsers(INTERNAL_DOMAINS).then(r => setUsers((r.data ?? []).map((x: any) => ({ id: x.id, name: x.name })))).catch((e: any) => console.error('[tickets] users load failed:', e)) }, [])
+  useEffect(() => { loadUsers(INTERNAL_DOMAINS).then(r => setUsers((r.data ?? []).map((x: any) => ({ id: x.id, name: x.name })))).catch(e => handleApiError(e, '[tickets] users load')) }, [])
   // Load sales rep names for the rep filter dropdown
   useEffect(() => {
     db().from('sales_reps').select('id, first_name, last_name').limit(500)
       .then(({ data }: any) => {
         if (data) setRepNames(new Map(data.map((r: { id: string; first_name: string; last_name: string }) => [r.id, `${r.first_name} ${r.last_name}`])))
-      }).catch((e: unknown) => console.error('[tickets] reps load failed:', e))
+      }).catch(e => handleApiError(e, '[tickets] reps load'))
   }, [])
 
   // Realtime — auto-refresh on ticket and comment changes

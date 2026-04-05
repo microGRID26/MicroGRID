@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { db } from '@/lib/db'
 import { INTERNAL_DOMAINS } from '@/lib/utils'
+import { handleApiError } from '@/lib/errors'
 
 interface MentionNoteInputProps {
   onSubmit: (text: string) => void
@@ -98,7 +99,7 @@ export function MentionNoteInput({
               mentioned_by: currentUserName || 'Unknown',
               message: text.slice(0, 200),
             })
-            if (mentionErr) console.error('mention notification failed:', mentionErr)
+            if (mentionErr) handleApiError(mentionErr, '[MentionNote] notification')
           }
         }
       }

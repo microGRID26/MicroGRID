@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { db } from '@/lib/db'
+import { handleApiError } from '@/lib/errors'
 import { User, UserRole, ROLE_LABELS, ROLE_COLORS, DEPARTMENTS, AVATAR_COLORS, Input, Modal, SaveBtn, SearchBar, Badge } from './shared'
 
 export function UsersManager({ currentUserRole }: { currentUserRole: UserRole }) {
@@ -48,7 +49,7 @@ export function UsersManager({ currentUserRole }: { currentUserRole: UserRole })
         active: draft.active ?? true,
         color: draft.color,
       })
-      if (error) { console.error('User insert failed:', error); setSaving(false); return }
+      if (error) { handleApiError(error, '[UsersManager] insert'); setSaving(false); return }
     } else if (editing) {
       const { error } = await supabase.from('users').update({
         name: draft.name,
@@ -60,7 +61,7 @@ export function UsersManager({ currentUserRole }: { currentUserRole: UserRole })
         active: draft.active,
         color: draft.color,
       }).eq('id', editing.id)
-      if (error) { console.error('User update failed:', error); setSaving(false); return }
+      if (error) { handleApiError(error, '[UsersManager] update'); setSaving(false); return }
     }
     setSaving(false)
     setEditing(null)

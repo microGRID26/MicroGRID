@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { db } from '@/lib/db'
+import { handleApiError } from '@/lib/errors'
 import { SearchBar } from './shared'
 import type { EmailOnboarding } from '@/types/database'
 
@@ -31,7 +32,7 @@ export function EmailManager({ isSuperAdmin, currentUserEmail, currentUserName }
       .select('*')
       .order('started_at', { ascending: false })
     if (error) {
-      console.error('[EmailManager] load error:', error)
+      handleApiError(error, '[EmailManager] load')
     } else {
       setEnrollments(data || [])
     }

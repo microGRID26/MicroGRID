@@ -5,6 +5,7 @@ import { Nav } from '@/components/Nav'
 import { db } from '@/lib/db'
 import { cn, escapeIlike, fmtDate, fmt$ } from '@/lib/utils'
 import { useCurrentUser } from '@/lib/useCurrentUser'
+import { handleApiError } from '@/lib/errors'
 import { Search, X, ChevronUp, ChevronDown, Archive, ChevronLeft, ChevronRight, Send } from 'lucide-react'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -132,7 +133,7 @@ export default function LegacyPage() {
     const { data, count, error } = await query
 
     if (error) {
-      console.error('Legacy query error:', error)
+      handleApiError(error, '[legacy] query')
       setError('Failed to load legacy projects. Please try again.')
       setResults([])
       setTotalCount(0)
@@ -340,7 +341,7 @@ function DetailPanel({ project: p, onClose }: { project: LegacyProject; onClose:
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Failed to load legacy notes:', error)
+      handleApiError(error, '[legacy] loadNotes')
     } else {
       setNotes((data ?? []) as LegacyNote[])
     }
@@ -365,7 +366,7 @@ function DetailPanel({ project: p, onClose }: { project: LegacyProject; onClose:
       })
 
     if (error) {
-      console.error('Failed to add legacy note:', error)
+      handleApiError(error, '[legacy] addNote')
       setNoteError('Failed to save note. Please try again.')
       setTimeout(() => setNoteError(''), 4000)
     } else {

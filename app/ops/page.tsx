@@ -5,6 +5,7 @@ import { Nav } from '@/components/Nav'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import { useOrg } from '@/lib/hooks'
 import { db } from '@/lib/db'
+import { handleApiError } from '@/lib/errors'
 import { fmt$, fmtDate, cn } from '@/lib/utils'
 import { ProjectPanel } from '@/components/project/ProjectPanel'
 import { loadProjectById } from '@/lib/api'
@@ -129,7 +130,7 @@ function OpsContent({ embedded }: { embedded: boolean }) {
       for (const u of (utilRes.data ?? []) as NameDisplay[]) { if (u.display_name) map.set(u.name, u.display_name) }
       for (const a of (ahjRes.data ?? []) as NameDisplay[]) { if (a.display_name) map.set(a.name, a.display_name) }
       setDisplayNames(map)
-    }).catch(err => console.error('[display_name] load failed:', err))
+    }).catch(err => handleApiError(err, '[ops] display_name load'))
   }, [orgId])
 
   // Lazy-load legacy projects only when a historical period is selected

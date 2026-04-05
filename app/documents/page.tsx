@@ -8,6 +8,7 @@ import { useCurrentUser } from '@/lib/useCurrentUser'
 import { searchAllProjectFiles, loadAllProjectFiles } from '@/lib/api/documents'
 import { loadProjectById } from '@/lib/api'
 import { escapeIlike } from '@/lib/utils'
+import { handleApiError } from '@/lib/errors'
 import type { ProjectFile } from '@/lib/api/documents'
 import type { Project } from '@/types/database'
 import { Search, FileText, Image, File } from 'lucide-react'
@@ -82,7 +83,7 @@ export default function DocumentsPage() {
       setFiles(result.data)
       setTotalCount(result.count)
     } catch (err) {
-      console.error('Failed to load files:', err)
+      handleApiError(err, '[documents] loadFiles')
       setFiles([])
       setTotalCount(0)
     } finally {

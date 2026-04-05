@@ -11,6 +11,8 @@ import { db } from '@/lib/db'
 import { updateProject } from '@/lib/api/projects'
 import { insertAuditLog, insertStageHistory } from '@/lib/api/tasks'
 import { useCurrentUser } from '@/lib/useCurrentUser'
+import { handleApiError } from '@/lib/errors'
+import { useErrorToast } from '@/components/ErrorToastProvider'
 import { BulkActionBar, useBulkSelect } from '@/components/BulkActionBar'
 import { buildTaskMap } from '@/lib/queue-task-map'
 import type { TaskStateRow } from '@/lib/queue-task-map'
@@ -88,7 +90,7 @@ export default function PipelinePage() {
   // Advance stage progress (Pipeline-specific)
   const [advanceProgress, setAdvanceProgress] = useState<{ current: number; total: number } | null>(null)
   const [advanceConfirm, setAdvanceConfirm] = useState<{ message: string; onConfirm: () => void } | null>(null)
-  const [toast, setToast] = useState<{message: string, type: 'success'|'error'|'info'} | null>(null)
+  const { showError } = useErrorToast()
 
   // Smart filters (URL-persistent)
   const [search, setSearch] = useState('')
@@ -297,7 +299,7 @@ export default function PipelinePage() {
       const utilMap = new Map<string, string>()
       for (const u of (utilRes.data ?? []) as NameDisplay[]) { if (u.display_name) utilMap.set(u.name, u.display_name) }
       setUtilityDisplayNames(utilMap)
-    }).catch(err => console.error('[display_name] load failed:', err))
+    }).catch(err => handleApiError(err, '[pipeline] display_name load'))
   }, [])
   const financiers = useMemo(() => {
     const raw = extractedDropdowns.financier ?? []
@@ -424,13 +426,13 @@ export default function PipelinePage() {
           changed_by: currentUser?.name ?? null, changed_by_id: currentUser?.id ?? null,
         })
       } catch (err) {
-        console.error(`Bulk advance failed for ${proj.id}:`, err)
+        handleApiError(err, `[pipeline] bulk advance ${proj.id}`)
         failures.push(`${proj.id} (${err instanceof Error ? err.message : 'unknown error'})`)
       }
     }
     setAdvanceProgress(null)
     if (failures.length > 0) {
-      setToast({ message: `Stage advance failed for ${failures.length} project(s): ${failures.join(', ')}`, type: 'error' }); setTimeout(() => setToast(null), 3000)
+      showError(`Stage advance failed for ${failures.length} project(s)`)
     }
     clearQueryCache()
     handleBulkComplete()
@@ -837,11 +839,7 @@ export default function PipelinePage() {
         />
       )}
 
-      {toast && (
-        <div className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${
-          toast.type === 'error' ? 'bg-red-600 text-white' : toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'
-        }`}>{toast.message}</div>
-      )}
+      {/* Error toasts rendered by global ErrorToastProvider */}
     </div>
   )
 }

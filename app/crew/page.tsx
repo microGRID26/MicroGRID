@@ -6,6 +6,7 @@ import { db } from '@/lib/db'
 import { cn, fmtDate } from '@/lib/utils'
 import { useSupabaseQuery, useRealtimeSubscription } from '@/lib/hooks'
 import { useCurrentUser } from '@/lib/useCurrentUser'
+import { handleApiError } from '@/lib/errors'
 import type { Crew, Project, Schedule } from '@/types/database'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -469,7 +470,7 @@ export default function CrewPage() {
             }
           } catch (e) {
             // Task update is best-effort — don't block the status change
-            console.error('Failed to auto-complete task:', e)
+            handleApiError(e, '[crew] auto-complete task')
           }
         }
       }

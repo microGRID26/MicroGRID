@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { db } from '@/lib/db'
+import { handleApiError } from '@/lib/errors'
 import type { Feedback } from '@/types/database'
 
 type FeedbackEntry = Feedback
@@ -58,7 +59,7 @@ export function FeedbackManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
     }
     const { error } = await supabase.from('feedback').update({ [field]: value }).eq('id', id)
     if (error) {
-      console.error('feedback update failed:', error)
+      handleApiError(error, '[FeedbackManager] update')
       setToast('Update failed')
       setTimeout(() => setToast(''), 2000)
       return
@@ -72,7 +73,7 @@ export function FeedbackManager({ isSuperAdmin }: { isSuperAdmin: boolean }) {
     if (!confirm('Delete this feedback entry? This cannot be undone.')) return
     const { error } = await supabase.from('feedback').delete().eq('id', id)
     if (error) {
-      console.error('feedback delete failed:', error)
+      handleApiError(error, '[FeedbackManager] delete')
       setToast('Delete failed')
       setTimeout(() => setToast(''), 2000)
       return

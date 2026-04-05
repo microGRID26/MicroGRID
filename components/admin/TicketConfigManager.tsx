@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import { db } from '@/lib/db'
+import { handleApiError } from '@/lib/errors'
 import { TICKET_CATEGORIES, TICKET_CATEGORY_COLORS } from '@/lib/api/tickets'
 import type { TicketCategory, TicketResolutionCode } from '@/lib/api/tickets'
 import { Plus, Pencil, Trash2, Search, X } from 'lucide-react'
@@ -20,9 +21,9 @@ export function TicketConfigManager() {
 
   const reload = () => {
     db().from('ticket_categories').select('*').order('sort_order').limit(500).then(({ data }: { data: TicketCategory[] | null }) => setCategories(data ?? []))
-      .catch((err: unknown) => console.error('[TicketConfig] categories load failed:', err))
+      .catch((err: unknown) => handleApiError(err, '[TicketConfig] categories load'))
     db().from('ticket_resolution_codes').select('*').order('sort_order').limit(200).then(({ data }: { data: TicketResolutionCode[] | null }) => setResolutions(data ?? []))
-      .catch((err: unknown) => console.error('[TicketConfig] resolutions load failed:', err))
+      .catch((err: unknown) => handleApiError(err, '[TicketConfig] resolutions load'))
   }
 
   useEffect(() => { reload() }, [])

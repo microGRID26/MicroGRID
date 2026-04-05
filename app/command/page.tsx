@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { loadProjectsByIds, loadTickets, upsertTaskState, insertTaskHistory } from '@/lib/api'
 import { loadCrewsByIds } from '@/lib/api'
+import { handleApiError } from '@/lib/errors'
 import { daysAgo, fmt$, fmtDate, STAGE_LABELS, STAGE_ORDER, STAGE_TASKS } from '@/lib/utils'
 import { exportProjectsCSV, ALL_EXPORT_FIELDS, DEFAULT_EXPORT_KEYS } from '@/lib/export-utils'
 import { classify, cycleDays, getSLA, getStuckTasks } from '@/lib/classify'
@@ -378,7 +379,7 @@ export default function CommandPage() {
       .neq('status', 'cancelled')
       .order('time')
 
-    if (schedRes.error) { console.error('schedule load failed:', schedRes.error); return }
+    if (schedRes.error) { handleApiError(schedRes.error, '[command] schedule load'); return }
     if (!schedRes.data) return
 
     const rawJobs = schedRes.data as ScheduleEntry[]
@@ -390,7 +391,7 @@ export default function CommandPage() {
       try {
         const projs = await loadProjectsByIds(schedPids as string[])
         projs.forEach((p) => { projNameMap[p.id] = p.name })
-      } catch { enrichmentFailed = true }
+      } catch (e) { handleApiError(e, '[command] loadProjectsByIds'); enrichmentFailed = true }
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const schedCids = [...new Set(rawJobs.map((j: any) => j.crew_id).filter(Boolean))]
@@ -399,7 +400,7 @@ export default function CommandPage() {
       try {
         const crews = await loadCrewsByIds(schedCids as string[])
         crews.forEach((c) => { crewNameMap[c.id] = c.name })
-      } catch { enrichmentFailed = true }
+      } catch (e) { handleApiError(e, '[command] loadCrewsByIds'); enrichmentFailed = true }
     }
     if (enrichmentFailed) setScheduleIncomplete(true)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -632,7 +633,7 @@ export default function CommandPage() {
     loadTickets({}).then(tix => {
       const mine = tix.filter(t => t.assigned_to === currentUser.name && !['resolved', 'closed'].includes(t.status))
       setMyTicketCount(mine.length)
-    }).catch((e: any) => console.error('[command] ticket count load failed:', e))
+    }).catch(e => handleApiError(e, '[command] loadTickets'))
   }, [currentUser?.name])
 
   // For classify (still used for overdue/pending detection)

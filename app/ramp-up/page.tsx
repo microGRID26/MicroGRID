@@ -7,6 +7,7 @@ import { useOrg } from '@/lib/hooks'
 import { fmtDate, fmt$, cn } from '@/lib/utils'
 import { loadProjectById, loadActiveCrews, upsertTaskState, insertTaskHistory } from '@/lib/api'
 import { db } from '@/lib/db'
+import { handleApiError } from '@/lib/errors'
 import { ProjectPanel } from '@/components/project/ProjectPanel'
 import type { Project } from '@/types/database'
 import {
@@ -337,7 +338,7 @@ export default function RampUpPage() {
         pm: user?.name ?? project.pm,
         org_id: orgId ?? null,
       })
-      if (schedInsertErr) console.error('[ramp→schedule] FAILED:', schedInsertErr.message, schedInsertErr)
+      if (schedInsertErr) handleApiError(schedInsertErr, '[ramp-up] schedule insert')
     }
     loadAll()
   }
@@ -480,7 +481,7 @@ export default function RampUpPage() {
               pm: user?.name ?? p.pm,
               org_id: orgId ?? null,
             })
-            if (afErr) console.error('[ramp→schedule auto-fill] FAILED:', afErr.message, afErr)
+            if (afErr) handleApiError(afErr, '[ramp-up] schedule auto-fill')
           }
         } else failed++
       }

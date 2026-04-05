@@ -9,6 +9,7 @@ import { NewProjectModal } from '@/components/project/NewProjectModal'
 import { usePreferences } from '@/lib/usePreferences'
 import { useSupabaseQuery, usePmFilter } from '@/lib/hooks'
 import { useCurrentUser } from '@/lib/useCurrentUser'
+import { handleApiError } from '@/lib/errors'
 import { useSearchParams } from 'next/navigation'
 import { BulkActionBar, useBulkSelect } from '@/components/BulkActionBar'
 import { db } from '@/lib/db'
@@ -270,7 +271,7 @@ function QueuePage() {
       const finMap = new Map<string, string>()
       for (const f of (finRes.data ?? []) as { name: string; display_name: string | null }[]) { if (f.display_name) finMap.set(f.name, f.display_name) }
       setFinancierDisplayNames(finMap)
-    }).catch(err => console.error('[display_name] load failed:', err))
+    }).catch(err => handleApiError(err, '[queue] display_name load'))
   }, [])
 
   // ── Refresh all queries ────────────────────────────────────────────────

@@ -6,6 +6,7 @@ import { daysAgo, STAGE_LABELS, STAGE_ORDER, escapeIlike } from '@/lib/utils'
 import { TASKS, isTaskRequired } from '@/lib/tasks'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import { useEdgeSync } from '@/lib/hooks/useEdgeSync'
+import { handleApiError } from '@/lib/errors'
 import { useProjectTasks } from '@/lib/hooks/useProjectTasks'
 import type { Project, Note, Crew } from '@/types/database'
 import { BomTab } from './BomTab'
@@ -140,25 +141,25 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
 
   const loadNotes = useCallback(async () => {
     const { data, error } = await supabase.from('notes').select('*').eq('project_id', pid).is('task_id', null).order('time', { ascending: false })
-    if (error) console.error('loadNotes: query failed', error)
+    if (error) handleApiError(error, '[ProjectPanel] loadNotes')
     if (data) setNotes(data as Note[])
   }, [pid])
 
   const loadStageHistory = useCallback(async () => {
     const { data, error } = await supabase.from('stage_history').select('*').eq('project_id', pid).order('entered', { ascending: false })
-    if (error) console.error('loadStageHistory: query failed', error)
+    if (error) handleApiError(error, '[ProjectPanel] loadStageHistory')
     if (data) setStageHistory(data)
   }, [pid])
 
   const loadServiceCalls = useCallback(async () => {
     const { data, error } = await supabase.from('service_calls').select('*').eq('project_id', pid).order('created_at', { ascending: false }).limit(5)
-    if (error) console.error('loadServiceCalls: query failed', error)
+    if (error) handleApiError(error, '[ProjectPanel] loadServiceCalls')
     if (data) setServiceCalls(data)
   }, [pid])
 
   const loadAdders = useCallback(async () => {
     const { data, error } = await supabase.from('project_adders').select('*').eq('project_id', pid).order('created_at', { ascending: true })
-    if (error) console.error('loadAdders: query failed', error)
+    if (error) handleApiError(error, '[ProjectPanel] loadAdders')
     if (data) setAdders(data)
   }, [pid])
 
@@ -330,7 +331,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       time: new Date().toISOString(), pm,
       pm_id: currentUser?.id ?? null,
     })
-    if (noteErr) { console.error('note insert failed:', noteErr); showToast('Failed to add note'); setSaving(false); return }
+    if (noteErr) { handleApiError(noteErr, '[ProjectPanel] note insert'); showToast('Failed to add note'); setSaving(false); return }
     setNewNote('')
     await loadNotes()
     setSaving(false)
@@ -348,7 +349,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     const text = blockerInput.trim()
     const { error: blockerErr } = await supabase.from('projects').update({ blocker: text || null }).eq('id', pid)
     if (blockerErr) {
-      console.error('blocker update failed:', blockerErr)
+      handleApiError(blockerErr, '[ProjectPanel] blocker update')
       showToast('Failed to update blocker')
       return
     }
@@ -385,7 +386,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     setEditSaving(true)
     const { error: updateErr } = await supabase.from('projects').update(editDraft).eq('id', pid)
     if (updateErr) {
-      console.error('project update failed:', updateErr)
+      handleApiError(updateErr, '[ProjectPanel] project update')
       showToast('Save failed')
       setEditSaving(false)
       return
@@ -403,7 +404,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       }))
     if (auditEntries.length > 0) {
       const { error: auditErr2 } = await supabase.from('audit_log').insert(auditEntries)
-      if (auditErr2) console.error('audit_log insert failed:', auditErr2)
+      if (auditErr2) handleApiError(auditErr2, '[ProjectPanel] audit_log insert')
     }
 
     setProject(p => ({ ...p, ...editDraft }))
@@ -460,19 +461,19 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     const today = new Date().toISOString().slice(0, 10)
     const { error: stageErr } = await supabase.from('projects').update({ stage: nextStage, stage_date: today }).eq('id', pid)
     if (stageErr) {
-      console.error('stage advance failed:', stageErr)
+      handleApiError(stageErr, '[ProjectPanel] stage advance')
       showToast('Failed to advance stage')
       setAdvancing(false)
       return
     }
     const { error: histErr } = await supabase.from('stage_history').insert({ project_id: pid, stage: nextStage, entered: today })
-    if (histErr) console.error('stage_history insert failed:', histErr)
+    if (histErr) handleApiError(histErr, '[ProjectPanel] stage_history insert')
     const { error: auditErr3 } = await supabase.from('audit_log').insert({
       project_id: pid, field: 'stage',
       old_value: project.stage, new_value: nextStage,
       changed_by: currentUser?.name ?? null, changed_by_id: currentUser?.id ?? null,
     })
-    if (auditErr3) console.error('audit_log insert failed:', auditErr3)
+    if (auditErr3) handleApiError(auditErr3, '[ProjectPanel] audit_log stage insert')
     setProject(p => ({ ...p, stage: nextStage as Project['stage'], stage_date: today }))
     setAdvancing(false)
     onProjectUpdated()
@@ -607,7 +608,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                   onClick={async () => {
                     if (!confirm('Reactivate this project? It will return to the active pipeline.')) return
                     const { error: reactErr } = await supabase.from('projects').update({ disposition: 'Sale' }).eq('id', project.id)
-                    if (reactErr) { console.error('reactivate failed:', reactErr); showToast('Reactivate failed'); return }
+                    if (reactErr) { handleApiError(reactErr, '[ProjectPanel] reactivate'); showToast('Reactivate failed'); return }
                     setProject(p => ({ ...p, disposition: 'Sale' }))
                     if (onProjectUpdated) onProjectUpdated()
                   }}
@@ -620,7 +621,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                   onClick={async () => {
                     if (!confirm(`Cancel ${project.name}? It will be removed from the active pipeline.`)) return
                     const { error: cancelErr } = await supabase.from('projects').update({ disposition: 'Cancelled' }).eq('id', project.id)
-                    if (cancelErr) { console.error('cancel failed:', cancelErr); showToast('Cancel failed'); return }
+                    if (cancelErr) { handleApiError(cancelErr, '[ProjectPanel] cancel'); showToast('Cancel failed'); return }
                     setProject(p => ({ ...p, disposition: 'Cancelled' }))
                     if (onProjectUpdated) onProjectUpdated()
                   }}
@@ -641,27 +642,27 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                       old_value: project.name, new_value: null,
                       changed_by: currentUser?.name ?? null, changed_by_id: currentUser?.id ?? null,
                     })
-                    if (delAuditErr) console.error('audit_log delete insert failed:', delAuditErr)
+                    if (delAuditErr) handleApiError(delAuditErr, '[ProjectPanel] delete audit_log')
                     const { error: delErr1 } = await supabase.from('task_state').delete().eq('project_id', project.id)
-                    if (delErr1) console.error('task_state delete failed:', delErr1)
+                    if (delErr1) handleApiError(delErr1, '[ProjectPanel] delete task_state')
                     const { error: delErr2 } = await supabase.from('notes').delete().eq('project_id', project.id)
-                    if (delErr2) console.error('notes delete failed:', delErr2)
+                    if (delErr2) handleApiError(delErr2, '[ProjectPanel] delete notes')
                     const { error: delErr3 } = await supabase.from('stage_history').delete().eq('project_id', project.id)
-                    if (delErr3) console.error('stage_history delete failed:', delErr3)
+                    if (delErr3) handleApiError(delErr3, '[ProjectPanel] delete stage_history')
                     const { error: delErr4 } = await supabase.from('task_history').delete().eq('project_id', project.id)
-                    if (delErr4) console.error('task_history delete failed:', delErr4)
+                    if (delErr4) handleApiError(delErr4, '[ProjectPanel] delete task_history')
                     const { error: delErr5 } = await supabase.from('schedule').delete().eq('project_id', project.id)
-                    if (delErr5) console.error('schedule delete failed:', delErr5)
+                    if (delErr5) handleApiError(delErr5, '[ProjectPanel] delete schedule')
                     const { error: delErr6 } = await supabase.from('service_calls').delete().eq('project_id', project.id)
-                    if (delErr6) console.error('service_calls delete failed:', delErr6)
+                    if (delErr6) handleApiError(delErr6, '[ProjectPanel] delete service_calls')
                     const { error: delErr7 } = await supabase.from('project_funding').delete().eq('project_id', project.id)
-                    if (delErr7) console.error('project_funding delete failed:', delErr7)
+                    if (delErr7) handleApiError(delErr7, '[ProjectPanel] delete project_funding')
                     const { error: delErr8 } = await supabase.from('project_folders').delete().eq('project_id', project.id)
-                    if (delErr8) console.error('project_folders delete failed:', delErr8)
+                    if (delErr8) handleApiError(delErr8, '[ProjectPanel] delete project_folders')
                     const { error: delErr9 } = await supabase.from('change_orders').delete().eq('project_id', project.id)
-                    if (delErr9) console.error('change_orders delete failed:', delErr9)
+                    if (delErr9) handleApiError(delErr9, '[ProjectPanel] delete change_orders')
                     const { error: delErr10 } = await supabase.from('projects').delete().eq('id', project.id)
-                    if (delErr10) console.error('projects delete failed:', delErr10)
+                    if (delErr10) handleApiError(delErr10, '[ProjectPanel] delete projects')
                     onClose()
                     if (onProjectUpdated) onProjectUpdated()
                   }}
@@ -955,7 +956,7 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
                     setChangeOrderCount(prev => prev + 1)
                     showToast('Change order created')
                   } else {
-                    console.error('Failed to create change order:', error)
+                    handleApiError(error, '[ProjectPanel] create change order')
                     showToast('Failed to create change order')
                   }
                 }}
