@@ -144,7 +144,7 @@ export async function loadWorkOrders(filters?: WorkOrderFilters, orgId?: string)
     .order('scheduled_date', { ascending: false })
     .limit(500)
 
-  if (orgId) query = query.eq('org_id', orgId)
+  // Org filtering: work_orders inherits org scope via project_id RLS policy (no org_id column on this table)
   if (filters?.status) query = query.eq('status', filters.status)
   if (filters?.type) query = query.eq('type', filters.type)
   if (filters?.projectId) query = query.eq('project_id', filters.projectId)
@@ -305,6 +305,25 @@ export async function updateWorkOrderStatus(id: string, status: string): Promise
 
   const { error } = await db().from('work_orders').update(updates).eq('id', id)
   if (error) { console.error('updateWorkOrderStatus failed:', error); return false }
+
+  // On completion, auto-populate time_on_site_minutes from time_entries if not already set
+  if (status === 'complete') {
+    const { data: wo } = await supabase.from('work_orders').select('time_on_site_minutes').eq('id', id).maybeSingle()
+    if (wo && !(wo as { time_on_site_minutes: number | null }).time_on_site_minutes) {
+      const { data: entries } = await supabase
+        .from('time_entries')
+        .select('duration_minutes')
+        .eq('work_order_id', id)
+        .not('duration_minutes', 'is', null)
+      if (entries && entries.length > 0) {
+        const total = (entries as { duration_minutes: number }[]).reduce((sum, e) => sum + e.duration_minutes, 0)
+        if (total > 0) {
+          await db().from('work_orders').update({ time_on_site_minutes: total }).eq('id', id)
+        }
+      }
+    }
+  }
+
   return true
 }
 
@@ -341,6 +360,12 @@ export async function toggleChecklistItem(id: string, completed: boolean, comple
 
   const { error } = await db().from('wo_checklist_items').update(updates).eq('id', id)
   if (error) { console.error('toggleChecklistItem failed:', error); return false }
+  return true
+}
+
+export async function updateChecklistItemNotes(id: string, notes: string | null): Promise<boolean> {
+  const { error } = await db().from('wo_checklist_items').update({ notes }).eq('id', id)
+  if (error) { console.error('updateChecklistItemNotes failed:', error); return false }
   return true
 }
 

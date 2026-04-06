@@ -297,9 +297,14 @@ export function ProjectDetail({
                                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
                                     )}
                                   </div>
-                                  <span className={cn('text-sm', item.completed ? 'text-gray-500 line-through' : 'text-gray-200')}>
-                                    {item.description}
-                                  </span>
+                                  <div className="flex-1">
+                                    <span className={cn('text-sm', item.completed ? 'text-gray-500 line-through' : 'text-gray-200')}>
+                                      {item.description}
+                                    </span>
+                                    {item.notes && (
+                                      <div className="text-[10px] text-gray-600 mt-0.5">{item.notes}</div>
+                                    )}
+                                  </div>
                                 </button>
                               ))}
                             </div>

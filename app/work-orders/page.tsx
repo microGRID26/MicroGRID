@@ -7,7 +7,7 @@ import { cn, fmtDate } from '@/lib/utils'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import {
   loadWorkOrders, loadWorkOrder, createWorkOrder, updateWorkOrderStatus,
-  addChecklistItem, toggleChecklistItem, deleteChecklistItem, updateWorkOrder,
+  addChecklistItem, toggleChecklistItem, deleteChecklistItem, updateChecklistItemNotes, updateWorkOrder,
   getValidTransitions, WO_CHECKLIST_TEMPLATES,
 } from '@/lib/api/work-orders'
 import type { WorkOrder, WOChecklistItem, WorkOrderFilters } from '@/lib/api/work-orders'
@@ -476,26 +476,43 @@ function WODetail({
           </div>
           <div className="space-y-1">
             {checklist.map(item => (
-              <div key={item.id} className="flex items-center gap-3 group py-1">
-                <button onClick={() => handleToggleItem(item)}
-                  className={cn(
-                    'w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-colors',
-                    item.completed
-                      ? 'bg-green-600 border-green-500 text-white'
-                      : 'border-gray-600 hover:border-green-500'
-                  )}>
-                  {item.completed && <Check className="w-3 h-3" />}
-                </button>
-                <span className={cn('text-sm flex-1', item.completed ? 'text-gray-500 line-through' : 'text-gray-300')}>
-                  {item.description}
-                </span>
-                {item.completed_by && (
-                  <span className="text-xs text-gray-600">{item.completed_by}</span>
-                )}
-                <button onClick={() => handleDeleteItem(item.id)}
-                  className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 transition-opacity">
-                  <Trash2 className="w-3 h-3" />
-                </button>
+              <div key={item.id} className="group py-1">
+                <div className="flex items-center gap-3">
+                  <button onClick={() => handleToggleItem(item)}
+                    className={cn(
+                      'w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-colors',
+                      item.completed
+                        ? 'bg-green-600 border-green-500 text-white'
+                        : 'border-gray-600 hover:border-green-500'
+                    )}>
+                    {item.completed && <Check className="w-3 h-3" />}
+                  </button>
+                  <span className={cn('text-sm flex-1', item.completed ? 'text-gray-500 line-through' : 'text-gray-300')}>
+                    {item.description}
+                  </span>
+                  {item.completed_by && (
+                    <span className="text-xs text-gray-600">{item.completed_by}</span>
+                  )}
+                  <button onClick={() => handleDeleteItem(item.id)}
+                    className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 transition-opacity">
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+                {/* Checklist item notes — inline editable */}
+                <div className="ml-8 mt-0.5">
+                  <input
+                    defaultValue={item.notes ?? ''}
+                    placeholder="Add note..."
+                    onBlur={async (e) => {
+                      const val = e.target.value.trim() || null
+                      if (val !== (item.notes ?? null)) {
+                        await updateChecklistItemNotes(item.id, val)
+                        item.notes = val
+                      }
+                    }}
+                    className="w-full text-[11px] text-gray-500 bg-transparent border-none outline-none placeholder:text-gray-700 focus:text-gray-300 focus:placeholder:text-gray-600"
+                  />
+                </div>
               </div>
             ))}
           </div>
