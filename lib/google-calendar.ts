@@ -135,8 +135,12 @@ async function getAccessToken(): Promise<string | null> {
     })
 
     if (!tokenRes.ok) {
-      const errText = await tokenRes.text()
-      console.error('Token exchange failed:', tokenRes.status, errText)
+      try {
+        const errText = await tokenRes.text()
+        console.error('Token exchange failed:', tokenRes.status, errText)
+      } catch {
+        console.error('Token exchange failed:', tokenRes.status)
+      }
       return null
     }
 

@@ -318,7 +318,8 @@ export async function updateWorkOrderStatus(id: string, status: string): Promise
   // On completion, auto-populate time_on_site_minutes from time_entries if not already set
   if (status === 'complete') {
     const { data: wo } = await supabase.from('work_orders').select('time_on_site_minutes').eq('id', id).maybeSingle()
-    if (wo && !(wo as { time_on_site_minutes: number | null }).time_on_site_minutes) {
+    const existingTime = (wo as { time_on_site_minutes: number | null } | null)?.time_on_site_minutes
+    if (wo && !existingTime) {
       const { data: entries } = await supabase
         .from('time_entries')
         .select('duration_minutes')

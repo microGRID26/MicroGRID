@@ -168,7 +168,7 @@ export async function loadVendorDocs(vendorId: string): Promise<VendorOnboarding
     .eq('vendor_id', vendorId)
     .order('created_at')
     .limit(50)
-  if (error) { console.error('[loadVendorDocs]', error); return [] }
+  if (error) { console.error('[loadVendorDocs]', error.message); return [] }
   return (data ?? []) as VendorOnboardingDoc[]
 }
 
@@ -180,7 +180,7 @@ export async function addVendorDoc(doc: {
     .insert({ ...doc, status: doc.status ?? 'needed' })
     .select()
     .single()
-  if (error) { console.error('[addVendorDoc]', error); return null }
+  if (error) { console.error('[addVendorDoc]', error.message); return null }
   return data as VendorOnboardingDoc
 }
 
@@ -190,13 +190,13 @@ export async function updateVendorDocStatus(id: string, status: string, verified
   if (status === 'received') updates.received_at = new Date().toISOString()
   if (status === 'verified') { updates.verified_at = new Date().toISOString(); updates.verified_by = verifiedBy ?? null }
   const { error } = await db().from('vendor_onboarding_docs').update(updates).eq('id', id)
-  if (error) { console.error('[updateVendorDocStatus]', error); return false }
+  if (error) { console.error('[updateVendorDocStatus]', error.message); return false }
   return true
 }
 
 export async function deleteVendorDoc(id: string): Promise<boolean> {
   const { error } = await db().from('vendor_onboarding_docs').delete().eq('id', id)
-  if (error) { console.error('[deleteVendorDoc]', error); return false }
+  if (error) { console.error('[deleteVendorDoc]', error.message); return false }
   return true
 }
 

@@ -28,7 +28,7 @@ export function JSAForm({ scheduleId, projectId, projectName, crewLead, crewName
   const addRow = () => setActivities(prev => [...prev, { activity: '', hazards: '', controls: '' }])
   const removeRow = (i: number) => setActivities(prev => prev.filter((_, idx) => idx !== i))
   const updateRow = (i: number, field: keyof ActivityRow, value: string) => {
-    setActivities(prev => prev.map((r, idx) => idx === i ? { ...r, [field]: value } : r))
+    setActivities(prev => prev.map((r, idx) => idx === i ? { ...r, [field]: value.slice(0, 500) } : r))
   }
 
   const addMember = () => {

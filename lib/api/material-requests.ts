@@ -109,13 +109,16 @@ export async function loadMaterialRequests(filters?: {
       .order('sort_order')
       .limit(1000)
 
-    if (items) {
+    if (items && Array.isArray(items) && items.length > 0) {
       const itemMap: Record<string, MaterialRequestItem[]> = {}
       for (const item of items as MaterialRequestItem[]) {
+        if (!item?.request_id) continue
         if (!itemMap[item.request_id]) itemMap[item.request_id] = []
         itemMap[item.request_id].push(item)
       }
       for (const mrf of mrfs) mrf.items = itemMap[mrf.id] ?? []
+    } else {
+      for (const mrf of mrfs) mrf.items = []
     }
 
     // Load project names
@@ -124,9 +127,11 @@ export async function loadMaterialRequests(filters?: {
       .from('projects')
       .select('id, name, address')
       .in('id', projectIds)
-    if (projects) {
+    if (projects && Array.isArray(projects)) {
       const projMap: Record<string, { name: string; address: string | null }> = {}
-      for (const p of projects as { id: string; name: string; address: string | null }[]) projMap[p.id] = { name: p.name, address: p.address }
+      for (const p of projects as { id: string; name: string; address: string | null }[]) {
+        if (p?.id) projMap[p.id] = { name: p.name ?? '', address: p.address ?? null }
+      }
       for (const mrf of mrfs) mrf.project = projMap[mrf.project_id] ?? null
     }
   }
