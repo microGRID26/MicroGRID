@@ -56,7 +56,7 @@ A standalone Expo React Native app lives in the `/mobile` directory with its own
 
 ## Testing
 
-**Vitest** + React Testing Library with jsdom. 2,728+ tests across 90 files. Supabase globally mocked in `vitest.setup.ts`. Tests focus on business logic, not rendering. When adding features, add corresponding tests. API route tests in `__tests__/api/`.
+**Vitest** + React Testing Library with jsdom. 3,003+ tests across 102 files. Supabase globally mocked in `vitest.setup.ts`. Tests focus on business logic, not rendering. When adding features, add corresponding tests. API route tests in `__tests__/api/`.
 
 Test categories: `__tests__/lib/` (API, utils), `__tests__/logic/` (SLA, funding, filters), `__tests__/pages/` (page logic), `__tests__/auth/` (OAuth, proxy), `__tests__/hooks/` (custom hooks), `__tests__/components/` (UI components).
 
@@ -176,9 +176,14 @@ Email domain whitelist: `@gomicrogridenergy.com`, `@energydevelopmentgroup.com`,
 - SubHub webhook requires `SUPABASE_SECRET_KEY` env var
 - 2 `any` usages remain in production code: `db()` return type (`SupabaseClient<any>` for untyped tables) and `RefEditRecord` index signature in `ProjectPanel.tsx`
 - Ops dashboard "Last Year" period only queries active `projects` table, not `legacy_projects`
-- CSP uses `unsafe-inline`/`unsafe-eval` in script-src (Next.js requirement, should move to nonce-based)
+- CSP uses `unsafe-inline` in script-src (Next.js requirement); `unsafe-eval` removed in production (kept in dev only)
 - Role cookie HMAC prefers `ROLE_COOKIE_SECRET` env var, falls back to anon key (set secret in Vercel)
 - `schedule` table now has `org_id` column (migration 072, applied)
+- Migration 076 applied: 11 performance indexes, `aggregate_earnings` RPC, milestone progression trigger
+- M1→M2→M3 progression enforced by Postgres trigger (can't submit M2 before M1, M3 before M2)
+- `escapeFilterValue()` in utils.ts for PostgREST `.or()` contexts — use instead of `escapeIlike()` in `.or()` strings
+- `INACTIVE_DISPOSITIONS` / `INACTIVE_DISPOSITION_FILTER` constants in utils.ts — use for all active project queries
+- Error boundaries: all 45 routes now have `error.tsx` files
 - 8 page/component files still exceed 1000 lines (7 largest were split in S26)
 - Job costing tables exist (migration 071, applied) but no data capture UI yet
 - Planset generator (`/planset`) produces 8 sheets (PV-1 through PV-8) with project selector, Duracell defaults, and redesign bridge. Missing: compliance certs, battery mode letter, equipment elevation (photo), OSR (manual)
