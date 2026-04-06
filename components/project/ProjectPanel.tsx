@@ -20,11 +20,8 @@ import { WarrantyTab } from './WarrantyTab'
 import { TicketsTab } from './TicketsTab'
 import { ScheduleAssignModal } from './ScheduleAssignModal'
 import { createWorkOrderFromProject } from '@/lib/api/work-orders'
-// Extracted sub-components (available for future wiring)
-// import { AhjEditModal, UtilEditModal, HoaEditModal, FinancierEditModal } from './RefEditModals'
-// import { CascadeConfirmModal } from './CascadeConfirmModal'
-// import { ChangeOrderSuggestModal } from './ChangeOrderSuggestModal'
-// import { WorkOrderCreateModal } from './WorkOrderCreateModal'
+import { AhjEditModal, UtilEditModal, HoaEditModal, FinancierEditModal } from './RefEditModals'
+import { WorkOrderCreateModal } from './WorkOrderCreateModal'
 
 // ── STAGE ADVANCE LOGIC ───────────────────────────────────────────────────────
 function canAdvance(stage: string, taskStates: Record<string, string>, ahj?: string | null): { ok: boolean; missing: string[] } {
@@ -277,6 +274,14 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
     setRefSaving(false)
     setFinancierEdit(null)
     loadAhjUtil()
+  }
+
+  const handleCreateWO = async () => {
+    setWoCreating(true)
+    const wo = await createWorkOrderFromProject(pid, woType, { name: project.name, address: project.address, city: project.city })
+    setWoCreating(false)
+    if (wo) { setShowWOCreate(false); showToast('Work order created') }
+    else showToast('Failed to create work order')
   }
 
   const loadFolder = useCallback(async () => {
@@ -793,181 +798,8 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
         </div>
       </div>
 
-      {/* AHJ Edit Popup */}
-      {ahjEdit && (
-        <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center" onClick={() => setAhjEdit(null)}>
-          <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-white">Edit AHJ — {ahjEdit.name}</h3>
-              <button onClick={() => setAhjEdit(null)} className="text-gray-500 hover:text-white text-lg">×</button>
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 bg-gray-800/50 rounded-lg px-3 py-2">
-                <label className="text-xs text-gray-400">Permit Required</label>
-                <button onClick={() => setAhjEdit(d => ({ ...d!, permit_required: !d!.permit_required }))}
-                  className={`w-10 h-5 rounded-full transition-colors relative ${ahjEdit.permit_required !== false ? 'bg-green-500' : 'bg-red-500'}`}>
-                  <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-transform ${ahjEdit.permit_required !== false ? 'left-5' : 'left-0.5'}`} />
-                </button>
-                <span className={`text-xs font-medium ${ahjEdit.permit_required !== false ? 'text-green-400' : 'text-red-400'}`}>
-                  {ahjEdit.permit_required !== false ? 'Yes' : 'No'}
-                </span>
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">Permit Phone</label>
-                <input value={ahjEdit.permit_phone ?? ''} onChange={e => setAhjEdit(d => ({ ...d!, permit_phone: e.target.value || null }))}
-                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">Permit Website</label>
-                <input value={ahjEdit.permit_website ?? ''} onChange={e => setAhjEdit(d => ({ ...d!, permit_website: e.target.value || null }))}
-                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Max Duration (days)</label>
-                  <input type="number" value={ahjEdit.max_duration ?? ''} onChange={e => setAhjEdit(d => ({ ...d!, max_duration: e.target.value ? Number(e.target.value) : null }))}
-                    className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Electric Code</label>
-                  <input value={ahjEdit.electric_code ?? ''} onChange={e => setAhjEdit(d => ({ ...d!, electric_code: e.target.value || null }))}
-                    className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
-                </div>
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">Permit Notes</label>
-                <textarea rows={3} value={ahjEdit.permit_notes ?? ''} onChange={e => setAhjEdit(d => ({ ...d!, permit_notes: e.target.value || null }))}
-                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none resize-none" />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => setAhjEdit(null)} className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md">Cancel</button>
-              <button onClick={saveAhjEdit} disabled={refSaving}
-                className="px-4 py-1.5 text-xs bg-green-600 hover:bg-green-500 text-white rounded-md font-medium disabled:opacity-50">
-                {refSaving ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Revision Cascade Confirmation */}
-      {cascadeConfirm && (
-        <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center" onClick={() => {
-          // Cancel — revert optimistic update to previous status
-          cancelCascade()
-        }}>
-          <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-amber-400 text-lg">↩</span>
-              <h3 className="text-sm font-semibold text-white">Revision Required</h3>
-            </div>
-            <p className="text-xs text-gray-300 mb-3">
-              Setting <span className="text-white font-medium">{cascadeConfirm.taskName}</span> to Revision Required
-              will reset {cascadeConfirm.resets.length} downstream task{cascadeConfirm.resets.length > 1 ? 's' : ''} to Not Ready:
-            </p>
-            <div className="bg-gray-800 rounded-lg p-3 mb-4 max-h-48 overflow-y-auto space-y-1.5">
-              {cascadeConfirm.resets.map(r => (
-                <div key={r.id} className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-gray-200">{r.name}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                    r.currentStatus === 'Complete' ? 'bg-green-900 text-green-300' :
-                    r.currentStatus === 'In Progress' ? 'bg-blue-900 text-blue-300' :
-                    r.currentStatus === 'Scheduled' ? 'bg-indigo-900 text-indigo-300' :
-                    'bg-gray-700 text-gray-300'
-                  }`}>{r.currentStatus} → Not Ready</span>
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  // Cancel — revert optimistic update to previous status
-                  cancelCascade()
-                }}
-                className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  const { taskId, resets } = cascadeConfirm
-                  setCascadeConfirm(null)
-                  applyTaskStatus(taskId, 'Revision Required', resets.map(r => r.id))
-                }}
-                className="px-4 py-1.5 text-xs bg-amber-700 hover:bg-amber-600 text-white rounded-md font-medium"
-              >
-                Reset {cascadeConfirm.resets.length} task{cascadeConfirm.resets.length > 1 ? 's' : ''} & continue
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Change Order Suggestion — after Revision Required */}
-      {changeOrderSuggest && (
-        <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center" onClick={() => setChangeOrderSuggest(null)}>
-          <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-blue-400 text-lg">📋</span>
-              <h3 className="text-sm font-semibold text-white">Create Change Order?</h3>
-            </div>
-            <p className="text-xs text-gray-300 mb-4">
-              <span className="text-white font-medium">{changeOrderSuggest.taskName}</span> was set to Revision Required
-              {changeOrderSuggest.reason ? ` for "${changeOrderSuggest.reason}"` : ''}.
-              Would you like to create a change order to track this?
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setChangeOrderSuggest(null)}
-                className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md"
-              >
-                Skip
-              </button>
-              <button
-                disabled={coSaving}
-                onClick={async () => {
-                  setCoSaving(true)
-                  const now = new Date().toISOString()
-                  const userName = currentUser?.name ?? userEmail.split('@')[0] ?? 'unknown'
-                  const p = project
-                  const { data, error } = await supabase
-                    .from('change_orders')
-                    .insert({
-                      project_id: project.id,
-                      title: `${changeOrderSuggest.reason || changeOrderSuggest.taskName} - ${project.name}`,
-                      status: 'Open',
-                      priority: 'Medium',
-                      type: 'HCO Change Order',
-                      reason: changeOrderSuggest.reason || null,
-                      origin: `Revision Required: ${changeOrderSuggest.taskName}`,
-                      created_by: userName,
-                      created_at: now,
-                      updated_at: now,
-                      original_panel_count: p.module_qty ?? null,
-                      original_panel_type: p.module ?? null,
-                      original_system_size: p.systemkw ?? null,
-                    })
-                    .select('id')
-                    .single()
-                  setCoSaving(false)
-                  setChangeOrderSuggest(null)
-                  if (data) {
-                    setChangeOrderCount(prev => prev + 1)
-                    showToast('Change order created')
-                  } else {
-                    handleApiError(error, '[ProjectPanel] create change order')
-                    showToast('Failed to create change order')
-                  }
-                }}
-                className="px-4 py-1.5 text-xs bg-blue-700 hover:bg-blue-600 text-white rounded-md font-medium"
-              >
-                {coSaving ? 'Creating...' : 'Create Change Order'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* AHJ Edit Modal */}
+      {ahjEdit && <AhjEditModal ahjEdit={ahjEdit} setAhjEdit={setAhjEdit} onSave={saveAhjEdit} refSaving={refSaving} />}
 
       {/* Schedule Job Modal — opened from TasksTab quick schedule button */}
       {scheduleModal && (
@@ -984,189 +816,14 @@ export function ProjectPanel({ project: initialProject, onClose, onProjectUpdate
       )}
 
       {/* Create Work Order Modal */}
-      {showWOCreate && (
-        <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center" onClick={() => setShowWOCreate(false)}>
-          <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-white">Create Work Order</h3>
-              <button onClick={() => setShowWOCreate(false)} className="text-gray-500 hover:text-white text-lg">&times;</button>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">Project</label>
-                <div className="text-sm text-white">{project.name} ({project.id})</div>
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">Type</label>
-                <select value={woType} onChange={e => setWoType(e.target.value)}
-                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none">
-                  <option value="install">Installation</option>
-                  <option value="service">Service</option>
-                  <option value="inspection">Inspection</option>
-                  <option value="repair">Repair</option>
-                  <option value="survey">Survey</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => setShowWOCreate(false)} className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md">Cancel</button>
-              <button
-                onClick={async () => {
-                  setWoCreating(true)
-                  const result = await createWorkOrderFromProject(project.id, woType, {
-                    name: project.name,
-                    address: project.address,
-                    city: project.city,
-                  }, { createdBy: currentUser?.name ?? undefined })
-                  setWoCreating(false)
-                  setShowWOCreate(false)
-                  if (result) {
-                    showToast(`Work order ${result.wo_number} created`)
-                  } else {
-                    showToast('Failed to create work order')
-                  }
-                }}
-                disabled={woCreating}
-                className="px-4 py-1.5 text-xs bg-green-600 hover:bg-green-500 text-white rounded-md font-medium disabled:opacity-50"
-              >
-                {woCreating ? 'Creating...' : 'Create'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {showWOCreate && <WorkOrderCreateModal projectName={project.name} projectId={project.id} woType={woType} setWoType={setWoType} woCreating={woCreating} onClose={() => setShowWOCreate(false)} onCreate={handleCreateWO} />}
+
 
       {/* Utility Edit Popup */}
-      {utilEdit && (
-        <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center" onClick={() => setUtilEdit(null)}>
-          <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-white">Edit Utility — {utilEdit.name}</h3>
-              <button onClick={() => setUtilEdit(null)} className="text-gray-500 hover:text-white text-lg">×</button>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">Phone</label>
-                <input value={utilEdit.phone ?? ''} onChange={e => setUtilEdit(d => ({ ...d!, phone: e.target.value || null }))}
-                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">Website</label>
-                <input value={utilEdit.website ?? ''} onChange={e => setUtilEdit(d => ({ ...d!, website: e.target.value || null }))}
-                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">Notes</label>
-                <textarea rows={3} value={utilEdit.notes ?? ''} onChange={e => setUtilEdit(d => ({ ...d!, notes: e.target.value || null }))}
-                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none resize-none" />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => setUtilEdit(null)} className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md">Cancel</button>
-              <button onClick={saveUtilEdit} disabled={refSaving}
-                className="px-4 py-1.5 text-xs bg-green-600 hover:bg-green-500 text-white rounded-md font-medium disabled:opacity-50">
-                {refSaving ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* HOA Edit Popup */}
-      {hoaEdit && (
-        <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center" onClick={() => setHoaEdit(null)}>
-          <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-white">Edit HOA — {hoaEdit.name}</h3>
-              <button onClick={() => setHoaEdit(null)} className="text-gray-500 hover:text-white text-lg">×</button>
-            </div>
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Contact Name</label>
-                  <input value={hoaEdit.contact_name ?? ''} onChange={e => setHoaEdit(d => ({ ...d!, contact_name: e.target.value || null }))}
-                    className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Phone</label>
-                  <input value={hoaEdit.phone ?? ''} onChange={e => setHoaEdit(d => ({ ...d!, phone: e.target.value || null }))}
-                    className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
-                </div>
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">Contact Email</label>
-                <input value={hoaEdit.contact_email ?? ''} onChange={e => setHoaEdit(d => ({ ...d!, contact_email: e.target.value || null }))}
-                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">Website</label>
-                <input value={hoaEdit.website ?? ''} onChange={e => setHoaEdit(d => ({ ...d!, website: e.target.value || null }))}
-                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">Notes</label>
-                <textarea rows={3} value={hoaEdit.notes ?? ''} onChange={e => setHoaEdit(d => ({ ...d!, notes: e.target.value || null }))}
-                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none resize-none" />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => setHoaEdit(null)} className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md">Cancel</button>
-              <button onClick={saveHoaEdit} disabled={refSaving}
-                className="px-4 py-1.5 text-xs bg-green-600 hover:bg-green-500 text-white rounded-md font-medium disabled:opacity-50">
-                {refSaving ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Financier Edit Popup */}
-      {financierEdit && (
-        <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center" onClick={() => setFinancierEdit(null)}>
-          <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-white">Edit Financier — {financierEdit.name}</h3>
-              <button onClick={() => setFinancierEdit(null)} className="text-gray-500 hover:text-white text-lg">x</button>
-            </div>
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Contact Name</label>
-                  <input value={financierEdit.contact_name ?? ''} onChange={e => setFinancierEdit(d => ({ ...d!, contact_name: e.target.value || null }))}
-                    className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Phone</label>
-                  <input value={financierEdit.phone ?? ''} onChange={e => setFinancierEdit(d => ({ ...d!, phone: e.target.value || null }))}
-                    className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
-                </div>
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">Contact Email</label>
-                <input value={financierEdit.contact_email ?? ''} onChange={e => setFinancierEdit(d => ({ ...d!, contact_email: e.target.value || null }))}
-                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">Website</label>
-                <input value={financierEdit.website ?? ''} onChange={e => setFinancierEdit(d => ({ ...d!, website: e.target.value || null }))}
-                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">Notes</label>
-                <textarea rows={3} value={financierEdit.notes ?? ''} onChange={e => setFinancierEdit(d => ({ ...d!, notes: e.target.value || null }))}
-                  className="w-full bg-gray-800 text-white text-xs rounded-lg px-3 py-2 border border-gray-700 focus:border-green-500 focus:outline-none resize-none" />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => setFinancierEdit(null)} className="px-4 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 rounded-md">Cancel</button>
-              <button onClick={saveFinancierEdit} disabled={refSaving}
-                className="px-4 py-1.5 text-xs bg-green-600 hover:bg-green-500 text-white rounded-md font-medium disabled:opacity-50">
-                {refSaving ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Reference Edit Modals */}
+      {utilEdit && <UtilEditModal utilEdit={utilEdit} setUtilEdit={setUtilEdit} onSave={saveUtilEdit} refSaving={refSaving} />}
+      {hoaEdit && <HoaEditModal hoaEdit={hoaEdit} setHoaEdit={setHoaEdit} onSave={saveHoaEdit} refSaving={refSaving} />}
+      {financierEdit && <FinancierEditModal financierEdit={financierEdit} setFinancierEdit={setFinancierEdit} onSave={saveFinancierEdit} refSaving={refSaving} />}
     </div>
   )
 }

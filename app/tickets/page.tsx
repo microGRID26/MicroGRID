@@ -25,12 +25,8 @@ import { ProjectPanel } from '@/components/project/ProjectPanel'
 import { MentionNoteInput } from '@/components/project/MentionNoteInput'
 import { useRealtimeSubscription } from '@/lib/hooks'
 import { Plus, Search, X, Send, Download, Pencil } from 'lucide-react'
-// Extracted sub-components (available for future wiring)
-// import { StatCards } from './components/StatCards'
-// import { AnalyticsPanel } from './components/AnalyticsPanel'
-// import { CreateTicketModal } from './components/CreateTicketModal'
-// import { ResolveModal } from './components/ResolveModal'
-// import { TicketRow } from './components/TicketRow'
+import { CreateTicketModal } from './components/CreateTicketModal'
+import { ResolveModal } from './components/ResolveModal'
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
@@ -100,14 +96,6 @@ function TicketsPageInner() {
   const [panelProject, setPanelProject] = useState<Project | null>(null)
 
   // Create ticket state
-  const [createForm, setCreateForm] = useState({
-    title: '', description: '', category: 'service', subcategory: '',
-    priority: 'normal', source: 'internal', project_id: '', assigned_to: '',
-  })
-  const [projectSearch, setProjectSearch] = useState('')
-  const [projectResults, setProjectResults] = useState<{ id: string; name: string }[]>([])
-  const [showProjectDropdown, setShowProjectDropdown] = useState(false)
-
   const loadAll = useCallback(async () => {
     setLoading(true)
     const [tix, cats, codes] = await Promise.all([
@@ -154,19 +142,19 @@ function TicketsPageInner() {
     setHistory(h)
   }, [expandedId])
 
-  // Create ticket
-  const handleCreate = useCallback(async () => {
-    if (!createForm.title.trim() || creating) return
+  // Create ticket — form comes from CreateTicketModal component
+  const handleCreate = useCallback(async (form: { title: string; description: string; category: string; subcategory: string; priority: string; source: string; project_id: string; assigned_to: string }) => {
+    if (!form.title.trim() || creating) return
     setCreating(true)
     const ticket = await createTicket({
-      title: createForm.title.trim(),
-      description: createForm.description.trim() || null,
-      category: createForm.category,
-      subcategory: createForm.subcategory || null,
-      priority: createForm.priority,
-      source: createForm.source,
-      project_id: createForm.project_id || null,
-      assigned_to: createForm.assigned_to || null,
+      title: form.title.trim(),
+      description: form.description.trim() || null,
+      category: form.category,
+      subcategory: form.subcategory || null,
+      priority: form.priority,
+      source: form.source,
+      project_id: form.project_id || null,
+      assigned_to: form.assigned_to || null,
       status: 'open',
       org_id: orgId,
       created_by: userName,
@@ -174,13 +162,10 @@ function TicketsPageInner() {
     } as Parameters<typeof createTicket>[0])
     if (ticket) {
       setShowCreate(false)
-      setCreateForm({ title: '', description: '', category: 'service', subcategory: '', priority: 'normal', source: 'internal', project_id: '', assigned_to: '' })
-      setProjectSearch('')
-      setProjectResults([])
       loadAll()
     }
     setCreating(false)
-  }, [createForm, orgId, userName, user, creating, loadAll])
+  }, [orgId, userName, user, creating, loadAll])
 
   // Status change — show resolution modal for 'resolved'
   const handleStatusChange = useCallback(async (ticketId: string, newStatus: string) => {
@@ -292,11 +277,6 @@ function TicketsPageInner() {
   const criticalCount = tickets.filter(t => ['urgent', 'critical'].includes(t.priority) && !['resolved', 'closed'].includes(t.status)).length
   const resolvedToday = tickets.filter(t => t.resolved_at && t.resolved_at.slice(0, 10) === new Date().toISOString().slice(0, 10)).length
   const slaBreachedCount = tickets.filter(t => { const s = getSLAStatus(t); return !['resolved', 'closed'].includes(t.status) && (s.response === 'breached' || s.resolution === 'breached') }).length
-
-  // Subcategories for selected category
-  const subcategories = useMemo(() => {
-    return categories.filter(c => c.category === createForm.category && c.subcategory)
-  }, [categories, createForm.category])
 
   const handleSort = (col: typeof sortCol) => {
     if (sortCol === col) setSortAsc(!sortAsc)
@@ -986,146 +966,26 @@ function TicketsPageInner() {
 
       {/* Create Ticket Modal */}
       {showCreate && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowCreate(false)} />
-          <div className="relative bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
-              <h2 className="text-sm font-semibold text-white">New Ticket</h2>
-              <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
-            </div>
-            <div className="overflow-y-auto flex-1 px-5 py-4 space-y-3">
-              <div>
-                <label className="text-xs text-gray-400 font-medium block mb-1">Title *</label>
-                <input value={createForm.title} onChange={e => setCreateForm(f => ({ ...f, title: e.target.value }))}
-                  placeholder="Brief description of the issue"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 font-medium block mb-1">Description</label>
-                <textarea value={createForm.description} onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))}
-                  rows={3} placeholder="Full details..."
-                  className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white resize-none focus:outline-none focus:border-green-500" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-gray-400 font-medium block mb-1">Category</label>
-                  <select value={createForm.category} onChange={e => setCreateForm(f => ({ ...f, category: e.target.value, subcategory: '' }))}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white">
-                    {TICKET_CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 font-medium block mb-1">Subcategory</label>
-                  <select value={createForm.subcategory} onChange={e => setCreateForm(f => ({ ...f, subcategory: e.target.value }))}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white">
-                    <option value="">-- General --</option>
-                    {subcategories.map(c => <option key={c.id} value={c.subcategory!}>{c.label}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-gray-400 font-medium block mb-1">Priority</label>
-                  <select value={createForm.priority} onChange={e => setCreateForm(f => ({ ...f, priority: e.target.value }))}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white">
-                    {TICKET_PRIORITIES.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 font-medium block mb-1">Source</label>
-                  <select value={createForm.source} onChange={e => setCreateForm(f => ({ ...f, source: e.target.value }))}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white">
-                    {TICKET_SOURCES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 font-medium block mb-1">Project (search by name or ID)</label>
-                <div className="relative">
-                  <input value={projectSearch || createForm.project_id}
-                    onChange={async e => {
-                      const v = e.target.value
-                      setProjectSearch(v)
-                      setCreateForm(f => ({ ...f, project_id: '' }))
-                      if (v.length >= 2) {
-                        const results = await searchProjects(v)
-                        setProjectResults(results.slice(0, 8))
-                        setShowProjectDropdown(true)
-                      } else {
-                        setShowProjectDropdown(false)
-                      }
-                    }}
-                    onFocus={() => projectResults.length > 0 && setShowProjectDropdown(true)}
-                    onBlur={() => setTimeout(() => setShowProjectDropdown(false), 200)}
-                    placeholder="Search project name or PROJ-XXXXX..."
-                    className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500" />
-                  {showProjectDropdown && projectResults.length > 0 && (
-                    <div className="absolute z-50 w-full mt-1 bg-gray-800 border border-gray-700 rounded-md shadow-xl max-h-48 overflow-y-auto">
-                      {projectResults.map(p => (
-                        <button key={p.id} onClick={() => { setCreateForm(f => ({ ...f, project_id: p.id })); setProjectSearch(`${p.name} (${p.id})`); setShowProjectDropdown(false) }}
-                          className="w-full text-left px-3 py-2 text-xs hover:bg-gray-700 transition-colors">
-                          <span className="text-green-400 font-mono">{p.id}</span>
-                          <span className="text-gray-300 ml-2">{p.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 font-medium block mb-1">Assign To</label>
-                <select value={createForm.assigned_to} onChange={e => setCreateForm(f => ({ ...f, assigned_to: e.target.value }))}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white">
-                  <option value="">Unassigned</option>
-                  {users.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="px-5 py-3 border-t border-gray-800 flex justify-end gap-2">
-              <button onClick={() => setShowCreate(false)} className="px-3 py-1.5 text-xs text-gray-400 hover:text-white">Cancel</button>
-              <button onClick={handleCreate} disabled={creating || !createForm.title.trim()}
-                className="px-4 py-1.5 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white text-xs font-medium rounded-md">
-                {creating ? 'Creating...' : 'Create Ticket'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <CreateTicketModal
+          categories={categories}
+          users={users}
+          creating={creating}
+          onClose={() => setShowCreate(false)}
+          onCreate={handleCreate}
+        />
       )}
 
       {/* Resolution Modal */}
       {resolveModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setResolveModal(null)} />
-          <div className="relative bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-md mx-4">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
-              <h2 className="text-sm font-semibold text-white">Resolve Ticket</h2>
-              <button onClick={() => setResolveModal(null)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
-            </div>
-            <div className="px-5 py-4 space-y-3">
-              <div>
-                <label className="text-xs text-gray-400 font-medium block mb-1">Resolution Category *</label>
-                <select value={resolveCategory} onChange={e => setResolveCategory(e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white">
-                  <option value="">Select resolution...</option>
-                  {resolutionCodes.map(r => <option key={r.id} value={r.code}>{r.label}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 font-medium block mb-1">Resolution Notes</label>
-                <textarea value={resolveNotes} onChange={e => setResolveNotes(e.target.value)}
-                  rows={3} placeholder="Describe what was done to resolve this ticket..."
-                  className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white resize-none focus:outline-none focus:border-green-500" />
-              </div>
-            </div>
-            <div className="px-5 py-3 border-t border-gray-800 flex justify-end gap-2">
-              <button onClick={() => setResolveModal(null)} className="px-3 py-1.5 text-xs text-gray-400 hover:text-white">Cancel</button>
-              <button onClick={handleResolve} disabled={!resolveCategory}
-                className="px-4 py-1.5 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white text-xs font-medium rounded-md">
-                Resolve Ticket
-              </button>
-            </div>
-          </div>
-        </div>
+        <ResolveModal
+          resolveCategory={resolveCategory}
+          setResolveCategory={setResolveCategory}
+          resolveNotes={resolveNotes}
+          setResolveNotes={setResolveNotes}
+          resolutionCodes={resolutionCodes}
+          onClose={() => setResolveModal(null)}
+          onResolve={handleResolve}
+        />
       )}
 
       {/* Project Panel */}
