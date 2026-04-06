@@ -92,7 +92,7 @@ export async function createTicket(
     .order('ticket_number', { ascending: false })
     .limit(1)
 
-  const seq = existing?.[0] ? parseInt((existing[0] as any).ticket_number.slice(-3)) + 1 : 1
+  const seq = existing?.[0] ? parseInt((existing[0] as { ticket_number: string }).ticket_number.slice(-3)) + 1 : 1
   const ticketNumber = `${prefix}-${String(seq).padStart(3, '0')}`
 
   // Get org_id from project so CRM can see the ticket

@@ -9,7 +9,7 @@ import { getCustomerAccount, loadTickets, createTicket } from '../../lib/api'
 import type { CustomerAccount, CustomerTicket } from '../../lib/types'
 
 // Quick issue templates — one tap to create
-const QUICK_ISSUES = [
+const QUICK_ISSUES: { icon: React.ComponentProps<typeof Feather>['name']; title: string; category: string; color: string }[] = [
   { icon: 'alert-circle', title: 'My system isn\'t producing power', category: 'service', color: '#C53030' },
   { icon: 'dollar-sign', title: 'Billing question', category: 'billing', color: '#C4922A' },
   { icon: 'calendar', title: 'Schedule a service visit', category: 'service', color: '#2563EB' },
@@ -182,7 +182,7 @@ export default function TicketsScreen() {
                     width: 36, height: 36, borderRadius: 18,
                     backgroundColor: qi.color + '15', alignItems: 'center', justifyContent: 'center',
                   }}>
-                    <Feather name={qi.icon as any} size={18} color={qi.color} />
+                    <Feather name={qi.icon} size={18} color={qi.color} />
                   </View>
                   <Text style={{ fontSize: 14, color: colors.text, fontFamily: 'Inter_500Medium', flex: 1 }}>
                     {qi.title}
@@ -207,7 +207,7 @@ export default function TicketsScreen() {
                   paddingHorizontal: 12, paddingVertical: 8,
                   borderWidth: 1, borderColor: colors.borderLight,
                 }}>
-                <Feather name={qi.icon as any} size={12} color={qi.color} />
+                <Feather name={qi.icon} size={12} color={qi.color} />
                 <Text style={{ fontSize: 11, color: colors.textSecondary, fontFamily: 'Inter_500Medium' }}>
                   {qi.title.length > 20 ? qi.title.slice(0, 20) + '...' : qi.title}
                 </Text>

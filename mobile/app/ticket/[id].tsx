@@ -58,7 +58,7 @@ export default function TicketDetailScreen() {
         loadComments(id).catch(() => []),
         getCustomerAccount().catch(() => null),
       ])
-      setComments(c as any[])
+      setComments(c as { id: string; message: string; author: string; created_at: string; is_internal: boolean }[])
       if (acct) setCustomerName(acct.name)
       // Mark as read — clears the Support tab badge
       await SecureStore.setItemAsync('mg_support_seen', new Date().toISOString())
@@ -99,8 +99,9 @@ export default function TicketDetailScreen() {
         table: 'tickets',
         filter: `id=eq.${id}`,
       }, (payload) => {
-        if (payload.new && (payload.new as any).status) {
-          setCurrentStatus((payload.new as any).status)
+        const updated = payload.new as { status?: string } | null
+        if (updated?.status) {
+          setCurrentStatus(updated.status)
         }
       })
       .subscribe()

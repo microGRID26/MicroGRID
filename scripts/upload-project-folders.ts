@@ -40,7 +40,7 @@ async function main() {
   console.log(`Found ${records.length} project folder records.`)
 
   // Check what already exists
-  const { count } = await (supabase as any)
+  const { count } = await supabase
     .from('project_folders')
     .select('*', { count: 'exact', head: true })
   console.log(`Existing records in project_folders: ${count ?? 'unknown'}`)
@@ -58,7 +58,7 @@ async function main() {
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
     const batch = rows.slice(i, i + BATCH_SIZE)
 
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from('project_folders')
       .upsert(batch, { onConflict: 'project_id', ignoreDuplicates: false })
 

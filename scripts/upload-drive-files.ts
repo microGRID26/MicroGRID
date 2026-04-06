@@ -71,7 +71,7 @@ async function main() {
     const batch = records.slice(i, i + BATCH_SIZE)
 
     // Upsert on (project_id, file_id) conflict
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from('project_files')
       .upsert(batch, { onConflict: 'project_id,file_id' })
 

@@ -50,9 +50,9 @@ export default function AccountScreen() {
 
   if (!account) return null
 
-  const Row = ({ icon, label, value }: { icon: string; label: string; value: string }) => (
+  const Row = ({ icon, label, value }: { icon: React.ComponentProps<typeof Feather>['name']; label: string; value: string }) => (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 }}>
-      <Feather name={icon as any} size={16} color={colors.accent} />
+      <Feather name={icon} size={16} color={colors.accent} />
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 11, color: colors.textMuted, fontFamily: 'Inter_400Regular' }}>{label}</Text>
         <Text style={{ fontSize: 14, color: colors.text, fontFamily: 'Inter_500Medium', marginTop: 1 }}>{value}</Text>
