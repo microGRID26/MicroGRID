@@ -306,8 +306,8 @@ function QueuePage() {
   // Build task map per project
   const taskMap = useMemo(() => buildTaskMap(taskStates), [taskStates])
 
-  // In Service, Cancelled, and Loyalty projects excluded from main sections
-  const live = useMemo(() => projects.filter(p => p.disposition !== 'In Service' && p.disposition !== 'Cancelled' && p.disposition !== 'Loyalty'), [projects])
+  // Inactive dispositions excluded from main sections
+  const live = useMemo(() => projects.filter(p => p.disposition !== 'In Service' && p.disposition !== 'Cancelled' && p.disposition !== 'Loyalty' && p.disposition !== 'Legal' && p.disposition !== 'On Hold'), [projects])
   const loyaltyProjects = useMemo(() => projects.filter(p => p.disposition === 'Loyalty'), [projects])
 
   // Apply search filter

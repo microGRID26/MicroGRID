@@ -47,7 +47,7 @@ export default function AnalyticsPage() {
 
   const { data: projects, loading: projLoading, refresh: refreshProjects } = useSupabaseQuery('projects', {
     select: 'id, name, stage, contract, install_complete_date, stage_date, sale_date, pm, pm_id, blocker, financier, disposition, pto_date, dealer, consultant, advisor, systemkw',
-    filters: { disposition: { not_in: ['In Service', 'Loyalty', 'Cancelled'] } },
+    filters: { disposition: { not_in: ['In Service', 'Loyalty', 'Cancelled', 'Legal', 'On Hold'] } },
   })
 
   const { data: fundingRows, loading: fundLoading, refresh: refreshFunding } = useSupabaseQuery('project_funding', {

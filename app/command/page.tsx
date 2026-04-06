@@ -115,7 +115,7 @@ function PipelineBar({ projects, stageFilter, onStageClick }: {
     const c: Record<string, number> = {}
     for (const s of STAGE_ORDER) c[s] = 0
     for (const p of projects) {
-      if (p.disposition === 'Cancelled' || p.disposition === 'In Service' || p.disposition === 'Loyalty') continue
+      if (p.disposition === 'Cancelled' || p.disposition === 'In Service' || p.disposition === 'Loyalty' || p.disposition === 'Legal' || p.disposition === 'On Hold') continue
       c[p.stage] = (c[p.stage] ?? 0) + 1
     }
     return c
@@ -528,6 +528,8 @@ export default function CommandPage() {
       p.disposition !== 'Cancelled' &&
       p.disposition !== 'In Service' &&
       p.disposition !== 'Loyalty' &&
+      p.disposition !== 'Legal' &&
+      p.disposition !== 'On Hold' &&
       p.stage !== 'complete'
     ),
     [filtered]

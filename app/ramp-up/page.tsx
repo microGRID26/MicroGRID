@@ -105,7 +105,7 @@ export default function RampUpPage() {
     // Load ALL active projects (every stage — if install_done is Complete, filtered below)
     let q = db().from('projects')
       .select('id, name, city, address, zip, ahj, stage, module, inverter, battery, systemkw, contract, pm, blocker, financier')
-      .not('disposition', 'in', '("In Service","Loyalty","Cancelled")')
+      .not('disposition', 'in', '("In Service","Loyalty","Cancelled","Legal","On Hold")')
       .not('stage', 'eq', 'complete')
       .limit(2000)
     if (orgId) q = q.eq('org_id', orgId)

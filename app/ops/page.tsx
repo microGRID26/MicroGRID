@@ -160,12 +160,12 @@ function OpsContent({ embedded }: { embedded: boolean }) {
 
   const sold = useMemo(() => projects.filter(p =>
     p.sale_date && p.sale_date >= start && p.sale_date <= end &&
-    p.disposition !== 'Cancelled' && p.disposition !== 'In Service' && p.disposition !== 'Loyalty'
+    p.disposition !== 'Cancelled' && p.disposition !== 'In Service' && p.disposition !== 'Loyalty' && p.disposition !== 'Legal' && p.disposition !== 'On Hold'
   ), [projects, start, end])
 
   const scheduled = useMemo(() => projects.filter(p =>
     (p.stage === 'install' || p.stage === 'inspection' || p.stage === 'complete') &&
-    p.disposition !== 'Cancelled' && p.disposition !== 'In Service' && p.disposition !== 'Loyalty'
+    p.disposition !== 'Cancelled' && p.disposition !== 'In Service' && p.disposition !== 'Loyalty' && p.disposition !== 'Legal' && p.disposition !== 'On Hold'
   ), [projects])
 
   const installed = useMemo(() => projects.filter(p =>

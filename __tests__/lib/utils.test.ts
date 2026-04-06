@@ -256,12 +256,12 @@ describe('escapeFilterValue', () => {
 })
 
 describe('INACTIVE_DISPOSITIONS', () => {
-  it('contains exactly In Service, Loyalty, Cancelled', () => {
-    expect(INACTIVE_DISPOSITIONS).toEqual(['In Service', 'Loyalty', 'Cancelled'])
+  it('contains all inactive dispositions', () => {
+    expect(INACTIVE_DISPOSITIONS).toEqual(['In Service', 'Loyalty', 'Cancelled', 'Legal', 'On Hold'])
   })
 
   it('filter string matches array', () => {
-    expect(INACTIVE_DISPOSITION_FILTER).toBe('("In Service","Loyalty","Cancelled")')
+    expect(INACTIVE_DISPOSITION_FILTER).toBe('("In Service","Loyalty","Cancelled","Legal","On Hold")')
   })
 })
 

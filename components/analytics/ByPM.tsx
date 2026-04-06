@@ -42,7 +42,7 @@ function PMStageBreakdown({ projects, sorted, onDrill }: { projects: Project[]; 
 
   const data = useMemo(() => {
     return sorted.map(pm => {
-      const ps = projects.filter(p => p.pm_id === pm.pmId && p.stage !== 'complete' && p.disposition !== 'Cancelled' && p.disposition !== 'In Service')
+      const ps = projects.filter(p => p.pm_id === pm.pmId && p.stage !== 'complete' && p.disposition !== 'Cancelled' && p.disposition !== 'In Service' && p.disposition !== 'Legal' && p.disposition !== 'On Hold')
       const stageCounts: Record<string, number> = {}
       stages.forEach(s => { stageCounts[s] = 0 })
       ps.forEach(p => { stageCounts[p.stage] = (stageCounts[p.stage] ?? 0) + 1 })
@@ -165,7 +165,7 @@ function PMRevenuePipeline({ projects, sorted, onDrill }: { projects: Project[];
   }
   const data = useMemo(() => {
     return sorted.map(pm => {
-      const ps = projects.filter(p => p.pm_id === pm.pmId && p.stage !== 'complete' && p.disposition !== 'Cancelled' && p.disposition !== 'In Service')
+      const ps = projects.filter(p => p.pm_id === pm.pmId && p.stage !== 'complete' && p.disposition !== 'Cancelled' && p.disposition !== 'In Service' && p.disposition !== 'Legal' && p.disposition !== 'On Hold')
       let f30 = 0, f60 = 0, f90 = 0
       ps.forEach(p => {
         const daysRemaining = STAGE_DAYS[p.stage] ?? 60
@@ -242,7 +242,7 @@ export function ByPM({ data }: { data: AnalyticsData }) {
 
     const rows: PMRow[] = [...pmMap.entries()].map(([pmId, pm]) => {
       const ps = projects.filter(p => p.pm_id === pmId)
-      const activePs = ps.filter(p => p.stage !== 'complete' && p.disposition !== 'Cancelled' && p.disposition !== 'In Service')
+      const activePs = ps.filter(p => p.stage !== 'complete' && p.disposition !== 'Cancelled' && p.disposition !== 'In Service' && p.disposition !== 'Legal' && p.disposition !== 'On Hold')
       const portfolioValue = activePs.reduce((s, p) => s + (Number(p.contract) || 0), 0)
       const blocked = activePs.filter(p => p.blocker).length
 
@@ -335,7 +335,7 @@ export function ByPM({ data }: { data: AnalyticsData }) {
   const workloadData = useMemo(() => {
     const stages = STAGE_ORDER.filter(s => s !== 'complete')
     return sorted.map(pm => {
-      const ps = projects.filter(p => p.pm_id === pm.pmId && p.stage !== 'complete' && p.disposition !== 'Cancelled' && p.disposition !== 'In Service')
+      const ps = projects.filter(p => p.pm_id === pm.pmId && p.stage !== 'complete' && p.disposition !== 'Cancelled' && p.disposition !== 'In Service' && p.disposition !== 'Legal' && p.disposition !== 'On Hold')
       const stageMap: Record<string, number> = {}
       stages.forEach(s => { stageMap[s] = 0 })
       ps.forEach(p => { stageMap[p.stage] = (stageMap[p.stage] ?? 0) + 1 })

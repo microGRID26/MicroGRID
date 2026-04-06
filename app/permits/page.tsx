@@ -63,7 +63,7 @@ export default function PermitsPage() {
     const { data: projects } = await supabase
       .from('projects')
       .select('ahj')
-      .not('disposition', 'in', '("In Service","Loyalty","Cancelled")')
+      .not('disposition', 'in', '("In Service","Loyalty","Cancelled","Legal","On Hold")')
       .not('ahj', 'is', null)
       .limit(5000)
 

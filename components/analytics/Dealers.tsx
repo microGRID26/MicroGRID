@@ -41,7 +41,7 @@ function SalesByStage({ projects, period, onDrill }: { projects: Project[]; peri
     const soldKw = soldPs.length > 0 ? Math.round((soldPs.reduce((s, p) => s + (Number(p.systemkw) || 0), 0) / soldPs.length) * 100) / 100 : 0
     const soldBatteries = soldPs.filter(p => (p.battery_qty ?? 0) > 0).length
 
-    const pipelinePs = projects.filter(p => p.stage !== 'complete' && p.disposition !== 'Cancelled' && p.disposition !== 'In Service')
+    const pipelinePs = projects.filter(p => p.stage !== 'complete' && p.disposition !== 'Cancelled' && p.disposition !== 'In Service' && p.disposition !== 'Legal' && p.disposition !== 'On Hold')
     const pipeValue = pipelinePs.reduce((s, p) => s + (Number(p.contract) || 0), 0)
     const pipeAvg = pipelinePs.length > 0 ? Math.round(pipeValue / pipelinePs.length) : 0
     const pipeKw = pipelinePs.length > 0 ? Math.round((pipelinePs.reduce((s, p) => s + (Number(p.systemkw) || 0), 0) / pipelinePs.length) * 100) / 100 : 0
@@ -405,7 +405,7 @@ export function Dealers({ data }: { data: AnalyticsData }) {
       : 0
 
     // Pipeline value: SUM(contract) for all active
-    const active = projects.filter(p => p.stage !== 'complete' && p.disposition !== 'Cancelled' && p.disposition !== 'In Service')
+    const active = projects.filter(p => p.stage !== 'complete' && p.disposition !== 'Cancelled' && p.disposition !== 'In Service' && p.disposition !== 'Legal' && p.disposition !== 'On Hold')
     const pipelineValue = active.reduce((s, p) => s + (Number(p.contract) || 0), 0)
 
     // Conversion rate: reached install stage / all with sale_date in trailing 90 days

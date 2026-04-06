@@ -62,7 +62,7 @@ export default function MissingDocumentsPage() {
     const { data: projData } = await supabase
       .from('projects')
       .select('*')
-      .not('disposition', 'in', '("In Service","Loyalty","Cancelled")')
+      .not('disposition', 'in', '("In Service","Loyalty","Cancelled","Legal","On Hold")')
       .order('id')
       .limit(2000)
 

@@ -98,7 +98,7 @@ export default function MapPage() {
       const supabase = db()
       let q = supabase.from('projects')
         .select('id, name, city, address, zip, stage, pm, blocker, systemkw')
-        .not('disposition', 'in', '("In Service","Loyalty","Cancelled")')
+        .not('disposition', 'in', '("In Service","Loyalty","Cancelled","Legal","On Hold")')
         .not('zip', 'is', null)
         .limit(2000)
       if (orgId) q = q.eq('org_id', orgId)

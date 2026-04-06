@@ -158,7 +158,7 @@ export default function InfographicPage() {
   useEffect(() => {
     async function load() {
       const supabase = db()
-      let q = supabase.from('projects').select('stage, contract').not('disposition', 'in', '("In Service","Loyalty","Cancelled")').limit(5000)
+      let q = supabase.from('projects').select('stage, contract').not('disposition', 'in', '("In Service","Loyalty","Cancelled","Legal","On Hold")').limit(5000)
       if (orgId) q = q.eq('org_id', orgId)
       const { data: projects } = await q
       if (!projects) { setLoading(false); return }

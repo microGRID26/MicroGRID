@@ -155,7 +155,7 @@ export default function PipelinePage() {
     data: allProjects, loading: projectsLoading, refresh,
   } = useSupabaseQuery('projects', {
     select: PROJECT_COLUMNS,
-    filters: { disposition: { not_in: ['In Service', 'Loyalty', 'Cancelled'] } },
+    filters: { disposition: { not_in: ['In Service', 'Loyalty', 'Cancelled', 'Legal', 'On Hold'] } },
     limit: 5000,
     subscribe: true,
   })

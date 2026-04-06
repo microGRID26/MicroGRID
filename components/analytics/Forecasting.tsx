@@ -89,7 +89,7 @@ function StageFlowRates({ projects }: { projects: Project[] }) {
     const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().slice(0, 10)
 
     return stages.map(stage => {
-      const inStage = projects.filter(p => p.stage === stage && p.disposition !== 'Cancelled' && p.disposition !== 'In Service')
+      const inStage = projects.filter(p => p.stage === stage && p.disposition !== 'Cancelled' && p.disposition !== 'In Service' && p.disposition !== 'Legal' && p.disposition !== 'On Hold')
       // Entering: projects that moved INTO this stage in last 30d (proxy: stage_date in last 30d and current stage matches)
       const entering = inStage.filter(p => p.stage_date && p.stage_date >= thirtyDaysAgoStr).length
       // Leaving: projects that were in this stage but moved on (proxy: projects in later stages with stage_date in last 30d)
