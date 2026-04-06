@@ -168,7 +168,7 @@ async function handleSync(db: ReturnType<typeof getServiceClient>, scheduleIds: 
     const existingSync = syncMap.get(s.id as string) as Record<string, unknown> | undefined
     const existingEventId = existingSync?.event_id as string | null ?? null
 
-    const eventId = await upsertCalendarEvent(calendarId, existingEventId, {
+    const { eventId, meetLink } = await upsertCalendarEvent(calendarId, existingEventId, {
       title: buildEventTitle(s.job_type as string, projectName, projectId),
       location: project?.address ? `${project.address}${project.city ? ', ' + project.city : ''}` : null,
       date: s.date as string,
@@ -192,6 +192,7 @@ async function handleSync(db: ReturnType<typeof getServiceClient>, scheduleIds: 
         sync_status: 'synced',
         last_synced_at: new Date().toISOString(),
         error_message: null,
+        meet_link: meetLink ?? null,
       }, { onConflict: 'schedule_id,calendar_id' })
 
       results.push({ schedule_id: s.id as string, status: 'synced', event_id: eventId })

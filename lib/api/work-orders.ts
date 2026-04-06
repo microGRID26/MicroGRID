@@ -27,6 +27,12 @@ export interface WorkOrder {
   created_by: string | null
   created_at: string
   updated_at: string
+  // Photo audit
+  photo_audit_status?: string | null
+  photo_audit_submitted_at?: string | null
+  photo_audit_reviewed_by?: string | null
+  photo_audit_reviewed_at?: string | null
+  photo_audit_notes?: string | null
   // Joined project data (optional)
   project?: { name: string; city: string | null; address: string | null; pm: string | null } | null
 }
@@ -398,6 +404,47 @@ export async function deleteChecklistItem(id: string): Promise<boolean> {
   const { error } = await db().from('wo_checklist_items').delete().eq('id', id)
   if (error) { console.error('deleteChecklistItem failed:', error); return false }
   return true
+}
+
+// ── Photo Audit ─────────────────────────────────────────────────────────────
+
+export const PHOTO_AUDIT_STATUSES = ['not_submitted', 'submitted', 'approved', 'rejected'] as const
+
+/** Crew submits photos for review (sets status to submitted) */
+export async function submitPhotoAudit(woId: string): Promise<boolean> {
+  const { error } = await db().from('work_orders').update({
+    photo_audit_status: 'submitted',
+    photo_audit_submitted_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }).eq('id', woId)
+  if (error) { console.error('[submitPhotoAudit]', error); return false }
+  return true
+}
+
+/** Manager approves or rejects photo audit */
+export async function reviewPhotoAudit(woId: string, decision: 'approved' | 'rejected', reviewedBy: string, notes?: string): Promise<boolean> {
+  const { error } = await db().from('work_orders').update({
+    photo_audit_status: decision,
+    photo_audit_reviewed_by: reviewedBy,
+    photo_audit_reviewed_at: new Date().toISOString(),
+    photo_audit_notes: notes ?? null,
+    updated_at: new Date().toISOString(),
+  }).eq('id', woId)
+  if (error) { console.error('[reviewPhotoAudit]', error); return false }
+  return true
+}
+
+/** Load work orders pending photo review */
+export async function loadPendingPhotoAudits(): Promise<WorkOrder[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('work_orders')
+    .select('id, project_id, wo_number, type, status, assigned_crew, assigned_to, scheduled_date, completed_at, photo_audit_status, photo_audit_submitted_at, photo_audit_reviewed_by, photo_audit_reviewed_at, photo_audit_notes, created_at')
+    .eq('photo_audit_status', 'submitted')
+    .order('photo_audit_submitted_at', { ascending: true })
+    .limit(100)
+  if (error) { console.error('[loadPendingPhotoAudits]', error); return [] }
+  return (data ?? []) as WorkOrder[]
 }
 
 // ── Create from Project (convenience) ────────────────────────────────────────

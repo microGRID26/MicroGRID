@@ -27,6 +27,18 @@ interface CalendarEvent {
   start: { date?: string; dateTime?: string; timeZone?: string }
   end: { date?: string; dateTime?: string; timeZone?: string }
   colorId?: string
+  /** Include to auto-generate a Google Meet link for this event */
+  conferenceData?: {
+    createRequest: {
+      conferenceSolutionKey: { type: 'hangoutsMeet' }
+      requestId: string
+    }
+  }
+}
+
+/** The response from Google Calendar includes the Meet link */
+interface CalendarEventResponse extends CalendarEvent {
+  hangoutLink?: string
 }
 
 interface TokenResponse {
@@ -198,7 +210,7 @@ export async function upsertCalendarEvent(
     description: string
     jobType: string
   }
-): Promise<string | null> {
+): Promise<{ eventId: string | null; meetLink?: string | null }> {
   const colorId = JOB_TYPE_COLOR_ID[event.jobType] ?? '8'
 
   // Build start/end — use dateTime if time is provided, otherwise all-day
@@ -234,39 +246,49 @@ export async function upsertCalendarEvent(
     colorId,
   }
 
+  // Auto-generate Google Meet link for inspection events
+  if (event.jobType === 'inspection') {
+    body.conferenceData = {
+      createRequest: {
+        conferenceSolutionKey: { type: 'hangoutsMeet' },
+        requestId: `meet-${event.date}-${Date.now()}`,
+      },
+    }
+  }
+
   try {
+    const confParam = body.conferenceData ? '?conferenceDataVersion=1' : ''
     if (eventId) {
       // Update existing event
-      const res = await calendarFetch(`${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`, {
+      const res = await calendarFetch(`${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}${confParam}`, {
         method: 'PUT',
         body: JSON.stringify(body),
       })
       if (!res.ok) {
-        // If 404, event was deleted — create a new one
         if (res.status === 404) {
           return upsertCalendarEvent(calendarId, null, event)
         }
         console.error('updateEvent failed:', res.status, await res.text())
-        return null
+        return { eventId: null }
       }
-      const data = await res.json()
-      return data.id ?? eventId
+      const data = await res.json() as CalendarEventResponse
+      return { eventId: data.id ?? eventId, meetLink: data.hangoutLink ?? null }
     } else {
       // Create new event
-      const res = await calendarFetch(`${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events`, {
+      const res = await calendarFetch(`${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events${confParam}`, {
         method: 'POST',
         body: JSON.stringify(body),
       })
       if (!res.ok) {
         console.error('createEvent failed:', res.status, await res.text())
-        return null
+        return { eventId: null }
       }
-      const data = await res.json()
-      return data.id ?? null
+      const data = await res.json() as CalendarEventResponse
+      return { eventId: data.id ?? null, meetLink: data.hangoutLink ?? null }
     }
   } catch (err) {
     console.error('upsertCalendarEvent error:', err)
-    return null
+    return { eventId: null }
   }
 }
 

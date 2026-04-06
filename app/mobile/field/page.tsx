@@ -12,7 +12,7 @@ import { getOpenEntry, clockIn, clockOut } from '@/lib/api/time-entries'
 import type { TimeEntry } from '@/lib/api/time-entries'
 import type { Project, Schedule } from '@/types/database'
 
-import { Toast, ProjectDetail, FieldJobCard, JSAForm } from './components'
+import { Toast, ProjectDetail, FieldJobCard, JSAForm, MRFForm } from './components'
 import {
   JOB_LABELS,
   JOB_COMPLETE_TASK,
@@ -44,6 +44,8 @@ export default function FieldPage() {
   const [detailLoading, setDetailLoading] = useState(false)
   // JSA form — shown before starting a job
   const [jsaPending, setJsaPending] = useState<{ jobId: string; projectId: string; projectName: string; crewName: string | null } | null>(null)
+  // MRF form
+  const [mrfJob, setMrfJob] = useState<{ projectId: string; projectName: string; scheduleId: string; crewName: string | null } | null>(null)
 
   // Clock in/out
   const [openTimeEntry, setOpenTimeEntry] = useState<TimeEntry | null>(null)
@@ -638,6 +640,12 @@ export default function FieldPage() {
                   onTap={() => openProject(job.project_id)}
                   onStatusChange={handleStatusChange}
                   onMarkTaskComplete={handleMarkTaskComplete}
+                  onRequestMaterials={(job) => setMrfJob({
+                    projectId: job.project_id,
+                    projectName: job.project_name ?? job.project_id,
+                    scheduleId: job.id,
+                    crewName: job.crew_name ?? null,
+                  })}
                   onAddNote={async (projectId, text) => {
                     const { error } = await addNote({ project_id: projectId, text, time: new Date().toISOString(), pm: currentUser?.name ?? null, pm_id: currentUser?.id ?? null })
                     if (error) { setToast({ message: 'Note failed', type: 'error' }); return false }
@@ -675,6 +683,19 @@ export default function FieldPage() {
             setToast({ message: 'JSA completed — job started', type: 'success' })
           }}
           onCancel={() => setJsaPending(null)}
+        />
+      )}
+
+      {/* MRF Form */}
+      {mrfJob && (
+        <MRFForm
+          projectId={mrfJob.projectId}
+          projectName={mrfJob.projectName}
+          scheduleId={mrfJob.scheduleId}
+          crewName={mrfJob.crewName}
+          requestedBy={currentUser?.name ?? 'Unknown'}
+          onComplete={() => { setMrfJob(null); setToast({ message: 'MRF submitted', type: 'success' }) }}
+          onCancel={() => setMrfJob(null)}
         />
       )}
 

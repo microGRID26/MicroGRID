@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { cn, daysAgo, fmtDate, STAGE_LABELS } from '@/lib/utils'
 import { addNote } from '@/lib/api/notes'
-import { loadProjectWorkOrders, updateWorkOrderStatus, toggleChecklistItem, uploadChecklistPhoto, updateWorkOrder, loadWorkOrder } from '@/lib/api/work-orders'
+import { loadProjectWorkOrders, updateWorkOrderStatus, toggleChecklistItem, uploadChecklistPhoto, submitPhotoAudit, updateWorkOrder, loadWorkOrder } from '@/lib/api/work-orders'
 import type { Project } from '@/types/database'
 import type { WorkOrder, WOChecklistItem } from '@/lib/api/work-orders'
 import { Toast } from './Toast'
@@ -379,6 +379,29 @@ export function ProjectDetail({
                           >
                             Complete Work Order
                           </button>
+                        )}
+                        {/* Submit Photos for Review */}
+                        {wo.status === 'complete' && (!wo.photo_audit_status || wo.photo_audit_status === 'not_submitted' || wo.photo_audit_status === 'rejected') && (
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation()
+                              const ok = await submitPhotoAudit(wo.id)
+                              if (ok) {
+                                wo.photo_audit_status = 'submitted'
+                                setWorkOrders([...workOrders])
+                                setToast({ message: 'Photos submitted for review', type: 'success' })
+                              }
+                            }}
+                            className="w-full py-3 rounded-xl font-semibold text-base bg-blue-700 active:bg-blue-500 text-white transition-colors"
+                          >
+                            {wo.photo_audit_status === 'rejected' ? 'Resubmit Photos' : 'Submit Photos for Review'}
+                          </button>
+                        )}
+                        {wo.photo_audit_status === 'submitted' && (
+                          <div className="text-center text-xs text-amber-400 py-2">Photos under review...</div>
+                        )}
+                        {wo.photo_audit_status === 'approved' && (
+                          <div className="text-center text-xs text-green-400 py-2">Photos approved</div>
                         )}
                       </div>
                     )}

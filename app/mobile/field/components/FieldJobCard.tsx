@@ -16,6 +16,7 @@ export function FieldJobCard({
   onStatusChange: (id: string, status: string) => void
   onMarkTaskComplete: (job: FieldJob) => void
   onAddNote?: (projectId: string, text: string) => Promise<boolean>
+  onRequestMaterials?: (job: FieldJob) => void
 }) {
   const [noteOpen, setNoteOpen] = useState(false)
   const [noteText, setNoteText] = useState('')
@@ -106,6 +107,18 @@ export function FieldJobCard({
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
           <span className="text-sm">Note</span>
         </button>
+
+        {/* MRF */}
+        {onRequestMaterials && (
+          <button
+            onClick={() => onRequestMaterials(job)}
+            className="flex-1 flex items-center justify-center gap-2 min-h-[48px] text-cyan-400 active:bg-gray-800 transition-colors"
+            aria-label="Request materials"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            <span className="text-sm">MRF</span>
+          </button>
+        )}
 
         {/* Full detail */}
         <button

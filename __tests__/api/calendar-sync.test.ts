@@ -36,7 +36,7 @@ vi.mock('@supabase/supabase-js', () => ({
 // Mock Google Calendar module
 const mockIsConfigured = vi.fn().mockReturnValue(true)
 const mockCreateCalendar = vi.fn().mockResolvedValue('cal-123')
-const mockUpsertEvent = vi.fn().mockResolvedValue('evt-123')
+const mockUpsertEvent = vi.fn().mockResolvedValue({ eventId: 'evt-123', meetLink: null })
 const mockDeleteEvent = vi.fn().mockResolvedValue(true)
 const mockBuildTitle = vi.fn().mockReturnValue('Install - Smith Residence')
 const mockBuildDescription = vi.fn().mockReturnValue('Install job for PROJ-1')
@@ -224,7 +224,7 @@ describe('POST /api/calendar/sync — sync action', () => {
   })
 
   it('handles sync failure when upsertCalendarEvent returns null', async () => {
-    mockUpsertEvent.mockResolvedValueOnce(null) // Simulate failure
+    mockUpsertEvent.mockResolvedValueOnce({ eventId: null, meetLink: null }) // Simulate failure
 
     const schedule = {
       id: 's1',
