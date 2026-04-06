@@ -129,3 +129,87 @@ export async function deleteVendor(id: string): Promise<boolean> {
   }
   return true
 }
+
+// ── Vendor Onboarding ───────────────────────────────────────────────────────
+
+export interface VendorOnboardingDoc {
+  id: string
+  vendor_id: string
+  doc_type: string
+  label: string
+  status: string
+  sent_at: string | null
+  received_at: string | null
+  verified_at: string | null
+  verified_by: string | null
+  expiry_date: string | null
+  file_url: string | null
+  notes: string | null
+  created_at: string
+}
+
+export const VENDOR_DOC_TYPES = [
+  { type: 'msa', label: 'MSA (Master Service Agreement)' },
+  { type: 'coi', label: 'Certificate of Insurance (COI)' },
+  { type: 'w9', label: 'W-9' },
+  { type: 'ica', label: 'Independent Contractor Agreement' },
+  { type: 'banking', label: 'Banking Information' },
+  { type: 'license', label: 'License / Certification' },
+  { type: 'insurance', label: 'Workers Comp / Liability Insurance' },
+  { type: 'other', label: 'Other Document' },
+] as const
+
+export const VENDOR_DOC_STATUSES = ['needed', 'sent', 'received', 'verified', 'rejected', 'expired'] as const
+
+export async function loadVendorDocs(vendorId: string): Promise<VendorOnboardingDoc[]> {
+  const { data, error } = await db()
+    .from('vendor_onboarding_docs')
+    .select('id, vendor_id, doc_type, label, status, sent_at, received_at, verified_at, verified_by, expiry_date, file_url, notes, created_at, updated_at')
+    .eq('vendor_id', vendorId)
+    .order('created_at')
+    .limit(50)
+  if (error) { console.error('[loadVendorDocs]', error); return [] }
+  return (data ?? []) as VendorOnboardingDoc[]
+}
+
+export async function addVendorDoc(doc: {
+  vendor_id: string; doc_type: string; label: string; status?: string; notes?: string
+}): Promise<VendorOnboardingDoc | null> {
+  const { data, error } = await db()
+    .from('vendor_onboarding_docs')
+    .insert({ ...doc, status: doc.status ?? 'needed' })
+    .select()
+    .single()
+  if (error) { console.error('[addVendorDoc]', error); return null }
+  return data as VendorOnboardingDoc
+}
+
+export async function updateVendorDocStatus(id: string, status: string, verifiedBy?: string): Promise<boolean> {
+  const updates: Record<string, unknown> = { status, updated_at: new Date().toISOString() }
+  if (status === 'sent') updates.sent_at = new Date().toISOString()
+  if (status === 'received') updates.received_at = new Date().toISOString()
+  if (status === 'verified') { updates.verified_at = new Date().toISOString(); updates.verified_by = verifiedBy ?? null }
+  const { error } = await db().from('vendor_onboarding_docs').update(updates).eq('id', id)
+  if (error) { console.error('[updateVendorDocStatus]', error); return false }
+  return true
+}
+
+export async function deleteVendorDoc(id: string): Promise<boolean> {
+  const { error } = await db().from('vendor_onboarding_docs').delete().eq('id', id)
+  if (error) { console.error('[deleteVendorDoc]', error); return false }
+  return true
+}
+
+/** Auto-populate standard onboarding docs for a new vendor */
+export async function initVendorOnboarding(vendorId: string): Promise<void> {
+  const standardDocs = [
+    { doc_type: 'msa', label: 'MSA (Master Service Agreement)' },
+    { doc_type: 'coi', label: 'Certificate of Insurance (COI)' },
+    { doc_type: 'w9', label: 'W-9' },
+    { doc_type: 'ica', label: 'Independent Contractor Agreement' },
+    { doc_type: 'banking', label: 'Banking Information' },
+  ]
+  for (const doc of standardDocs) {
+    await addVendorDoc({ vendor_id: vendorId, ...doc })
+  }
+}

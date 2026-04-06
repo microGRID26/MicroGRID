@@ -3,15 +3,33 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Nav } from '@/components/Nav'
 import { useCurrentUser } from '@/lib/useCurrentUser'
-import { loadVendors, addVendor, updateVendor, deleteVendor, VENDOR_CATEGORIES, EQUIPMENT_TYPE_OPTIONS } from '@/lib/api/vendors'
+import { loadVendors, addVendor, updateVendor, deleteVendor, VENDOR_CATEGORIES, EQUIPMENT_TYPE_OPTIONS, loadVendorDocs, addVendorDoc, updateVendorDocStatus, deleteVendorDoc, initVendorOnboarding, VENDOR_DOC_TYPES, VENDOR_DOC_STATUSES } from '@/lib/api/vendors'
+import type { VendorOnboardingDoc } from '@/lib/api/vendors'
 import type { Vendor } from '@/lib/api/vendors'
 import { Search, Plus, X, Building2, ChevronDown, ChevronUp, Truck, Phone, Mail, Globe } from 'lucide-react'
 
 const CATEGORY_COLORS: Record<string, string> = {
   manufacturer: 'bg-blue-500/20 text-blue-400',
   distributor: 'bg-purple-500/20 text-purple-400',
-  subcontractor: 'bg-amber-500/20 text-amber-400',
+  install_partner: 'bg-amber-500/20 text-amber-400',
+  electrical: 'bg-cyan-500/20 text-cyan-400',
+  plumbing: 'bg-sky-500/20 text-sky-400',
+  hvac: 'bg-orange-500/20 text-orange-400',
+  roofing: 'bg-red-500/20 text-red-400',
+  interior: 'bg-pink-500/20 text-pink-400',
   other: 'bg-gray-500/20 text-gray-400',
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  manufacturer: 'Manufacturer',
+  distributor: 'Distributor',
+  install_partner: 'Install Partner',
+  electrical: 'Electrical',
+  plumbing: 'Plumbing',
+  hvac: 'HVAC',
+  roofing: 'Roofing',
+  interior: 'Interior',
+  other: 'Other',
 }
 
 export default function VendorsPage() {
@@ -30,6 +48,13 @@ export default function VendorsPage() {
   // ── Edit state ──────────────────────────────────────────────────────────
   const [editDraft, setEditDraft] = useState<Partial<Vendor>>({})
   const [editSaving, setEditSaving] = useState(false)
+  const [vendorDocs, setVendorDocs] = useState<VendorOnboardingDoc[]>([])
+
+  // Load onboarding docs when a vendor is expanded
+  const loadDocs = useCallback(async (vendorId: string) => {
+    const docs = await loadVendorDocs(vendorId)
+    setVendorDocs(docs)
+  }, [])
 
   // ── Add form state ──────────────────────────────────────────────────────
   const [addDraft, setAddDraft] = useState<Partial<Vendor>>({ active: true, equipment_types: [] })
@@ -473,9 +498,11 @@ export default function VendorsPage() {
                         if (expandedId === v.id) {
                           setExpandedId(null)
                           setEditDraft({})
+                          setVendorDocs([])
                         } else {
                           setExpandedId(v.id)
                           setEditDraft({ ...v })
+                          loadDocs(v.id)
                         }
                       }}
                     >
@@ -680,6 +707,56 @@ export default function VendorsPage() {
                       className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-white resize-none"
                     />
                   </div>
+                  {/* Onboarding Documents */}
+                  <div className="border-t border-gray-700 pt-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-xs font-semibold text-gray-300 uppercase tracking-wider">Onboarding Documents</h4>
+                      {vendorDocs.length === 0 && (
+                        <button onClick={async () => { await initVendorOnboarding(v.id); loadDocs(v.id) }}
+                          className="text-[10px] text-green-400 hover:text-green-300 px-2 py-1 bg-green-900/30 rounded">
+                          + Initialize Standard Docs
+                        </button>
+                      )}
+                    </div>
+                    {vendorDocs.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {vendorDocs.map(doc => {
+                          const statusColors: Record<string, string> = {
+                            needed: 'bg-red-900/40 text-red-400',
+                            sent: 'bg-blue-900/40 text-blue-400',
+                            received: 'bg-amber-900/40 text-amber-400',
+                            verified: 'bg-green-900/40 text-green-400',
+                            rejected: 'bg-red-900/40 text-red-400',
+                            expired: 'bg-gray-700 text-gray-400',
+                          }
+                          return (
+                            <div key={doc.id} className="flex items-center gap-2 bg-gray-900 rounded-lg px-3 py-2">
+                              <span className="text-xs text-gray-300 flex-1">{doc.label}</span>
+                              <select value={doc.status}
+                                onChange={async (e) => {
+                                  const ok = await updateVendorDocStatus(doc.id, e.target.value, authUser?.name)
+                                  if (ok) loadDocs(v.id)
+                                }}
+                                className={`text-[10px] px-2 py-0.5 rounded border-none cursor-pointer ${statusColors[doc.status] ?? 'bg-gray-700 text-gray-400'}`}>
+                                {VENDOR_DOC_STATUSES.map(s => (
+                                  <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                                ))}
+                              </select>
+                              <button onClick={async () => { await deleteVendorDoc(doc.id); loadDocs(v.id) }}
+                                className="text-gray-600 hover:text-red-400 text-xs">×</button>
+                            </div>
+                          )
+                        })}
+                        <button onClick={async () => {
+                          const type = VENDOR_DOC_TYPES.find(t => !vendorDocs.some(d => d.doc_type === t.type))
+                          if (type) { await addVendorDoc({ vendor_id: v.id, doc_type: type.type, label: type.label }); loadDocs(v.id) }
+                        }} className="text-[10px] text-gray-500 hover:text-gray-300">+ Add document</button>
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-gray-600">No onboarding documents yet. Click "Initialize" to add the standard set.</p>
+                    )}
+                  </div>
+
                   <div className="flex items-center justify-between pt-2 border-t border-gray-700">
                     {isSuperAdmin ? (
                       <button
