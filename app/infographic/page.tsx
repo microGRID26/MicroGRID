@@ -139,7 +139,9 @@ export default function InfographicPage() {
             <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs rounded-md print:hidden flex-shrink-0"><Printer className="w-3.5 h-3.5" /> Print</button>
           </div>
           <div className="flex bg-gray-800 rounded-lg p-0.5 print:hidden overflow-x-auto">
-            {([
+            {(isSales ? [
+              { key: 'sales' as Tab, label: 'Sales' },
+            ] : [
               { key: 'leadership' as Tab, label: 'Leadership' },
               { key: 'sales' as Tab, label: 'Sales' },
               { key: 'inside_ops' as Tab, label: 'Inside Ops' },
