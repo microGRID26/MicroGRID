@@ -160,12 +160,13 @@ export default function PipelinePage() {
     subscribe: true,
   })
 
-  // Task states for all tasks (needed for next-task and stuck-task display)
+  // Task states for all active projects (needed for next-task and stuck-task display)
+  // ~938 active projects × ~20 tasks = ~19K rows; 25K limit gives headroom to 1,250 projects
   const {
     data: taskDataRaw, loading: tasksLoading,
   } = useSupabaseQuery('task_state', {
     select: 'project_id, task_id, status, reason, follow_up_date',
-    limit: 50000,
+    limit: 25000,
     subscribe: true,
   })
 

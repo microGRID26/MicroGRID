@@ -131,17 +131,17 @@ function TicketsPageInner() {
       }).catch(e => handleApiError(e, '[tickets] reps load'))
   }, [])
 
-  // Realtime — auto-refresh on ticket and comment changes
-  useRealtimeSubscription('tickets' as unknown as Parameters<typeof useRealtimeSubscription>[0], { onChange: loadAll, debounceMs: 500 })
+  // Realtime — tickets: full refresh (status/assignment can change any row's position)
+  // Comments: only refresh the expanded ticket's comments, don't reload all tickets
+  useRealtimeSubscription('tickets' as unknown as Parameters<typeof useRealtimeSubscription>[0], { onChange: loadAll, debounceMs: 1000 })
   useRealtimeSubscription('ticket_comments' as unknown as Parameters<typeof useRealtimeSubscription>[0], {
     onChange: () => {
-      loadAll()
-      // Also refresh comments if a ticket is expanded
+      // Only refresh comments for the expanded ticket — no need to reload all tickets
       if (expandedId) {
         loadTicketComments(expandedId).then(setComments)
       }
     },
-    debounceMs: 500,
+    debounceMs: 1000,
   })
 
   // Expand a ticket → load comments + history

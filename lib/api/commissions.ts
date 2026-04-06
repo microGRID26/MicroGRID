@@ -268,6 +268,8 @@ export interface EarningsSummary {
 
 /**
  * Aggregate earnings summary for a user and/or org, optionally within a date range.
+ * Uses Postgres-side aggregation via RPC to avoid fetching 10K+ rows into JS.
+ * Falls back to client-side aggregation if the RPC doesn't exist yet.
  */
 export async function loadEarningsSummary(
   userId?: string | null,
@@ -275,10 +277,56 @@ export async function loadEarningsSummary(
   dateRange?: { from?: string; to?: string },
 ): Promise<EarningsSummary> {
   const supabase = db()
+
+  // Try server-side aggregation first (requires migration 076)
+  const { data: rpcData, error: rpcError } = await supabase.rpc('aggregate_earnings', {
+    p_user_id: userId ?? null,
+    p_org_id: orgId ?? null,
+    p_from: dateRange?.from ?? null,
+    p_to: dateRange?.to ?? null,
+  })
+
+  if (!rpcError && rpcData && Array.isArray(rpcData) && rpcData.length > 0) {
+    const rows = rpcData as { role_key: string | null; status: string; total: number; cnt: number }[]
+    let totalPending = 0, totalApproved = 0, totalPaid = 0, totalCancelled = 0
+    const roleMap = new Map<string, { total: number; count: number }>()
+
+    for (const r of rows) {
+      const amt = r.total ?? 0
+      if (r.status === 'pending') totalPending += amt
+      else if (r.status === 'approved') totalApproved += amt
+      else if (r.status === 'paid') totalPaid += amt
+      else if (r.status === 'cancelled') totalCancelled += amt
+
+      if (r.status !== 'cancelled' && r.role_key) {
+        const existing = roleMap.get(r.role_key) ?? { total: 0, count: 0 }
+        existing.total += amt
+        existing.count += r.cnt
+        roleMap.set(r.role_key, existing)
+      }
+    }
+
+    const totalEarned = totalPending + totalApproved + totalPaid
+    return {
+      totalEarned: Math.round(totalEarned * 100) / 100,
+      totalPending: Math.round(totalPending * 100) / 100,
+      totalApproved: Math.round(totalApproved * 100) / 100,
+      totalPaid: Math.round(totalPaid * 100) / 100,
+      totalCancelled: Math.round(totalCancelled * 100) / 100,
+      byRole: Array.from(roleMap.entries()).map(([roleKey, v]) => ({
+        roleKey,
+        total: Math.round(v.total * 100) / 100,
+        count: v.count,
+      })),
+    }
+  }
+
+  // Fallback: client-side aggregation (pre-migration or RPC error)
+  if (rpcError) console.warn('[loadEarningsSummary] RPC not available, falling back to client-side:', rpcError.message)
+
   let q = supabase
     .from('commission_records')
     .select('role_key, status, total_commission')
-    // High limit for aggregation — should move to a Postgres view/function at scale (10K+ records)
     .limit(10000)
   if (userId) q = q.eq('user_id', userId)
   if (orgId) q = q.eq('org_id', orgId)
@@ -292,11 +340,7 @@ export async function loadEarningsSummary(
   }
 
   const records = (data ?? []) as { role_key: string; status: string; total_commission: number }[]
-
-  let totalPending = 0
-  let totalApproved = 0
-  let totalPaid = 0
-  let totalCancelled = 0
+  let totalPending = 0, totalApproved = 0, totalPaid = 0, totalCancelled = 0
   const roleMap = new Map<string, { total: number; count: number }>()
 
   for (const r of records) {
@@ -305,8 +349,6 @@ export async function loadEarningsSummary(
     else if (r.status === 'approved') totalApproved += amt
     else if (r.status === 'paid') totalPaid += amt
     else if (r.status === 'cancelled') totalCancelled += amt
-
-    // Only count non-cancelled for role breakdown
     if (r.status !== 'cancelled') {
       const existing = roleMap.get(r.role_key) ?? { total: 0, count: 0 }
       existing.total += amt
@@ -316,7 +358,6 @@ export async function loadEarningsSummary(
   }
 
   const totalEarned = totalPending + totalApproved + totalPaid
-
   return {
     totalEarned: Math.round(totalEarned * 100) / 100,
     totalPending: Math.round(totalPending * 100) / 100,

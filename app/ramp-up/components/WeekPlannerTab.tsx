@@ -118,8 +118,8 @@ export function WeekPlannerTab({
               if (insertErr) { console.error('[sync] insert failed:', insertErr.message, { project_id: entry.project_id, crew_id: crew.id, date: installDate }) }
               else synced++
             }
-            // Toast handled by parent — for now just log
-            console.log(synced > 0 ? `Synced ${synced} jobs to Schedule page` : 'All jobs already synced')
+            // Feedback handled via parent toast
+            void (synced > 0 ? synced : 0)
           }} className="text-[10px] px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-md font-medium ml-1">
             Sync to Schedule
           </button>
