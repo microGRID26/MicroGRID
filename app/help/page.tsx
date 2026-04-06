@@ -6,24 +6,28 @@ import { HelpSearch } from '@/components/help/HelpSearch'
 import { HelpSidebar } from '@/components/help/HelpSidebar'
 import { HelpCategory } from '@/components/help/HelpCategory'
 import { CATEGORIES } from '@/components/help/topics/index'
+import type { HelpRole } from '@/components/help/topics/index'
 // NOTE: At scale, ALL_TOPICS could be lazy-loaded per category via dynamic import
 // to reduce initial bundle size. Currently premature — topic count is small.
 import { ALL_TOPICS } from '@/components/help/topics/all-topics'
 
 export default function HelpPage() {
   const [query, setQuery] = useState('')
+  const [roleFilter, setRoleFilter] = useState<HelpRole>('all')
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [openTopics, setOpenTopics] = useState<Set<string>>(new Set())
 
-  // Group topics by category
+  // Group topics by category, filtered by role
   const topicsByCategory = useMemo(() => {
     const map: Record<string, typeof ALL_TOPICS> = {}
     for (const cat of CATEGORIES) map[cat] = []
     for (const t of ALL_TOPICS) {
+      // Role filter: show topic if no roles specified, roles includes 'all', or roles includes selected filter
+      if (roleFilter !== 'all' && t.roles && !t.roles.includes('all') && !t.roles.includes(roleFilter)) continue
       if (map[t.category]) map[t.category].push(t)
     }
     return map
-  }, [])
+  }, [roleFilter])
 
   // Topic counts per category
   const topicCounts = useMemo(() => {
@@ -101,7 +105,18 @@ export default function HelpPage() {
       <div className="bg-green-700 px-8 py-8">
         <h1 className="text-2xl font-bold text-white">MicroGRID Help Center</h1>
         <p className="text-green-100 text-sm mt-1 mb-4">Search topics or browse by category</p>
-        <HelpSearch query={query} onChange={setQuery} />
+        <div className="flex items-center gap-3 mt-3">
+          <div className="flex-1"><HelpSearch query={query} onChange={setQuery} /></div>
+          <select value={roleFilter} onChange={e => setRoleFilter(e.target.value as HelpRole)}
+            className="bg-green-800 text-white text-xs rounded-lg px-3 py-2.5 border border-green-600 focus:outline-none">
+            <option value="all">All Roles</option>
+            <option value="pm">Project Manager</option>
+            <option value="field">Field Crew</option>
+            <option value="sales">Sales Rep</option>
+            <option value="funding">Funding / Finance</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
       </div>
 
       {/* Search results indicator */}

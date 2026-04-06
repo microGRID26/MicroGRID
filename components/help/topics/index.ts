@@ -1,11 +1,16 @@
 import type { ComponentType } from 'react'
 
+/** Roles that can see a topic. If omitted, all roles can see it. */
+export type HelpRole = 'pm' | 'field' | 'sales' | 'funding' | 'admin' | 'all'
+
 export interface HelpTopicData {
   id: string
   title: string
   description: string
   category: string
   keywords: string[]
+  /** Restrict visibility to specific roles. Omit or include 'all' to show to everyone. */
+  roles?: HelpRole[]
   tryItLink?: string
   relatedTopics?: string[]
   content: ComponentType

@@ -169,6 +169,58 @@ export default function FieldPage() {
     setClockLoading(false)
   }, [openTimeEntry])
 
+  // ── Geofence: auto-detect when crew arrives at job site ────────────────
+  const [geofencePrompt, setGeofencePrompt] = useState<{ jobId: string; projectName: string; distance: string } | null>(null)
+
+  useEffect(() => {
+    if (openTimeEntry || !jobs.length) return // Already clocked in or no jobs
+
+    // Check every 30 seconds
+    const checkGeofence = async () => {
+      try {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, enableHighAccuracy: true })
+        )
+        const userLat = pos.coords.latitude
+        const userLng = pos.coords.longitude
+
+        // Find next scheduled/in-progress job with an address
+        const nextJob = jobs.find(j => j.status === 'scheduled' || j.status === 'in_progress')
+        if (!nextJob?.customer_address) return
+
+        // Geocode the address using Nominatim (free, no API key)
+        const addr = [nextJob.customer_address, nextJob.customer_city, nextJob.customer_zip].filter(Boolean).join(', ')
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&limit=1`, {
+          headers: { 'User-Agent': 'MicroGRID-CRM/1.0' },
+        })
+        const results = await res.json()
+        if (!results?.[0]) return
+
+        const jobLat = parseFloat(results[0].lat)
+        const jobLng = parseFloat(results[0].lon)
+
+        // Haversine distance in miles
+        const R = 3959 // Earth radius in miles
+        const dLat = (jobLat - userLat) * Math.PI / 180
+        const dLng = (jobLng - userLng) * Math.PI / 180
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(userLat * Math.PI / 180) * Math.cos(jobLat * Math.PI / 180) * Math.sin(dLng / 2) ** 2
+        const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+        if (dist <= 0.5 && !geofencePrompt) {
+          setGeofencePrompt({
+            jobId: nextJob.id,
+            projectName: nextJob.project_name ?? nextJob.project_id,
+            distance: dist < 0.1 ? 'on site' : `${dist.toFixed(1)} mi away`,
+          })
+        }
+      } catch { /* GPS or geocode failed — silent */ }
+    }
+
+    checkGeofence()
+    const iv = setInterval(checkGeofence, 30000)
+    return () => clearInterval(iv)
+  }, [openTimeEntry, jobs, geofencePrompt])
+
   // Load today's schedule
   const loadJobs = useCallback(async () => {
     const { data: schedData, error: schedError } = await supabaseDb
@@ -470,6 +522,29 @@ export default function FieldPage() {
         </div>
         <div className="text-sm text-gray-400 mt-1">{todayFormatted}</div>
       </header>
+
+      {/* Geofence prompt — auto-detected arrival at job site */}
+      {geofencePrompt && !openTimeEntry && (
+        <div className="px-4 py-3 bg-blue-900/30 border-b border-blue-700/40 flex items-center gap-3 flex-shrink-0">
+          <div className="flex-1">
+            <div className="text-sm font-medium text-blue-300">Near {geofencePrompt.projectName}</div>
+            <div className="text-[10px] text-blue-400/70">{geofencePrompt.distance} — Clock in to start?</div>
+          </div>
+          <button
+            onClick={() => {
+              const job = jobs.find(j => j.id === geofencePrompt.jobId)
+              handleClockIn(job?.project_id, job?.job_type)
+              setGeofencePrompt(null)
+            }}
+            className="px-4 py-2 bg-green-700 active:bg-green-600 text-white text-sm font-medium rounded-xl"
+          >
+            Clock In
+          </button>
+          <button onClick={() => setGeofencePrompt(null)} className="text-gray-500 active:text-white min-w-[32px] min-h-[32px] flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+      )}
 
       {/* Clock In/Out Bar */}
       <div className={cn(

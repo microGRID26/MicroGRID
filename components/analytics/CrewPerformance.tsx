@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { fmt$ } from '@/lib/utils'
 import { MetricCard, PeriodBar, ExportButton, downloadCSV, ProjectListModal, type AnalyticsData, type RampScheduleRow, useSortable, SortHeader } from './shared'
+import { CrewLeaderboard } from './CrewLeaderboard'
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -860,6 +861,9 @@ export function CrewPerformance({ data }: { data: AnalyticsData }) {
           )
         })()}
       </div>
+
+      {/* Crew Leaderboard / Gamification */}
+      <CrewLeaderboard data={data} />
 
       {/* Drill-down modal */}
       {drillDown && <ProjectListModal title={drillDown.title} projects={drillDown.projects} onClose={() => setDrillDown(null)} />}
