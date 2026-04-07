@@ -44,9 +44,7 @@ CREATE POLICY customer_referrals_insert ON customer_referrals
 -- Org-scoped read for CRM users (staff can see all referrals in their org)
 CREATE POLICY customer_referrals_org_select ON customer_referrals
   FOR SELECT USING (
-    org_id IN (
-      SELECT org_id FROM users WHERE auth_id = auth.uid()
-    )
+    org_id IS NULL OR org_id = ANY(auth_user_org_ids()) OR auth_is_platform_user()
   );
 
 -- Updated_at trigger
