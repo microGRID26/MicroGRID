@@ -108,6 +108,23 @@ export default function JobCostingPage() {
     )
   }
 
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex flex-col">
+        <Nav active="Job Costing" />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-lg font-semibold text-white mb-2">Unauthorized</h1>
+            <p className="text-sm text-gray-500">Please sign in to access job costing.</p>
+            <a href="/login" className="inline-block mt-4 text-xs text-blue-400 hover:text-blue-300">
+              Sign In
+            </a>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const isAdmin = currentUser?.isAdmin ?? false
   if (!isAdmin) {
     return (

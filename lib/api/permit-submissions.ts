@@ -65,10 +65,15 @@ export const STATUS_TRANSITIONS: Record<PermitSubmissionStatus, PermitSubmission
   revision_needed: ['submitted'],
 }
 
+/** Raw row shape returned by the joined query (permit_submissions + ahjs) */
+interface PermitSubmissionRow extends Omit<PermitSubmission, 'ahj_name' | 'project_name'> {
+  ahjs: { name: string } | null
+}
+
 // ── Data Access ──────────────────────────────────────────────────────────────
 
-/** Load permit submissions, optionally filtered by projectId */
-export async function loadPermitSubmissions(projectId?: string): Promise<PermitSubmission[]> {
+/** Load permit submissions, optionally filtered by projectId and/or orgId */
+export async function loadPermitSubmissions(projectId?: string, orgId?: string): Promise<PermitSubmission[]> {
   const supabase = db()
   let query = supabase
     .from('permit_submissions')
@@ -79,6 +84,9 @@ export async function loadPermitSubmissions(projectId?: string): Promise<PermitS
   if (projectId) {
     query = query.eq('project_id', projectId)
   }
+  if (orgId) {
+    query = query.eq('org_id', orgId)
+  }
 
   const { data, error } = await query
   if (error) {
@@ -87,11 +95,12 @@ export async function loadPermitSubmissions(projectId?: string): Promise<PermitS
   }
 
   // Flatten joined AHJ name
-  return (data ?? []).map((row: Record<string, unknown>) => ({
+  const rows = (data ?? []) as PermitSubmissionRow[]
+  return rows.map(row => ({
     ...row,
-    ahj_name: (row.ahjs as { name?: string } | null)?.name ?? null,
+    ahj_name: row.ahjs?.name ?? null,
     ahjs: undefined,
-  })) as unknown as PermitSubmission[]
+  })) as PermitSubmission[]
 }
 
 /** Create a new permit submission record */

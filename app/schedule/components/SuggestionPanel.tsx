@@ -77,6 +77,7 @@ export function SuggestionPanel({ onScheduled, orgId }: SuggestionPanelProps) {
         date: suggestion.suggested_date,
         status: 'scheduled',
         notes: `Auto-suggested (proximity: ${suggestion.proximity_score})`,
+        ...(orgId ? { org_id: orgId } : {}),
       })
       if (insertErr) {
         handleApiError(insertErr, '[SuggestionPanel] schedule insert')

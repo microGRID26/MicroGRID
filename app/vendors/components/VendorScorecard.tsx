@@ -78,7 +78,10 @@ export default function VendorScorecard() {
     loadVendorScores().then(data => {
       setScores(data)
       setLoading(false)
-    }).catch(() => setLoading(false))
+    }).catch(err => {
+      console.error('[VendorScorecard] Failed to load vendor scores:', err)
+      setLoading(false)
+    })
   }, [])
 
   const filtered = useMemo(() => {

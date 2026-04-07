@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { cn } from '@/lib/utils'
+import { cn, escapeFilterValue } from '@/lib/utils'
 import { db } from '@/lib/db'
 import {
   loadPermitSubmissions,
@@ -89,7 +89,7 @@ export default function PermitTracker() {
     }
     const timer = setTimeout(async () => {
       const supabase = db()
-      const q = formProjectSearch.trim()
+      const q = escapeFilterValue(formProjectSearch.trim())
       const { data } = await supabase
         .from('projects')
         .select('id, name, ahj')

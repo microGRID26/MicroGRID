@@ -200,7 +200,10 @@ Email domain whitelist: `@gomicrogridenergy.com`, `@energydevelopmentgroup.com`,
 - Folly coroutine fix: plugins/withFollyFix.js injects -DFOLLY_CFG_NO_COROUTINES=1
 - 1 oversized file remains: tickets 893 (5 components already extracted, remaining is tightly coupled page logic)
 - 8 pages refactored with components/ subfolders: infographic, command, fleet, planset, inventory, change-orders, work-orders, engineering
-- Job costing tables exist (migration 071, applied) but no data capture UI yet
+- Job costing: full UI at /job-costing (P&L, crew rates, cost entry), API at lib/api/job-costing.ts, auto-capture from WO completion
+- Auto-schedule suggestions on /schedule page (SuggestionPanel), API at lib/api/schedule-suggestions.ts
+- Vendor scorecard tab on /vendors page, API at lib/api/vendor-scorecard.ts
+- Permit tracking tab on /permits page, migration 081 (permit_submissions + AHJ e-filing columns), API at lib/api/permit-submissions.ts
 - Planset generator (`/planset`) produces 8 sheets (PV-1 through PV-8) with project selector, Duracell defaults, and redesign bridge. Missing: compliance certs, battery mode letter, equipment elevation (photo), OSR (manual)
 
 ## Co-Author Convention

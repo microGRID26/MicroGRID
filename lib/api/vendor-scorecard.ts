@@ -105,16 +105,18 @@ function computeTrend(
 
 // ── Main loader ──────────────────────────────────────────────────────────────
 
-export async function loadVendorScores(): Promise<VendorScore[]> {
+export async function loadVendorScores(orgId?: string): Promise<VendorScore[]> {
   const supabase = db()
 
   // 1. Load all active vendors
-  const { data: vendors, error: vendorErr } = await supabase
+  let vendorQ = supabase
     .from('vendors')
     .select('id, name, category')
     .eq('active', true)
     .order('name')
     .limit(2000)
+  if (orgId) vendorQ = vendorQ.eq('org_id', orgId)
+  const { data: vendors, error: vendorErr } = await vendorQ
 
   if (vendorErr) {
     console.error('[loadVendorScores] vendors:', vendorErr.message)
@@ -123,10 +125,12 @@ export async function loadVendorScores(): Promise<VendorScore[]> {
   if (!vendors || vendors.length === 0) return []
 
   // 2. Load all engineering assignments (completed ones have metrics)
-  const { data: assignments, error: assignErr } = await supabase
+  let assignQ = supabase
     .from('engineering_assignments')
     .select('id, assigned_org, status, revision_count, created_at, completed_at')
     .limit(5000)
+  if (orgId) assignQ = assignQ.eq('org_id', orgId)
+  const { data: assignments, error: assignErr } = await assignQ
 
   if (assignErr) console.error('[loadVendorScores] assignments:', assignErr.message)
   const allAssignments = (assignments ?? []) as {
@@ -135,10 +139,12 @@ export async function loadVendorScores(): Promise<VendorScore[]> {
   }[]
 
   // 3. Load work orders (match to vendor via assigned_crew or assigned_to text)
-  const { data: workOrders, error: woErr } = await supabase
+  let woQ = supabase
     .from('work_orders')
     .select('id, type, status, assigned_crew, assigned_to, time_on_site_minutes, created_at, completed_at')
     .limit(5000)
+  if (orgId) woQ = woQ.eq('org_id', orgId)
+  const { data: workOrders, error: woErr } = await woQ
 
   if (woErr) console.error('[loadVendorScores] work_orders:', woErr.message)
   const allWOs = (workOrders ?? []) as {
@@ -148,10 +154,12 @@ export async function loadVendorScores(): Promise<VendorScore[]> {
   }[]
 
   // 4. Load purchase orders (vendor text field → vendor name matching)
-  const { data: pos, error: poErr } = await supabase
+  let poQ = supabase
     .from('purchase_orders')
     .select('id, vendor, status, created_at, submitted_at, delivered_at')
     .limit(5000)
+  if (orgId) poQ = poQ.eq('org_id', orgId)
+  const { data: pos, error: poErr } = await poQ
 
   if (poErr) console.error('[loadVendorScores] purchase_orders:', poErr.message)
   const allPOs = (pos ?? []) as {
@@ -160,6 +168,10 @@ export async function loadVendorScores(): Promise<VendorScore[]> {
   }[]
 
   // 5. Build lookup maps by vendor name (case-insensitive)
+  // NOTE: Vendor matching uses loose string comparison because assigned_org,
+  // assigned_crew, assigned_to, and PO vendor fields are free-text strings,
+  // not FK references to the vendors table. This can produce false positives
+  // for short vendor names. A future migration to vendor FK columns would fix this.
   const now = Date.now()
   const thirtyDaysAgo = now - 30 * 86400000
   const sixtyDaysAgo = now - 60 * 86400000
