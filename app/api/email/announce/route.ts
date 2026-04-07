@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { timingSafeEqual } from 'crypto'
 import { sendEmail } from '@/lib/email'
 
 /** Escape HTML special characters to prevent XSS in email templates */
@@ -49,7 +50,12 @@ export async function POST(req: Request) {
     if (!secret) {
       return NextResponse.json({ error: 'ADMIN_API_SECRET not configured' }, { status: 503 })
     }
-    if (adminSecret !== secret) {
+    let secretMatch = false
+    try {
+      secretMatch = adminSecret && adminSecret.length === secret.length &&
+        timingSafeEqual(Buffer.from(adminSecret), Buffer.from(secret))
+    } catch { secretMatch = false }
+    if (!secretMatch) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

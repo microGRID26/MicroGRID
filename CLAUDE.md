@@ -56,7 +56,7 @@ A standalone Expo React Native app lives in the `/mobile` directory with its own
 
 ## Testing
 
-**Vitest** + React Testing Library with jsdom. 3,031+ tests across 105 files. Supabase globally mocked in `vitest.setup.ts`. Tests focus on business logic, not rendering. When adding features, add corresponding tests. API route tests in `__tests__/api/`.
+**Vitest** + React Testing Library with jsdom. 3,033+ tests across 105 files. Supabase globally mocked in `vitest.setup.ts`. Tests focus on business logic, not rendering. When adding features, add corresponding tests. API route tests in `__tests__/api/`.
 
 Test categories: `__tests__/lib/` (API, utils), `__tests__/logic/` (SLA, funding, filters), `__tests__/pages/` (page logic), `__tests__/auth/` (OAuth, proxy), `__tests__/hooks/` (custom hooks), `__tests__/components/` (UI components).
 
@@ -174,16 +174,17 @@ Email domain whitelist: `@gomicrogridenergy.com`, `@energydevelopmentgroup.com`,
 - `active` field on `crews` is string not boolean
 - `useSupabaseQuery` cannot query views or untyped tables — use `lib/api/` or `db()`
 - SubHub webhook requires `SUPABASE_SECRET_KEY` env var
-- 0 `as any` in production code (all eliminated in session 27). `db()` return type is still untyped by design.
+- 0 `as any` in production code. 1 `: any` remains (ramp-up print template). `db()` return type is still untyped by design.
 - Ops dashboard "Last Year" period only queries active `projects` table, not `legacy_projects`
 - CSP uses `unsafe-inline` in script-src (Next.js requirement); `unsafe-eval` removed in production (kept in dev only)
 - Role cookie HMAC prefers `ROLE_COOKIE_SECRET` env var, falls back to anon key (set secret in Vercel)
 - `schedule` table now has `org_id` column (migration 072, applied)
 - Migration 076 applied: 11 performance indexes, `aggregate_earnings` RPC, milestone progression trigger
 - M1→M2→M3 progression enforced by Postgres trigger (can't submit M2 before M1, M3 before M2)
-- `escapeFilterValue()` in utils.ts for PostgREST `.or()` contexts — use instead of `escapeIlike()` in `.or()` strings
+- `escapeFilterValue()` in utils.ts for PostgREST `.or()` contexts — use instead of `escapeIlike()` in `.or()` strings. All `.or()` calls now use it.
+- All API routes use `timingSafeEqual()` for secret comparison (no plain `===` on secrets)
 - `INACTIVE_DISPOSITIONS` / `INACTIVE_DISPOSITION_FILTER` constants in utils.ts — use for all active project queries
-- Error boundaries: all 45 routes now have `error.tsx` files
+- Error boundaries: all user-facing routes have `error.tsx` files (parent boundaries cover nested routes)
 - INACTIVE_DISPOSITIONS now includes: In Service, Loyalty, Cancelled, Legal, On Hold
 - Migration 077: JSA tables (jsa, jsa_activities, jsa_acknowledgements)
 - Migration 078: vendors table + vendor_onboarding_docs
@@ -195,7 +196,7 @@ Email domain whitelist: `@gomicrogridenergy.com`, `@energydevelopmentgroup.com`,
 - Supabase Storage bucket 'wo-photos' for checklist item photos
 - iOS app on TestFlight (Expo SDK 54, RN 0.81, build via EAS + Transporter)
 - Folly coroutine fix: plugins/withFollyFix.js injects -DFOLLY_CFG_NO_COROUTINES=1
-- 4 oversized files remain: planset 949, command 1016, crew perf 872, fleet 993
+- 9 oversized files (>800 lines): infographic 1028, command 1018, fleet 993, planset 949, inventory 930, change-orders 919, tickets 893, engineering 884, work-orders 878
 - Job costing tables exist (migration 071, applied) but no data capture UI yet
 - Planset generator (`/planset`) produces 8 sheets (PV-1 through PV-8) with project selector, Duracell defaults, and redesign bridge. Missing: compliance certs, battery mode letter, equipment elevation (photo), OSR (manual)
 

@@ -3,6 +3,7 @@
 // Org filtering: inherited via project_id FK — RLS policies enforce org scope
 
 import { db } from '@/lib/db'
+import { escapeFilterValue } from '@/lib/utils'
 import type { Invoice, InvoiceLineItem, InvoiceStatus, InvoiceRule } from '@/types/database'
 
 // ── Re-exports ──────────────────────────────────────────────────────────────
@@ -62,7 +63,7 @@ export async function loadInvoices(orgId?: string, status?: InvoiceStatus): Prom
     .select('id, invoice_number, project_id, from_org, to_org, status, milestone, subtotal, tax, total, due_date, sent_at, paid_at, paid_amount, payment_method, payment_reference, notes, created_by, created_by_id, created_at, updated_at')
     .order('created_at', { ascending: false })
     .limit(500)
-  if (orgId) q = q.or(`from_org.eq.${orgId},to_org.eq.${orgId}`)
+  if (orgId) q = q.or(`from_org.eq.${escapeFilterValue(orgId)},to_org.eq.${escapeFilterValue(orgId)}`)
   if (status) q = q.eq('status', status)
   const { data, error } = await q
   if (error) console.error('[loadInvoices]', error.message)

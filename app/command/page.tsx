@@ -384,8 +384,7 @@ export default function CommandPage() {
 
     const rawJobs = schedRes.data as ScheduleEntry[]
     let enrichmentFailed = false
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const schedPids = [...new Set(rawJobs.map((j: any) => j.project_id).filter(Boolean))]
+    const schedPids = [...new Set(rawJobs.map((j) => j.project_id).filter(Boolean))]
     const projNameMap: Record<string, string> = {}
     if (schedPids.length > 0) {
       try {
@@ -393,8 +392,7 @@ export default function CommandPage() {
         projs.forEach((p) => { projNameMap[p.id] = p.name })
       } catch (e) { handleApiError(e, '[command] loadProjectsByIds'); enrichmentFailed = true }
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const schedCids = [...new Set(rawJobs.map((j: any) => j.crew_id).filter(Boolean))]
+    const schedCids = [...new Set(rawJobs.map((j) => j.crew_id).filter(Boolean))]
     const crewNameMap: Record<string, string> = {}
     if (schedCids.length > 0) {
       try {
@@ -403,8 +401,7 @@ export default function CommandPage() {
       } catch (e) { handleApiError(e, '[command] loadCrewsByIds'); enrichmentFailed = true }
     }
     if (enrichmentFailed) setScheduleIncomplete(true)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    rawJobs.forEach((j: any) => {
+    rawJobs.forEach((j: ScheduleEntry) => {
       j.project_name = projNameMap[j.project_id] ?? null
       j.crew_name = crewNameMap[j.crew_id] ?? null
     })

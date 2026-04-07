@@ -5,11 +5,34 @@ import { fmtDate } from '@/lib/utils'
 import { Users, Shield, Search, Plus, X, Pencil, Trash2, AlertTriangle } from 'lucide-react'
 import { StatCard } from './StatCard'
 
+interface License {
+  id: string
+  rep_id: string
+  license_type: string
+  license_number: string | null
+  state: string | null
+  expiry_date: string | null
+  issued_date: string | null
+  status: string
+  file_url: string | null
+  notes: string | null
+  verified_by: string | null
+}
+
+interface EditDraft {
+  license_number: string
+  state: string
+  expiry_date: string
+  status: string
+  file_url: string
+  notes: string
+}
+
 export function ComplianceTab({ reps, isAdmin }: { reps: SalesRep[]; isAdmin: boolean }) {
-  const [licenses, setLicenses] = useState<any[]>([])
+  const [licenses, setLicenses] = useState<License[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editDraft, setEditDraft] = useState<any>({})
+  const [editDraft, setEditDraft] = useState<EditDraft>({ license_number: '', state: '', expiry_date: '', status: 'active', file_url: '', notes: '' })
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState('')
   const [showAdd, setShowAdd] = useState(false)
@@ -28,7 +51,7 @@ export function ComplianceTab({ reps, isAdmin }: { reps: SalesRep[]; isAdmin: bo
   }
 
   useEffect(() => {
-    db().from('rep_licenses').select('*').order('expiry_date').limit(500).then(({ data }: any) => {
+    db().from('rep_licenses').select('*').order('expiry_date').limit(500).then(({ data }: { data: License[] | null }) => {
       setLicenses(data ?? [])
     })
   }, [])
@@ -62,10 +85,10 @@ export function ComplianceTab({ reps, isAdmin }: { reps: SalesRep[]; isAdmin: bo
   const expired = licenses.filter(l => l.status === 'expired' || (l.expiry_date && new Date(l.expiry_date) < now && l.status === 'active'))
 
   const reloadLicenses = () => {
-    db().from('rep_licenses').select('*').order('expiry_date').limit(500).then(({ data }: any) => setLicenses(data ?? []))
+    db().from('rep_licenses').select('*').order('expiry_date').limit(500).then(({ data }: { data: License[] | null }) => setLicenses(data ?? []))
   }
 
-  function startEdit(l: any) {
+  function startEdit(l: License) {
     setEditingId(l.id)
     setEditDraft({ license_number: l.license_number ?? '', state: l.state ?? '', expiry_date: l.expiry_date ?? '', status: l.status, file_url: l.file_url ?? '', notes: l.notes ?? '' })
   }
@@ -183,22 +206,22 @@ export function ComplianceTab({ reps, isAdmin }: { reps: SalesRep[]; isAdmin: bo
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs" onClick={e => e.stopPropagation()}>
                             <div>
                               <label className="text-[10px] text-gray-500">License #</label>
-                              <input value={editDraft.license_number} onChange={e => setEditDraft((d: any) => ({ ...d, license_number: e.target.value }))}
+                              <input value={editDraft.license_number} onChange={e => setEditDraft((d) => ({ ...d, license_number: e.target.value }))}
                                 className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white font-mono" />
                             </div>
                             <div>
                               <label className="text-[10px] text-gray-500">State</label>
-                              <input value={editDraft.state} onChange={e => setEditDraft((d: any) => ({ ...d, state: e.target.value }))}
+                              <input value={editDraft.state} onChange={e => setEditDraft((d) => ({ ...d, state: e.target.value }))}
                                 className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white" />
                             </div>
                             <div>
                               <label className="text-[10px] text-gray-500">Expiry Date</label>
-                              <input type="date" value={editDraft.expiry_date} onChange={e => setEditDraft((d: any) => ({ ...d, expiry_date: e.target.value }))}
+                              <input type="date" value={editDraft.expiry_date} onChange={e => setEditDraft((d) => ({ ...d, expiry_date: e.target.value }))}
                                 className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white" />
                             </div>
                             <div>
                               <label className="text-[10px] text-gray-500">Status</label>
-                              <select value={editDraft.status} onChange={e => setEditDraft((d: any) => ({ ...d, status: e.target.value }))}
+                              <select value={editDraft.status} onChange={e => setEditDraft((d) => ({ ...d, status: e.target.value }))}
                                 className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white">
                                 <option value="active">Active</option>
                                 <option value="expired">Expired</option>
@@ -208,12 +231,12 @@ export function ComplianceTab({ reps, isAdmin }: { reps: SalesRep[]; isAdmin: bo
                             </div>
                             <div>
                               <label className="text-[10px] text-gray-500">File URL</label>
-                              <input value={editDraft.file_url} onChange={e => setEditDraft((d: any) => ({ ...d, file_url: e.target.value }))}
+                              <input value={editDraft.file_url} onChange={e => setEditDraft((d) => ({ ...d, file_url: e.target.value }))}
                                 className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white" placeholder="https://..." />
                             </div>
                             <div>
                               <label className="text-[10px] text-gray-500">Notes</label>
-                              <input value={editDraft.notes} onChange={e => setEditDraft((d: any) => ({ ...d, notes: e.target.value }))}
+                              <input value={editDraft.notes} onChange={e => setEditDraft((d) => ({ ...d, notes: e.target.value }))}
                                 className="w-full mt-0.5 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white" />
                             </div>
                             <div className="col-span-full flex gap-2 pt-1">

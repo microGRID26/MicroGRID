@@ -84,7 +84,7 @@ interface JobWithProject {
   pm: string | null
   pm_id: string | null
   arrival_window: string | null
-  arrays: string | null
+  arrays: number | null
   pitch: string | null
   stories: string | null
   special_equipment: string | null
@@ -344,20 +344,21 @@ export default function CrewPage() {
       const rawJobs = schedData as Schedule[]
 
       // Fetch project details
-      const pids = [...new Set(rawJobs.map((j: any) => j.project_id).filter(Boolean))]
-      const projMap: Record<string, any> = {}
+      type ProjRow = { id: string; name: string | null; phone: string | null; email: string | null; address: string | null; city: string | null; zip: string | null; systemkw: number | null; module: string | null; module_qty: number | null; inverter: string | null; inverter_qty: number | null; battery: string | null; battery_qty: number | null; pm: string | null; consultant: string | null; advisor: string | null }
+      const pids = [...new Set(rawJobs.map((j) => j.project_id).filter(Boolean))]
+      const projMap: Record<string, ProjRow> = {}
       if (pids.length > 0) {
         const { data: projData } = await supabase
           .from('projects')
           .select('id, name, phone, email, address, city, zip, systemkw, module, module_qty, inverter, inverter_qty, battery, battery_qty, pm, consultant, advisor')
           .in('id', pids)
         if (projData) {
-          projData.forEach((p: any) => { projMap[p.id] = p })
+          (projData as ProjRow[]).forEach((p) => { projMap[p.id] = p })
         }
       }
 
       // Merge
-      const merged: JobWithProject[] = rawJobs.map((j: any) => {
+      const merged: JobWithProject[] = rawJobs.map((j) => {
         const p = projMap[j.project_id]
         return {
           ...j,

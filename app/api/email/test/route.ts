@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { timingSafeEqual } from 'crypto'
 import { sendEmail } from '@/lib/email'
 import { getTemplate } from '@/lib/email-templates'
 
@@ -15,7 +16,15 @@ export async function POST(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
   const adminSecret = process.env.ADMIN_API_SECRET
 
-  const validSecret = (cronSecret && token === cronSecret) || (adminSecret && token === adminSecret)
+  let validSecret = false
+  try {
+    if (cronSecret && token && token.length === cronSecret.length) {
+      validSecret = timingSafeEqual(Buffer.from(token), Buffer.from(cronSecret))
+    }
+    if (!validSecret && adminSecret && token && token.length === adminSecret.length) {
+      validSecret = timingSafeEqual(Buffer.from(token), Buffer.from(adminSecret))
+    }
+  } catch { validSecret = false }
   if (!validSecret) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

@@ -439,15 +439,17 @@ export default function NTPPage() {
       const supabase = db()
 
       // Set ntp_date on the project
-      await supabase.from('projects').update({ ntp_date: today }).eq('id', request.project_id)
+      const { error: projErr } = await supabase.from('projects').update({ ntp_date: today }).eq('id', request.project_id)
+      if (projErr) console.error('[ntp] project date update:', projErr)
 
       // Mark NTP task as Complete
-      await supabase.from('task_state').upsert({
+      const { error: taskErr } = await supabase.from('task_state').upsert({
         project_id: request.project_id,
         task_id: 'ntp',
         status: 'Complete',
         completed_date: now.toISOString(),
       })
+      if (taskErr) console.error('[ntp] task_state upsert:', taskErr)
 
       // Log to audit_log
       await insertAuditLog({

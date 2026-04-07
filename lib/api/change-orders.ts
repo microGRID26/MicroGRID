@@ -1,6 +1,9 @@
 import { db } from '@/lib/db'
 
 // ── Change order data access ─────────────────────────────────────────────────
+// Org filtering: inherited via project_id FK — RLS SELECT policy uses
+// EXISTS (SELECT 1 FROM projects WHERE id = change_orders.project_id AND org_id = ...)
+// No direct org_id column exists on this table; RLS enforces org scope.
 
 /** Load all change orders with project join */
 export async function loadChangeOrders(limit = 2000) {

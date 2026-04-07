@@ -281,49 +281,82 @@ export default function SchedulePage() {
     if (!window.confirm(`Complete all ${dayJobs.length} job${dayJobs.length > 1 ? 's' : ''} for ${new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}? This will update tasks and advance pipelines.`)) return
     setCompleting(date)
 
-    // Use centralized mappings from lib/tasks.ts
     const today = new Date().toISOString().slice(0, 10)
 
-    for (const job of dayJobs) {
-      // Update schedule status
-      const { error: schedErr } = await db().from('schedule').update({ status: 'complete' }).eq('id', job.id)
-      if (schedErr) { console.error('batch schedule update failed:', schedErr); continue }
+    // Build task-sync pairs: which jobs map to a task + project
+    const taskJobs = dayJobs
+      .filter(j => j.project_id && JOB_COMPLETE_TASK[j.job_type])
+      .map(j => ({ job: j, taskId: JOB_COMPLETE_TASK[j.job_type]!, projectId: j.project_id! }))
 
-      // Task sync
-      const taskId = JOB_COMPLETE_TASK[job.job_type]
-      if (taskId && job.project_id) {
-        try {
-          // Preserve existing started_date if already set (#27)
-          const { data: existingTask } = await supabase.from('task_state')
-            .select('started_date').eq('project_id', job.project_id).eq('task_id', taskId).single()
-          const startDate = (existingTask as Record<string, unknown> | null)?.started_date ?? today
+    // Batch 1: mark all schedule entries complete in parallel
+    await Promise.all(dayJobs.map(j =>
+      db().from('schedule').update({ status: 'complete' }).eq('id', j.id)
+    ))
 
-          await db().from('task_state').upsert({
-            project_id: job.project_id, task_id: taskId,
-            status: 'Complete', completed_date: today, started_date: startDate,
-          }, { onConflict: 'project_id,task_id' })
+    if (taskJobs.length > 0) {
+      // Batch 2: fetch existing task_state for all (project, task) pairs at once
+      const projectIds = [...new Set(taskJobs.map(tj => tj.projectId))]
+      const taskIds = [...new Set(taskJobs.map(tj => tj.taskId))]
 
-          await db().from('task_history').insert({
-            project_id: job.project_id, task_id: taskId,
-            status: 'Complete', changed_by: 'Crew (batch complete)',
+      const { data: existingTasks } = await supabase.from('task_state')
+        .select('project_id, task_id, started_date')
+        .in('project_id', projectIds)
+        .in('task_id', taskIds)
+        .limit(5000)
+      const taskMap = new Map(
+        ((existingTasks ?? []) as { project_id: string; task_id: string; started_date: string | null }[])
+          .map(t => [`${t.project_id}:${t.task_id}`, t.started_date])
+      )
+
+      // Batch 3: upsert all task_state + insert all task_history in parallel
+      const upsertRows = taskJobs.map(({ projectId, taskId }) => ({
+        project_id: projectId, task_id: taskId,
+        status: 'Complete', completed_date: today,
+        started_date: taskMap.get(`${projectId}:${taskId}`) ?? today,
+      }))
+      const historyRows = taskJobs.map(({ projectId, taskId }) => ({
+        project_id: projectId, task_id: taskId,
+        status: 'Complete', changed_by: 'Crew (batch complete)',
+      }))
+
+      await Promise.all([
+        db().from('task_state').upsert(upsertRows, { onConflict: 'project_id,task_id' }),
+        db().from('task_history').insert(historyRows),
+      ])
+
+      // Batch 4: fetch projects that need date fields set, then batch update
+      const dateJobs = taskJobs
+        .filter(({ taskId }) => JOB_COMPLETE_DATE[taskId])
+        .map(({ projectId, taskId }) => ({ projectId, dateField: JOB_COMPLETE_DATE[taskId]! }))
+
+      if (dateJobs.length > 0) {
+        const dateProjectIds = [...new Set(dateJobs.map(d => d.projectId))]
+        const dateFields = [...new Set(dateJobs.map(d => d.dateField))]
+        const selectFields = ['id', ...dateFields].join(', ')
+
+        const { data: projects } = await supabase.from('projects')
+          .select(selectFields).in('id', dateProjectIds).limit(2000)
+        const projMap = new Map(
+          ((projects ?? []) as Record<string, unknown>[]).map(p => [p.id as string, p])
+        )
+
+        // Only update projects where the date field is not yet set
+        const updates = dateJobs
+          .filter(({ projectId, dateField }) => {
+            const proj = projMap.get(projectId)
+            return proj && !proj[dateField]
           })
+          .map(({ projectId, dateField }) => ({ projectId, dateField }))
 
-          const dateField = JOB_COMPLETE_DATE[taskId]
-          if (dateField) {
-            const { data: proj, error: projErr } = await supabase.from('projects').select(dateField).eq('id', job.project_id).single()
-            if (projErr || !proj) continue
-            if (!(proj as Record<string, unknown>)[dateField]) {
-              await db().from('projects').update({ [dateField]: today }).eq('id', job.project_id)
-            }
-          }
-        } catch (e) {
-          handleApiError(e, '[schedule] batch complete task sync')
+        if (updates.length > 0) {
+          await Promise.all(updates.map(({ projectId, dateField }) =>
+            db().from('projects').update({ [dateField]: today }).eq('id', projectId)
+          ))
         }
       }
     }
 
     setCompleting(null)
-    // Guard against calling loadSchedule after unmount (#15)
     if (mountedRef.current) loadSchedule()
   }
 

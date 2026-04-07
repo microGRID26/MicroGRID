@@ -246,8 +246,9 @@ export default function FieldPage() {
       const rawJobs = schedData as Schedule[]
 
       // Fetch project details
-      const pids = [...new Set(rawJobs.map((j: any) => j.project_id).filter(Boolean))]
-      const projMap: Record<string, any> = {}
+      type ProjRow = { id: string; name: string | null; phone: string | null; email: string | null; address: string | null; city: string | null; zip: string | null; systemkw: number | null; module: string | null; module_qty: number | null; stage: string | null; stage_date: string | null; blocker: string | null; survey_date: string | null; install_complete_date: string | null; pto_date: string | null }
+      const pids = [...new Set(rawJobs.map((j) => j.project_id).filter(Boolean))]
+      const projMap: Record<string, ProjRow> = {}
       if (pids.length > 0) {
         const { data: projData, error: projError } = await supabase
           .from('projects')
@@ -257,12 +258,12 @@ export default function FieldPage() {
           setToast({ message: 'Failed to load project details', type: 'error' })
         }
         if (projData) {
-          projData.forEach((p: any) => { projMap[p.id] = p })
+          (projData as ProjRow[]).forEach((p) => { projMap[p.id] = p })
         }
       }
 
       // Merge
-      const merged: FieldJob[] = rawJobs.map((j: any) => {
+      const merged: FieldJob[] = rawJobs.map((j) => {
         const p = projMap[j.project_id]
         return {
           id: j.id,

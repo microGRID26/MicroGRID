@@ -4,6 +4,7 @@
 // Org filtering: inherited via project_id FK — RLS policies enforce org scope
 
 import { db } from '@/lib/db'
+import { escapeFilterValue } from '@/lib/utils'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 // Canonical definitions are in types/database.ts — re-export for consumer convenience
@@ -54,7 +55,7 @@ export async function loadAssignments(orgId?: string | null, status?: Assignment
     .select('id, project_id, assigned_org, requesting_org, assignment_type, status, priority, assigned_to, assigned_at, started_at, completed_at, due_date, notes, deliverables, revision_count, created_by, created_by_id, created_at, updated_at')
     .order('created_at', { ascending: false })
     .limit(500)
-  if (orgId) q = q.or(`requesting_org.eq.${orgId},assigned_org.eq.${orgId}`)
+  if (orgId) q = q.or(`requesting_org.eq.${escapeFilterValue(orgId)},assigned_org.eq.${escapeFilterValue(orgId)}`)
   if (status) q = q.eq('status', status)
   const { data, error } = await q
   if (error) console.error('[loadAssignments]', error.message)

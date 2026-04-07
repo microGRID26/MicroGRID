@@ -62,7 +62,7 @@ const COMPARISON_FIELDS: { label: string; origKey: string; newKey: string; forma
   { label: 'System Size (kW)', origKey: 'original_system_size', newKey: 'new_system_size', format: 'number' },
 ]
 
-function formatField(value: any, format?: string): string {
+function formatField(value: unknown, format?: string): string {
   if (value == null || value === '') return '-'
   if (format === 'currency') return fmt$(Number(value))
   if (format === 'percent') return `${value}%`
@@ -377,7 +377,7 @@ function ChangeOrdersContent() {
 function ComparisonRow({ field: f, co, updateField }: {
   field: typeof COMPARISON_FIELDS[number]
   co: ChangeOrder
-  updateField: (field: string, value: any) => void
+  updateField: (field: string, value: string | number | null) => void
 }) {
   const origVal = co[f.origKey as keyof ChangeOrder]
   const newVal = co[f.newKey as keyof ChangeOrder]
@@ -425,7 +425,7 @@ function ComparisonRow({ field: f, co, updateField }: {
 function ChangeOrderDetailPanel({ order, users, currentUser, onClose, onUpdated, onOpenProject }: {
   order: ChangeOrder
   users: { id: string; name: string }[]
-  currentUser: any
+  currentUser: { id: string; name: string; isAdmin: boolean } | null
   onClose: () => void
   onUpdated: (co: ChangeOrder) => void
   onOpenProject: (pid: string) => void
@@ -447,7 +447,7 @@ function ChangeOrderDetailPanel({ order, users, currentUser, onClose, onUpdated,
     setTimeout(() => setToast(null), 2500)
   }
 
-  async function updateField(field: string, value: any) {
+  async function updateField(field: string, value: string | number | null) {
     const updates = { [field]: value, updated_at: new Date().toISOString() }
     const { error } = await db().from('change_orders').update(updates).eq('id', co.id)
     if (error) {
@@ -701,7 +701,7 @@ function ChangeOrderDetailPanel({ order, users, currentUser, onClose, onUpdated,
 // ── NEW CHANGE ORDER MODAL ───────────────────────────────────────────────────
 function NewChangeOrderModal({ users, currentUser, onClose, onCreated }: {
   users: { id: string; name: string }[]
-  currentUser: any
+  currentUser: { id: string; name: string; isAdmin: boolean } | null
   onClose: () => void
   onCreated: (co: ChangeOrder) => void
 }) {

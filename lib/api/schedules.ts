@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { escapeFilterValue } from '@/lib/utils'
 
 // ── Schedule data access ─────────────────────────────────────────────────────
 
@@ -9,7 +10,7 @@ export async function loadScheduleByDateRange(startDate: string, endDate: string
   let query = db().from('schedule')
     .select('id, project_id, crew_id, job_type, date, end_date, time, status, notes, pm, org_id')
     .lte('date', endDate)
-    .or(`end_date.gte.${startDate},and(end_date.is.null,date.gte.${startDate})`)
+    .or(`end_date.gte.${escapeFilterValue(startDate)},and(end_date.is.null,date.gte.${escapeFilterValue(startDate)})`)
     .limit(2000)
   if (orgId) query = query.eq('org_id', orgId)
   const { data, error } = await query

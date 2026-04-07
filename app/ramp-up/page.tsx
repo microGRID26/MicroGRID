@@ -239,7 +239,7 @@ export default function RampUpPage() {
   // Load real crews from DB
   const [allCrews, setAllCrews] = useState<{ id: string; name: string }[]>([])
   useEffect(() => {
-    loadActiveCrews().then((r: any) => setAllCrews((r.data ?? r ?? []).map((cr: any) => ({ id: cr.id, name: cr.name }))))
+    loadActiveCrews().then((r) => setAllCrews((r.data ?? []).map((cr: { id: string; name: string }) => ({ id: cr.id, name: cr.name }))))
   }, [])
 
   // Crew ramp: 2 crews for first 4 weeks, then +1 crew every 2 weeks (no cap)
@@ -359,7 +359,7 @@ export default function RampUpPage() {
         .eq('crew_id', crew.id)
         .eq('job_type', 'install')
         .gte('date', entry.scheduled_week)
-        .then(({ error: e }: any) => { if (e) console.error('[confirm→schedule]', e.message) })
+        .then(({ error: e }: { error: { message: string } | null }) => { if (e) console.error('[confirm→schedule]', e.message) })
     }
 
     // Update ramp schedule status + date

@@ -1,4 +1,7 @@
 // lib/api/material-requests.ts — MRF (Material Request Form) data access
+// Org filtering: inherited via project_id FK — RLS SELECT policy uses
+// EXISTS (SELECT 1 FROM projects WHERE id = material_requests.project_id AND org_id = ...)
+// No direct org_id column; RLS enforces org scope.
 import { db } from '@/lib/db'
 import { createClient } from '@/lib/supabase/client'
 

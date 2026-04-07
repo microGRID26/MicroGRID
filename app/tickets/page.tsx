@@ -79,7 +79,7 @@ function TicketsPageInner() {
   const [newComment, setNewComment] = useState('')
   const [commentInternal, setCommentInternal] = useState(false)
   const [showDeleted, setShowDeleted] = useState(false)
-  const [deletedComments, setDeletedComments] = useState<any[]>([])
+  const [deletedComments, setDeletedComments] = useState<(TicketComment & { deleted_by?: string; deleted_at?: string })[]>([])
   const [detailTab, setDetailTab] = useState<'comments' | 'history' | 'details'>('comments')
 
   // Resolution modal
@@ -122,7 +122,7 @@ function TicketsPageInner() {
   // Load sales rep names for the rep filter dropdown
   useEffect(() => {
     db().from('sales_reps').select('id, first_name, last_name').limit(500)
-      .then(({ data }: any) => {
+      .then(({ data }: { data: { id: string; first_name: string; last_name: string }[] | null }) => {
         if (data) setRepNames(new Map(data.map((r: { id: string; first_name: string; last_name: string }) => [r.id, `${r.first_name} ${r.last_name}`])))
       }).catch((e: unknown) => handleApiError(e, '[tickets] reps load'))
   }, [])
@@ -770,7 +770,7 @@ function TicketsPageInner() {
                                       <div className="mt-3 pt-3 border-t border-red-800/30">
                                         <p className="text-[10px] text-red-400 font-medium uppercase tracking-wider mb-2">Deleted Comments (Audit Trail)</p>
                                         <div className="space-y-2">
-                                          {deletedComments.map((c: any) => (
+                                          {deletedComments.map((c) => (
                                             <div key={c.id} className="rounded-lg p-2.5 text-xs bg-red-900/10 border border-red-800/20 opacity-70">
                                               <div className="flex justify-between mb-1">
                                                 <span className="text-gray-400 font-medium">{c.author}</span>
@@ -778,7 +778,7 @@ function TicketsPageInner() {
                                               </div>
                                               <p className="text-gray-500 whitespace-pre-wrap line-through">{c.message}</p>
                                               <span className="text-[9px] text-red-400 mt-1 block">
-                                                Deleted by {c.deleted_by} on {new Date(c.deleted_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                                                Deleted by {c.deleted_by} on {c.deleted_at ? new Date(c.deleted_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}
                                               </span>
                                             </div>
                                           ))}

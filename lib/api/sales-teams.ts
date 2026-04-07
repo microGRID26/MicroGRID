@@ -3,6 +3,7 @@
 
 import { db } from '@/lib/db'
 import { createClient } from '@/lib/supabase/client'
+import { escapeFilterValue } from '@/lib/utils'
 
 // ── Type Re-exports ─────────────────────────────────────────────────────────
 
@@ -71,7 +72,7 @@ export async function loadPayScales(orgId?: string | null): Promise<PayScale[]> 
     .limit(200)
 
   if (orgId) {
-    query = query.or(`org_id.eq.${orgId},org_id.is.null`)
+    query = query.or(`org_id.eq.${escapeFilterValue(orgId)},org_id.is.null`)
   }
 
   const { data, error } = await query
@@ -127,7 +128,7 @@ export async function loadPayDistribution(orgId?: string | null): Promise<PayDis
     .limit(200)
 
   if (orgId) {
-    query = query.or(`org_id.eq.${orgId},org_id.is.null`)
+    query = query.or(`org_id.eq.${escapeFilterValue(orgId)},org_id.is.null`)
   }
 
   const { data, error } = await query
@@ -181,7 +182,7 @@ export async function loadSalesTeams(orgId?: string | null): Promise<SalesTeam[]
     .limit(200)
 
   if (orgId) {
-    query = query.or(`org_id.eq.${orgId},org_id.is.null`)
+    query = query.or(`org_id.eq.${escapeFilterValue(orgId)},org_id.is.null`)
   }
 
   const { data, error } = await query
@@ -253,7 +254,7 @@ export async function loadSalesReps(filters?: SalesRepFilters): Promise<SalesRep
     query = query.eq('status', filters.status)
   }
   if (filters?.orgId) {
-    query = query.or(`org_id.eq.${filters.orgId},org_id.is.null`)
+    query = query.or(`org_id.eq.${escapeFilterValue(filters.orgId)},org_id.is.null`)
   }
 
   const { data, error } = await query
@@ -332,7 +333,7 @@ export async function loadOnboardingRequirements(orgId?: string | null): Promise
     .limit(200)
 
   if (orgId) {
-    query = query.or(`org_id.eq.${orgId},org_id.is.null`)
+    query = query.or(`org_id.eq.${escapeFilterValue(orgId)},org_id.is.null`)
   }
 
   const { data, error } = await query

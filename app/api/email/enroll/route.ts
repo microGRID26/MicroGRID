@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { timingSafeEqual } from 'crypto'
 import { sendEmail } from '@/lib/email'
 import { getTemplate } from '@/lib/email-templates'
 
@@ -45,7 +46,15 @@ export async function POST(req: Request) {
     const cronSecret = process.env.CRON_SECRET
     const adminSecret = process.env.ADMIN_API_SECRET
     const token = authHeader?.replace('Bearer ', '')
-    const isAuthed = (cronSecret && token === cronSecret) || (adminSecret && token === adminSecret)
+    let isAuthed = false
+    try {
+      if (cronSecret && token && token.length === cronSecret.length) {
+        isAuthed = timingSafeEqual(Buffer.from(token), Buffer.from(cronSecret))
+      }
+      if (!isAuthed && adminSecret && token && token.length === adminSecret.length) {
+        isAuthed = timingSafeEqual(Buffer.from(token), Buffer.from(adminSecret))
+      }
+    } catch { isAuthed = false }
     if (!isAuthed) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

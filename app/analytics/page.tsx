@@ -66,11 +66,11 @@ export default function AnalyticsPage() {
   useEffect(() => {
     const supabase = db()
     supabase.from('ramp_schedule').select('id, project_id, crew_id, crew_name, scheduled_week, scheduled_day, slot, status, completed_at, drive_minutes, distance_miles').limit(5000)
-      .then(({ data }: any) => { if (data) setRampSchedule(data) })
+      .then(({ data, error }: { data: RampScheduleRow[] | null; error: unknown }) => { if (error) console.error('[analytics] ramp_schedule:', error); if (data) setRampSchedule(data) })
     supabase.from('work_orders').select('id, project_id, assigned_crew, status, scheduled_date, started_at, completed_at, time_on_site_minutes, type').limit(5000)
-      .then(({ data }: any) => { if (data) setWorkOrders(data) })
+      .then(({ data, error }: { data: WorkOrderRow[] | null; error: unknown }) => { if (error) console.error('[analytics] work_orders:', error); if (data) setWorkOrders(data) })
     supabase.from('sales_reps').select('id, first_name, last_name, team_id, status, role_key').limit(500)
-      .then(({ data }: any) => { if (data) setSalesReps(data) })
+      .then(({ data, error }: { data: SalesRepRow[] | null; error: unknown }) => { if (error) console.error('[analytics] sales_reps:', error); if (data) setSalesReps(data) })
   }, [])
 
   const funding = useMemo(() => {
@@ -81,7 +81,7 @@ export default function AnalyticsPage() {
 
   const taskMap = useMemo(() => {
     const map: Record<string, Record<string, string>> = {}
-    taskStateRows.forEach((t: any) => {
+    taskStateRows.forEach((t: { project_id: string; task_id: string; status: string }) => {
       if (!map[t.project_id]) map[t.project_id] = {}
       map[t.project_id][t.task_id] = t.status
     })

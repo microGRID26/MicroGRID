@@ -5,6 +5,7 @@
 // Org filtering: inherited via project_id FK — RLS policies enforce org scope
 
 import { db } from '@/lib/db'
+import { escapeFilterValue } from '@/lib/utils'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 export type { CommissionRate, CommissionRecord, CommissionStatus, CommissionRateType, CommissionTier, CommissionGeoModifier, CommissionHierarchy } from '@/types/database'
@@ -119,7 +120,7 @@ export async function loadCommissionRates(orgId?: string | null, activeOnly = tr
     .order('sort_order', { ascending: true })
     .limit(100)
   if (activeOnly) q = q.eq('active', true)
-  if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+  if (orgId) q = q.or(`org_id.eq.${escapeFilterValue(orgId)},org_id.is.null`)
   const { data, error } = await q
   if (error) console.error('[loadCommissionRates]', error.message)
   return (data ?? []) as CommissionRate[]
@@ -542,7 +543,7 @@ export async function loadGeoModifiers(orgId?: string | null): Promise<Commissio
     .eq('active', true)
     .order('state', { ascending: true })
     .limit(500)
-  if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+  if (orgId) q = q.or(`org_id.eq.${escapeFilterValue(orgId)},org_id.is.null`)
   const { data, error } = await q
   if (error) console.error('[loadGeoModifiers]', error.message)
   return (data ?? []) as CommissionGeoModifier[]
@@ -617,7 +618,7 @@ export async function loadHierarchy(orgId?: string | null): Promise<CommissionHi
     .eq('active', true)
     .order('role_key', { ascending: true })
     .limit(500)
-  if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+  if (orgId) q = q.or(`org_id.eq.${escapeFilterValue(orgId)},org_id.is.null`)
   const { data, error } = await q
   if (error) console.error('[loadHierarchy]', error.message)
   return (data ?? []) as CommissionHierarchy[]
