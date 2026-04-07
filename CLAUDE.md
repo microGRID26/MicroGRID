@@ -196,7 +196,8 @@ Email domain whitelist: `@gomicrogridenergy.com`, `@energydevelopmentgroup.com`,
 - Supabase Storage bucket 'wo-photos' for checklist item photos
 - iOS app on TestFlight (Expo SDK 54, RN 0.81, build via EAS + Transporter)
 - Folly coroutine fix: plugins/withFollyFix.js injects -DFOLLY_CFG_NO_COROUTINES=1
-- 9 oversized files (>800 lines): infographic 1028, command 1018, fleet 993, planset 949, inventory 930, change-orders 919, tickets 893, engineering 884, work-orders 878
+- 1 oversized file remains: tickets 893 (5 components already extracted, remaining is tightly coupled page logic)
+- 8 pages refactored with components/ subfolders: infographic, command, fleet, planset, inventory, change-orders, work-orders, engineering
 - Job costing tables exist (migration 071, applied) but no data capture UI yet
 - Planset generator (`/planset`) produces 8 sheets (PV-1 through PV-8) with project selector, Duracell defaults, and redesign bridge. Missing: compliance certs, battery mode letter, equipment elevation (photo), OSR (manual)
 
