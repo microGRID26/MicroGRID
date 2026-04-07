@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { loadProjectsByIds, loadTickets, upsertTaskState, insertTaskHistory } from '@/lib/api'
+import { loadProjectsByIds, loadTickets, upsertTaskState, insertTaskHistory, loadTodaySchedule } from '@/lib/api'
 import { loadCrewsByIds } from '@/lib/api'
 import { handleApiError } from '@/lib/errors'
 import { daysAgo, fmt$, fmtDate, STAGE_LABELS, STAGE_ORDER, STAGE_TASKS } from '@/lib/utils'
@@ -14,7 +14,7 @@ import { ProjectPanel } from '@/components/project/ProjectPanel'
 import { NewProjectModal } from '@/components/project/NewProjectModal'
 import { Nav } from '@/components/Nav'
 import { useCurrentUser } from '@/lib/useCurrentUser'
-import { useSupabaseQuery, usePmFilter } from '@/lib/hooks'
+import { useSupabaseQuery, usePmFilter, useOrg } from '@/lib/hooks'
 import { useRouter } from 'next/navigation'
 import type { Project, Schedule } from '@/types/database'
 
@@ -39,6 +39,7 @@ export default function CommandPage() {
   const supabase = createClient()
   const router = useRouter()
   const { user: currentUser } = useCurrentUser()
+  const { orgId } = useOrg()
 
   // ── Data queries via useSupabaseQuery ────────────────────────────────────
   const projectsQuery = useSupabaseQuery('projects', {
@@ -72,16 +73,12 @@ export default function CommandPage() {
 
   const loadSchedule = useCallback(async () => {
     setScheduleIncomplete(false)
-    const schedRes = await supabase.from('schedule')
-      .select('id, project_id, job_type, time, status, crew_id')
-      .eq('date', new Date().toISOString().slice(0, 10))
-      .neq('status', 'cancelled')
-      .order('time')
+    const { data: schedData, error: schedError } = await loadTodaySchedule(orgId ?? undefined)
 
-    if (schedRes.error) { handleApiError(schedRes.error, '[command] schedule load'); return }
-    if (!schedRes.data) return
+    if (schedError) { handleApiError(schedError, '[command] schedule load'); return }
+    if (!schedData || schedData.length === 0) return
 
-    const rawJobs = schedRes.data as ScheduleEntry[]
+    const rawJobs = schedData as ScheduleEntry[]
     let enrichmentFailed = false
     const schedPids = [...new Set(rawJobs.map((j) => j.project_id).filter(Boolean))]
     const projNameMap: Record<string, string> = {}
@@ -105,7 +102,7 @@ export default function CommandPage() {
       j.crew_name = crewNameMap[j.crew_id] ?? null
     })
     setTodaySchedule(rawJobs)
-  }, [supabase])
+  }, [orgId])
 
   useEffect(() => { loadSchedule() }, [loadSchedule])
 

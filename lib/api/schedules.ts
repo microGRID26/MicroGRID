@@ -32,3 +32,34 @@ export async function loadScheduleByDateRange(startDate: string, endDate: string
 
   return { data: entries, error }
 }
+
+/** Load today's schedule entries (non-cancelled), ordered by time. */
+export async function loadTodaySchedule(orgId?: string) {
+  const today = new Date().toISOString().split('T')[0]
+  let query = db().from('schedule')
+    .select('id, project_id, crew_id, job_type, date, time, status, notes')
+    .eq('date', today)
+    .neq('status', 'cancelled')
+    .order('time', { ascending: true })
+    .limit(500)
+  if (orgId) query = query.eq('org_id', orgId)
+  const { data, error } = await query
+  if (error) console.error('today schedule load failed:', error)
+  return { data: data ?? [], error }
+}
+
+/** Load schedule for a date range, optionally filtered by crew. Excludes cancelled. */
+export async function loadScheduleForCrewWeek(startDate: string, endDate: string, crewId?: string) {
+  let query = db().from('schedule')
+    .select('id, project_id, crew_id, job_type, date, end_date, time, status, notes, pm, org_id')
+    .gte('date', startDate)
+    .lte('date', endDate)
+    .neq('status', 'cancelled')
+    .order('date', { ascending: true })
+    .order('time', { ascending: true })
+    .limit(2000)
+  if (crewId) query = query.eq('crew_id', crewId)
+  const { data, error } = await query
+  if (error) console.error('crew week schedule load failed:', error)
+  return { data: data ?? [], error }
+}

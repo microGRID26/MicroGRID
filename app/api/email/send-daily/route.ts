@@ -2,26 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/email'
 import { getTemplate, getMaxDay } from '@/lib/email-templates'
-
-// ── Rate Limiting ─────────────────────────────────────────────────────────────
-// Simple in-memory rate limiter (per-minute).
-// On Vercel serverless, memory does not persist across cold starts — this provides
-// burst protection within a warm instance without needing an external store.
-const RATE_LIMIT_WINDOW_MS = 60_000
-const RATE_LIMIT_MAX = 10
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
-
-function checkRateLimit(key: string): boolean {
-  const now = Date.now()
-  const entry = rateLimitMap.get(key)
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
-    return true
-  }
-  if (entry.count >= RATE_LIMIT_MAX) return false
-  entry.count++
-  return true
-}
+import { rateLimit } from '@/lib/rate-limit'
 
 // Supabase admin client for server-side cron (no user auth)
 function getAdminClient() {
@@ -33,7 +14,8 @@ function getAdminClient() {
 
 export async function GET(req: Request) {
   // Rate limit: 10 requests per minute per endpoint
-  if (!checkRateLimit('send-daily')) {
+  const { success } = await rateLimit('send-daily', { max: 10, prefix: 'send-daily' })
+  if (!success) {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
   }
 

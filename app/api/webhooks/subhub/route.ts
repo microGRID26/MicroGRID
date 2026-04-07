@@ -4,22 +4,7 @@ import crypto from 'crypto'
 import { TASKS } from '@/lib/tasks'
 import { syncProjectToEdge } from '@/lib/api/edge-sync'
 
-// ── Rate Limiting ─────────────────────────────────────────────────────────────
-const RATE_LIMIT_WINDOW_MS = 60_000
-const RATE_LIMIT_MAX = 20
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
-
-function checkRateLimit(key: string): boolean {
-  const now = Date.now()
-  const entry = rateLimitMap.get(key)
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
-    return true
-  }
-  if (entry.count >= RATE_LIMIT_MAX) return false
-  entry.count++
-  return true
-}
+import { rateLimit } from '@/lib/rate-limit'
 
 // ── SubHub Webhook: Project Created ─────────────────────────────────────────
 // Receives a POST from SubHub when a contract is signed.
@@ -95,7 +80,8 @@ export async function POST(request: NextRequest) {
 
   // Rate limit: 20 requests per minute
   const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
-  if (!checkRateLimit(`subhub:${clientIp}`)) {
+  const { success } = await rateLimit(`subhub:${clientIp}`, { max: 20, prefix: 'subhub-webhook' })
+  if (!success) {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
   }
 

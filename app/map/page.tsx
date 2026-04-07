@@ -5,8 +5,7 @@ import dynamic from 'next/dynamic'
 import { Nav } from '@/components/Nav'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import { useOrg } from '@/lib/hooks'
-import { loadProjectById } from '@/lib/api'
-import { db } from '@/lib/db'
+import { loadProjectById, loadProjectsForMap } from '@/lib/api'
 import { cn, STAGE_LABELS, STAGE_ORDER } from '@/lib/utils'
 import { ProjectPanel } from '@/components/project/ProjectPanel'
 import type { Project } from '@/types/database'
@@ -95,16 +94,8 @@ export default function MapPage() {
   useEffect(() => {
     async function load() {
       setLoading(true)
-      const supabase = db()
-      let q = supabase.from('projects')
-        .select('id, name, city, address, zip, stage, pm, blocker, systemkw')
-        .not('disposition', 'in', '("In Service","Loyalty","Cancelled","Legal","On Hold")')
-        .not('zip', 'is', null)
-        .limit(2000)
-      if (orgId) q = q.eq('org_id', orgId)
-
-      const { data } = await q
-      if (!data) { setLoading(false); return }
+      const { data } = await loadProjectsForMap(orgId ?? undefined)
+      if (!data || data.length === 0) { setLoading(false); return }
 
       const typedData = data as { id: string; name: string; city: string | null; address: string | null; zip: string | null; stage: string; pm: string | null; blocker: string | null; systemkw: number | null }[]
       const zips = [...new Set(typedData.map(p => p.zip).filter((z): z is string => Boolean(z)))]

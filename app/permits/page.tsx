@@ -5,6 +5,7 @@ import { Nav } from '@/components/Nav'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import { cn } from '@/lib/utils'
 import { db } from '@/lib/db'
+import { loadAHJs } from '@/lib/api'
 import { Search, ExternalLink, Globe, Phone, Eye, EyeOff, ChevronDown, ChevronUp, Shield, Download, Clock } from 'lucide-react'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -56,8 +57,8 @@ export default function PermitsPage() {
     const supabase = db()
 
     // Load all AHJs
-    const { data: ahjData } = await supabase.from('ahjs').select('*').order('name').limit(5000)
-    setAhjs(ahjData ?? [])
+    const ahjData = await loadAHJs()
+    setAhjs(ahjData as unknown as AhjRecord[])
 
     // Load project counts per AHJ (only active projects)
     const { data: projects } = await supabase

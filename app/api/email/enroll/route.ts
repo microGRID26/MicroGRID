@@ -3,26 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { timingSafeEqual } from 'crypto'
 import { sendEmail } from '@/lib/email'
 import { getTemplate } from '@/lib/email-templates'
-
-// ── Rate Limiting ─────────────────────────────────────────────────────────────
-// Simple in-memory rate limiter (per-minute).
-// On Vercel serverless, memory does not persist across cold starts — this provides
-// burst protection within a warm instance without needing an external store.
-const RATE_LIMIT_WINDOW_MS = 60_000
-const RATE_LIMIT_MAX = 10
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
-
-function checkRateLimit(key: string): boolean {
-  const now = Date.now()
-  const entry = rateLimitMap.get(key)
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
-    return true
-  }
-  if (entry.count >= RATE_LIMIT_MAX) return false
-  entry.count++
-  return true
-}
+import { rateLimit } from '@/lib/rate-limit'
 
 /** Basic email format validation */
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -37,7 +18,8 @@ function getAdminClient() {
 export async function POST(req: Request) {
   try {
     // Rate limit: 10 requests per minute per endpoint
-    if (!checkRateLimit('enroll')) {
+    const { success } = await rateLimit('enroll', { max: 10, prefix: 'enroll' })
+    if (!success) {
       return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
     }
 

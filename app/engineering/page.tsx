@@ -14,7 +14,7 @@ import { loadEngineeringConfig } from '@/lib/api/engineering-config'
 import type { EngineeringConfig } from '@/lib/api/engineering-config'
 import type { EngineeringAssignment, AssignmentStatus } from '@/lib/api/engineering'
 import type { Project } from '@/types/database'
-import { loadProjectById } from '@/lib/api'
+import { loadProjectById, loadOrgNames } from '@/lib/api'
 import { db } from '@/lib/db'
 import {
   Ruler, Plus, ChevronDown, ChevronUp, X, Search, Download,
@@ -76,13 +76,11 @@ export default function EngineeringPage() {
     ])]
     const supabase = db()
 
-    const [projectResult, orgResult] = await Promise.all([
+    const [projectResult, orgNameMap] = await Promise.all([
       projectIds.length > 0
         ? supabase.from('projects').select('id, name, stage, pm, financier, systemkw, contract').in('id', projectIds).limit(500)
         : Promise.resolve({ data: null }),
-      allOrgIds.length > 0
-        ? supabase.from('organizations').select('id, name').in('id', allOrgIds)
-        : Promise.resolve({ data: null }),
+      loadOrgNames(allOrgIds),
     ])
 
     if (projectResult.data) {
@@ -93,13 +91,7 @@ export default function EngineeringPage() {
       setProjectMap(pMap)
     }
 
-    if (orgResult.data) {
-      const oMap: Record<string, string> = {}
-      for (const o of orgResult.data as { id: string; name: string }[]) {
-        oMap[o.id] = o.name
-      }
-      setOrgMap(oMap)
-    }
+    setOrgMap(orgNameMap)
 
     setLoading(false)
   }, [orgId, isEngineering, isPlatform, statusFilter])

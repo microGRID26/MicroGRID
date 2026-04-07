@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Nav } from '@/components/Nav'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import { useOrg } from '@/lib/hooks'
-import { db } from '@/lib/db'
+import { loadLiveStats } from '@/lib/api'
 import { INTERNAL_DOMAINS, STAGE_LABELS } from '@/lib/utils'
 import { Printer } from 'lucide-react'
 import { LeadershipTab } from './components/LeadershipTab'
@@ -63,40 +63,16 @@ export default function InfographicPage() {
 
   useEffect(() => {
     async function load() {
-      const supabase = db()
-      let q = supabase.from('projects').select('stage, contract').not('disposition', 'in', '("In Service","Loyalty","Cancelled","Legal","On Hold")').limit(5000)
-      if (orgId) q = q.eq('org_id', orgId)
-      const { data: projects } = await q
-      if (!projects) { setLoading(false); return }
-      const byStage: Record<string, { count: number; value: number }> = {}
-      let totalValue = 0
-      for (const p of projects as { stage: string; contract: number | null }[]) {
-        if (!byStage[p.stage]) byStage[p.stage] = { count: 0, value: 0 }
-        byStage[p.stage].count++
-        const v = Number(p.contract) || 0
-        byStage[p.stage].value += v
-        totalValue += v
-      }
+      const result = await loadLiveStats(orgId ?? undefined)
       const pipeline: PipelineStage[] = []
       for (const s of ['evaluation', 'survey', 'design', 'permit', 'install', 'inspection', 'complete']) {
-        const meta = STAGE_META[s]; const d = byStage[s] ?? { count: 0, value: 0 }
+        const meta = STAGE_META[s]; const d = result.projectsByStage[s] ?? { count: 0, value: 0 }
         if (d.count > 0) pipeline.push({ stage: s, count: d.count, value: d.value, label: meta.label, color: meta.color })
       }
-      let ticketsQ = supabase.from('tickets').select('id', { count: 'exact', head: true })
-      let crewsQ = supabase.from('crews').select('id', { count: 'exact', head: true }).eq('active', 'TRUE')
-      if (orgId) { ticketsQ = ticketsQ.eq('org_id', orgId); crewsQ = crewsQ.eq('org_id', orgId) }
-      const [tickets, notes, users, crews, ahjs, equipment] = await Promise.all([
-        ticketsQ,
-        supabase.from('notes').select('id', { count: 'exact', head: true }),
-        supabase.from('users').select('id', { count: 'exact', head: true }).eq('active', true),
-        crewsQ,
-        supabase.from('ahjs').select('id', { count: 'exact', head: true }),
-        supabase.from('equipment').select('id', { count: 'exact', head: true }),
-      ])
       setStats({
-        totalProjects: projects.length, totalValue, pipeline,
-        ticketCount: tickets.count ?? 0, noteCount: notes.count ?? 0, userCount: users.count ?? 0,
-        crewCount: crews.count ?? 0, ahjCount: ahjs.count ?? 0, equipmentCount: equipment.count ?? 0,
+        totalProjects: result.totalProjects, totalValue: result.totalValue, pipeline,
+        ticketCount: result.openTickets, noteCount: result.totalNotes, userCount: result.activeUsers,
+        crewCount: result.activeCrews, ahjCount: result.totalAHJs, equipmentCount: result.totalEquipment,
       })
       setLoadedAt(new Date())
       setLoading(false)

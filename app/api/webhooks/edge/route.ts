@@ -39,22 +39,7 @@ function verifySignature(body: string, signature: string): boolean {
   }
 }
 
-// ── Rate Limiting ─────────────────────────────────────────────────────────────
-const RATE_LIMIT_WINDOW_MS = 60_000
-const RATE_LIMIT_MAX = 30
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
-
-function checkRateLimit(key: string): boolean {
-  const now = Date.now()
-  const entry = rateLimitMap.get(key)
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
-    return true
-  }
-  if (entry.count >= RATE_LIMIT_MAX) return false
-  entry.count++
-  return true
-}
+import { rateLimit } from '@/lib/rate-limit'
 
 interface EdgeInboundPayload {
   event?: string
@@ -103,7 +88,8 @@ async function logSync(
 export async function POST(request: NextRequest) {
   // Rate limit: 30 requests per minute
   const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
-  if (!checkRateLimit(`edge:${clientIp}`)) {
+  const { success } = await rateLimit(`edge:${clientIp}`, { max: 30, prefix: 'edge-webhook' })
+  if (!success) {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
   }
 

@@ -13,7 +13,7 @@ import {
 } from '@/lib/api/ntp'
 import type { NTPRequest, NTPStatus } from '@/lib/api/ntp'
 import type { Project } from '@/types/database'
-import { loadProjectById, insertAuditLog } from '@/lib/api'
+import { loadProjectById, insertAuditLog, loadOrgNames } from '@/lib/api'
 import { db } from '@/lib/db'
 import { sendToEdge } from '@/lib/api/edge-sync'
 import { ClipboardCheck, CheckCircle, XCircle, AlertTriangle, Clock, Search, Plus, ChevronDown, ChevronUp, X, Eye, Download } from 'lucide-react'
@@ -392,13 +392,11 @@ export default function NTPPage() {
     const orgIds = isPlatform ? [...new Set(data.map(r => r.requesting_org))] : []
     const supabase = db()
 
-    const [projectResult, orgResult] = await Promise.all([
+    const [projectResult, orgNameMap] = await Promise.all([
       projectIds.length > 0
         ? supabase.from('projects').select('id, name, stage, pm, financier, systemkw, contract').in('id', projectIds).limit(500)
         : Promise.resolve({ data: null }),
-      orgIds.length > 0
-        ? supabase.from('organizations').select('id, name').in('id', orgIds)
-        : Promise.resolve({ data: null }),
+      loadOrgNames(orgIds),
     ])
 
     if (projectResult.data) {
@@ -409,13 +407,7 @@ export default function NTPPage() {
       setProjectMap(pMap)
     }
 
-    if (orgResult.data) {
-      const oMap: Record<string, string> = {}
-      for (const o of orgResult.data as { id: string; name: string }[]) {
-        oMap[o.id] = o.name
-      }
-      setOrgMap(oMap)
-    }
+    setOrgMap(orgNameMap)
 
     setLoading(false)
   }, [orgId, isPlatform, statusFilter])

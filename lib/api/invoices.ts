@@ -355,6 +355,29 @@ async function recalcInvoiceTotals(invoiceId: string): Promise<void> {
   await supabase.from('invoices').update({ subtotal, total }).eq('id', invoiceId)
 }
 
+// ── Org name enrichment ──────────────────────────────────────────────────
+
+/**
+ * Load organization names for a list of org IDs (for enriching invoice displays).
+ * Returns a map of orgId → name.
+ */
+export async function loadOrgNames(orgIds: string[]): Promise<Record<string, string>> {
+  if (!orgIds.length) return {}
+  const supabase = db()
+  const unique = [...new Set(orgIds)]
+  const { data, error } = await supabase
+    .from('organizations')
+    .select('id, name')
+    .in('id', unique)
+    .limit(500)
+  if (error) console.error('[loadOrgNames]', error.message)
+  const map: Record<string, string> = {}
+  for (const org of (data ?? []) as { id: string; name: string }[]) {
+    map[org.id] = org.name
+  }
+  return map
+}
+
 // ── Invoice Rules ─────────────────────────────────────────────────────────
 
 export const MILESTONE_LABELS: Record<string, string> = {

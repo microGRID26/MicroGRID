@@ -183,6 +183,8 @@ Email domain whitelist: `@gomicrogridenergy.com`, `@energydevelopmentgroup.com`,
 - M1→M2→M3 progression enforced by Postgres trigger (can't submit M2 before M1, M3 before M2)
 - `escapeFilterValue()` in utils.ts for PostgREST `.or()` contexts — use instead of `escapeIlike()` in `.or()` strings. All `.or()` calls now use it.
 - All API routes use `timingSafeEqual()` for secret comparison (no plain `===` on secrets)
+- Rate limiting: `lib/rate-limit.ts` — uses Upstash Redis when `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` are set, falls back to in-memory. All 7 rate-limited routes use this shared utility.
+- API wrappers: `loadLiveStats()`, `loadAHJs()`, `loadProjectsForMap()`, `loadOrgNames()`, `loadTodaySchedule()`, `loadScheduleForCrewWeek()` in lib/api/
 - `INACTIVE_DISPOSITIONS` / `INACTIVE_DISPOSITION_FILTER` constants in utils.ts — use for all active project queries
 - Error boundaries: all user-facing routes have `error.tsx` files (parent boundaries cover nested routes)
 - INACTIVE_DISPOSITIONS now includes: In Service, Loyalty, Cancelled, Legal, On Hold

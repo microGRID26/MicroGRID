@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
 import { db } from '@/lib/db'
-import { escapeIlike, escapeFilterValue } from '@/lib/utils'
+import { escapeIlike, escapeFilterValue, INACTIVE_DISPOSITION_FILTER } from '@/lib/utils'
 import type { Project } from '@/types/database'
 
 // ── Centralized project data access ─────────────────────────────────────────
@@ -131,6 +131,20 @@ export async function searchProjects(query: string, limit = 10): Promise<Pick<Pr
     .limit(limit)
   if (error) console.error('project search failed:', error)
   return (data ?? []) as Pick<Project, 'id' | 'name' | 'city' | 'pm' | 'pm_id' | 'systemkw' | 'module' | 'module_qty' | 'financier' | 'financing_type' | 'contract' | 'tpo_escalator' | 'financier_adv_pmt' | 'down_payment'>[]
+}
+
+/** Load projects with map-relevant fields only (for map views). Excludes inactive dispositions. */
+export async function loadProjectsForMap(orgId?: string) {
+  const MAP_FIELDS = 'id, name, address, city, zip, stage, systemkw, pm, blocker'
+  let query = db().from('projects')
+    .select(MAP_FIELDS)
+    .not('disposition', 'in', INACTIVE_DISPOSITION_FILTER)
+    .not('zip', 'is', null)
+    .limit(2000)
+  if (orgId) query = query.eq('org_id', orgId)
+  const { data, error } = await query
+  if (error) console.error('projects map load failed:', error)
+  return { data: data ?? [], error }
 }
 
 export async function loadUsers(domainFilter?: string | string[]) {

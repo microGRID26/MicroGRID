@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { timingSafeEqual } from 'crypto'
 import { listCalendarEvents } from '@/lib/google-calendar'
+import { rateLimit } from '@/lib/rate-limit'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SECRET_KEY
@@ -12,23 +13,6 @@ function getServiceClient() {
 }
 
 const WEBHOOK_TOKEN = process.env.GOOGLE_CALENDAR_WEBHOOK_TOKEN ?? ''
-
-// ── Rate Limiting ─────────────────────────────────────────────────────────────
-const RATE_LIMIT_WINDOW_MS = 60_000
-const RATE_LIMIT_MAX = 60 // Google can burst notifications
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
-
-function checkRateLimit(key: string): boolean {
-  const now = Date.now()
-  const entry = rateLimitMap.get(key)
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
-    return true
-  }
-  if (entry.count >= RATE_LIMIT_MAX) return false
-  entry.count++
-  return true
-}
 
 /** Timing-safe token comparison to prevent timing attacks */
 function verifyToken(provided: string): boolean {
@@ -59,7 +43,8 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   // Rate limit: 60 per minute (Google can burst)
-  if (!checkRateLimit('calendar-webhook')) {
+  const { success } = await rateLimit('calendar-webhook', { max: 60, prefix: 'calendar-webhook' })
+  if (!success) {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
   }
 

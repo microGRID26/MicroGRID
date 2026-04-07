@@ -13,7 +13,7 @@ import {
 } from '@/lib/api/invoices'
 import type { Invoice, InvoiceLineItem, InvoiceStatus, InvoiceRule } from '@/lib/api/invoices'
 import type { Project } from '@/types/database'
-import { loadProjectById } from '@/lib/api'
+import { loadProjectById, loadOrgNames } from '@/lib/api'
 import { db } from '@/lib/db'
 import {
   Receipt, Plus, ChevronDown, ChevronUp, X, Search, Download, Send,
@@ -56,16 +56,8 @@ export default function InvoicesPage() {
     const allOrgIds = [...new Set([...data.map(r => r.from_org), ...data.map(r => r.to_org)])]
     const supabase = db()
 
-    if (allOrgIds.length > 0) {
-      const { data: orgs } = await supabase.from('organizations').select('id, name').in('id', allOrgIds)
-      if (orgs) {
-        const oMap: Record<string, string> = {}
-        for (const o of orgs as { id: string; name: string }[]) {
-          oMap[o.id] = o.name
-        }
-        setOrgMap(oMap)
-      }
-    }
+    const orgNameMap = await loadOrgNames(allOrgIds)
+    setOrgMap(orgNameMap)
 
     // Load line items for all invoices
     if (data.length > 0) {

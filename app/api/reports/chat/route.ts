@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 import { escapeIlike } from '@/lib/utils'
+import { rateLimit } from '@/lib/rate-limit'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,43 +49,6 @@ const ALLOWED_TABLES = [
 ]
 
 const MAX_RESULTS = 500
-const RATE_LIMIT_WINDOW_MS = 60_000
-const RATE_LIMIT_MAX = 10
-const DAILY_LIMIT = 25
-const DAY_MS = 86_400_000
-
-// Simple in-memory rate limiter (per-minute).
-// On Vercel serverless, each invocation is short-lived — memory does not persist
-// across requests, so these Maps only work within a single instance lifetime.
-// This is acceptable: it provides burst protection within a warm instance without
-// needing an external store. For true cross-instance rate limiting, use Redis/Upstash.
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
-// Daily usage tracker (same serverless caveat as above)
-const dailyUsageMap = new Map<string, { count: number; resetAt: number }>()
-
-function checkRateLimit(userId: string): boolean {
-  const now = Date.now()
-  const entry = rateLimitMap.get(userId)
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
-    return true
-  }
-  if (entry.count >= RATE_LIMIT_MAX) return false
-  entry.count++
-  return true
-}
-
-function checkDailyLimit(userId: string): { allowed: boolean; remaining: number } {
-  const now = Date.now()
-  const entry = dailyUsageMap.get(userId)
-  if (!entry || now > entry.resetAt) {
-    dailyUsageMap.set(userId, { count: 1, resetAt: now + DAY_MS })
-    return { allowed: true, remaining: DAILY_LIMIT - 1 }
-  }
-  if (entry.count >= DAILY_LIMIT) return { allowed: false, remaining: 0 }
-  entry.count++
-  return { allowed: true, remaining: DAILY_LIMIT - entry.count }
-}
 
 // ── System Prompt ────────────────────────────────────────────────────────────
 
@@ -448,7 +412,8 @@ export async function POST(request: NextRequest) {
   // Rate limiting — use auth cookie as stable identifier (not spoofable headers)
   const authCookie = request.cookies.getAll().find(c => c.name.startsWith('sb-'))?.value ?? ''
   const userId = authCookie || 'anonymous'
-  if (!checkRateLimit(userId)) {
+  const { success: minuteOk } = await rateLimit(userId, { max: 10, prefix: 'reports-chat' })
+  if (!minuteOk) {
     return NextResponse.json(
       { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
       { status: 429 }
@@ -456,8 +421,8 @@ export async function POST(request: NextRequest) {
   }
 
   // Daily usage limit (25/day per user)
-  const daily = checkDailyLimit(userId)
-  if (!daily.allowed) {
+  const { success: dailyOk } = await rateLimit(userId, { max: 25, windowMs: 86_400_000, prefix: 'reports-chat-daily' })
+  if (!dailyOk) {
     return NextResponse.json(
       { error: 'Daily query limit reached (25 per day). Try again tomorrow.' },
       { status: 429 }
