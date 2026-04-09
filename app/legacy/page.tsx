@@ -6,7 +6,7 @@ import { db } from '@/lib/db'
 import { cn, escapeIlike, fmtDate, fmt$ } from '@/lib/utils'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import { handleApiError } from '@/lib/errors'
-import { Search, X, ChevronUp, ChevronDown, Archive, ChevronLeft, ChevronRight, Send } from 'lucide-react'
+import { Search, X, ChevronUp, ChevronDown, Archive, ChevronLeft, ChevronRight, Send, FolderOpen, ExternalLink } from 'lucide-react'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -367,6 +367,8 @@ function DetailPanel({ project: p, onClose }: { project: LegacyProject; onClose:
   const [noteError, setNoteError] = useState('')
   const NOTE_PAGE_SIZE = 50
   const [noteLimit, setNoteLimit] = useState(NOTE_PAGE_SIZE)
+  const [folderUrl, setFolderUrl] = useState<string | null>(null)
+  const [folderLoading, setFolderLoading] = useState(true)
 
   // Escape key to close panel
   useEffect(() => {
@@ -394,6 +396,27 @@ function DetailPanel({ project: p, onClose }: { project: LegacyProject; onClose:
   useEffect(() => {
     fetchNotes()
   }, [fetchNotes])
+
+  // Fetch Google Drive folder link from project_folders
+  useEffect(() => {
+    let cancelled = false
+    setFolderLoading(true)
+    setFolderUrl(null)
+    async function loadFolder() {
+      const { data, error } = await db()
+        .from('project_folders')
+        .select('folder_url')
+        .eq('project_id', p.id)
+        .maybeSingle()
+      if (cancelled) return
+      if (error) handleApiError(error, '[legacy] loadFolder')
+      const row = data as { folder_url: string | null } | null
+      setFolderUrl(row?.folder_url ?? null)
+      setFolderLoading(false)
+    }
+    loadFolder()
+    return () => { cancelled = true }
+  }, [p.id])
 
   async function handleAddNote() {
     const content = noteText.trim()
@@ -462,6 +485,36 @@ function DetailPanel({ project: p, onClose }: { project: LegacyProject; onClose:
             <Field label="Email" value={p.email} />
             <Field label="Address" value={[p.address, p.city, p.state, p.zip].filter(Boolean).join(', ') || null} />
           </Section>
+
+          {/* Files (Google Drive folder) */}
+          <div>
+            <h3 className="text-xs font-semibold text-green-400 uppercase tracking-wider mb-2">Files</h3>
+            {folderLoading ? (
+              <div className="bg-gray-800 rounded-lg border border-gray-700 px-4 py-3">
+                <p className="text-xs text-gray-500 animate-pulse">Loading folder...</p>
+              </div>
+            ) : folderUrl ? (
+              <a
+                href={folderUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 bg-gray-800 hover:bg-gray-750 rounded-lg border border-gray-700 hover:border-green-500/50 px-4 py-3 transition-colors group"
+              >
+                <div className="w-9 h-9 rounded-md bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                  <FolderOpen className="w-4 h-4 text-green-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white">Open in Google Drive</p>
+                  <p className="text-xs text-gray-500 truncate">Project documents and historical files</p>
+                </div>
+                <ExternalLink className="w-4 h-4 text-gray-500 group-hover:text-green-400 transition-colors" />
+              </a>
+            ) : (
+              <div className="bg-gray-800 rounded-lg border border-gray-700 px-4 py-3">
+                <p className="text-xs text-gray-500">No folder linked for this project.</p>
+              </div>
+            )}
+          </div>
 
           {/* System Specs */}
           <Section title="System Specs">
