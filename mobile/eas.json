@@ -27,7 +27,8 @@
   "submit": {
     "production": {
       "ios": {
-        "ascAppId": "com.microgridenergy.portal"
+        "ascAppId": "6761740782",
+        "bundleIdentifier": "com.microgridenergy.portal"
       }
     }
   }
