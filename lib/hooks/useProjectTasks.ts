@@ -608,7 +608,11 @@ export function useProjectTasks(opts: UseProjectTasksOptions): UseProjectTasksRe
       pm: currentUser?.name ?? null,
       pm_id: currentUser?.id ?? null,
     }
-    const { data } = await supabase.from('notes').insert(note).select('id, task_id, text, time, pm').single()
+    const { data, error } = await supabase.from('notes').insert(note).select('id, task_id, text, time, pm').single()
+    if (error) {
+      console.error('[addTaskNote] insert failed:', error.message)
+      return
+    }
     if (data) {
       setTaskNotes(prev => {
         const next = { ...prev }

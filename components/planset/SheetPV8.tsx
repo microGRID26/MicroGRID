@@ -15,9 +15,8 @@ export function SheetPV8({ data }: { data: PlansetData }) {
   const string75CMax = 30
   const stringUsable = Math.min(stringCorrected, string75CMax)
 
-  // Derive battery FLA from capacity: P(W) / V(nom) per stack
-  // batteryCapacity is per unit in kWh, batteriesPerStack units per stack, 51.2V nominal
-  const battFla = parseFloat(((data.batteryCapacity * 1000 * data.batteriesPerStack) / 51.2).toFixed(2))
+  // Battery FLA from inverter battery port max continuous current spec
+  const battFla = data.batteryMaxCurrentA
   const battFla125 = parseFloat((battFla * 1.25).toFixed(1))
   const batt4Ampacity = 95
   const battCorrected = parseFloat((batt4Ampacity * conduitFillFactor * tempFactor).toFixed(1))

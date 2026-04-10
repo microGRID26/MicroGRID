@@ -100,6 +100,7 @@ export const DURACELL_DEFAULTS = {
   acConduit: '1-1/4" EMT',
   dcRunLengthFt: 100,
   acRunLengthFt: 50,
+  batteryMaxCurrentA: 62.5, // Duracell Max Hybrid inverter battery port max continuous current
   batteryWire: '#4/0 AWG CU THWN-2',
   batteryConduit: '2" EMT',
   batteryEgc: '#6 AWG CU',
@@ -229,6 +230,7 @@ export interface PlansetData {
   acConduit: string
   dcRunLengthFt: number
   acRunLengthFt: number
+  batteryMaxCurrentA: number
   batteryWire: string
   batteryConduit: string
 
@@ -292,6 +294,7 @@ export interface PlansetOverrides {
   acConduit?: string
   dcRunLengthFt?: number
   acRunLengthFt?: number
+  batteryMaxCurrentA?: number
   batteryWire?: string
   batteryConduit?: string
 
@@ -454,6 +457,7 @@ export function buildPlansetData(project: Project, overrides: PlansetOverrides =
     dcConduit: overrides.dcConduit ?? d.dcConduit,
     dcRunLengthFt: overrides.dcRunLengthFt ?? d.dcRunLengthFt,
     acRunLengthFt: overrides.acRunLengthFt ?? d.acRunLengthFt,
+    batteryMaxCurrentA: overrides.batteryMaxCurrentA ?? d.batteryMaxCurrentA,
     acWireInverter: overrides.acWireInverter ?? d.acWireInverter,
     acWireToPanel: overrides.acWireToPanel ?? d.acWireToPanel,
     acConduit: overrides.acConduit ?? d.acConduit,

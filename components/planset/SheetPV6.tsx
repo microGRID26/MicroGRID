@@ -13,9 +13,9 @@ export function SheetPV6({ data }: { data: PlansetData }) {
     const vmp = s.vmpNominal
     const isc = data.panelIsc
     const runFt = data.dcRunLengthFt
-    const wireSize = '#10'
+    const wireSize = data.dcStringWire.match(/#\d+/)?.[0] ?? '#10'
     const conductor125 = isc * 1.25
-    const vDrop = (2 * runFt * isc * wireResistance[wireSize]) / 1000
+    const vDrop = (2 * runFt * isc * (wireResistance[wireSize] ?? wireResistance['#10'])) / 1000
     const vDropPct = (vDrop / vmp) * 100
     return {
       id: i + 1, modules: s.modules, mppt: s.mppt,
@@ -30,10 +30,12 @@ export function SheetPV6({ data }: { data: PlansetData }) {
   const acCurrentPerInv = data.inverterAcPower * 1000 / 240
   const acCurrent125 = acCurrentPerInv * 1.25
   const acRunFt = data.acRunLengthFt
-  const acVDrop = (2 * acRunFt * acCurrentPerInv * wireResistance['#4']) / 1000
+  // Extract wire gauge from data for resistance lookup (e.g., '#6 AWG CU THWN-2' → '#6')
+  const acWireGauge = data.acWireToPanel.match(/#\d+/)?.[0] ?? '#4'
+  const acVDrop = (2 * acRunFt * acCurrentPerInv * (wireResistance[acWireGauge] ?? wireResistance['#4'])) / 1000
   const acVDropPct = (acVDrop / 240) * 100
 
-  const battCurrentPerStack = 23000 / 51.2
+  const battCurrentPerStack = data.batteryMaxCurrentA
   const battCurrent125 = battCurrentPerStack * 1.25
 
   const stringFuseCalc = data.panelIsc * 1.56
