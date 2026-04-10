@@ -383,6 +383,17 @@ export function calculateSldLayout(config: SldConfig): SldLayout {
       })
     })
 
+    // ── DURACELL POWER CENTER container (groups battery + combiner + inverter) ──
+    const dpcPad = 12
+    const dpcLeft = battX - dpcPad
+    const dpcTop = Math.min(battY, invTopY) - dpcPad - 14
+    const dpcRight = invX + invSize.w + dpcPad
+    const dpcBottom = Math.max(battY + battStackSize.h, invTopY + invSize.h) + dpcPad
+    elements.push({ type: 'rect', x: dpcLeft, y: dpcTop, w: dpcRight - dpcLeft, h: dpcBottom - dpcTop, strokeWidth: 1.5, dash: true })
+    elements.push({ type: 'text', x: (dpcLeft + dpcRight) / 2, y: dpcTop + 10, text: 'DURACELL POWER CENTER', fontSize: 6, anchor: 'middle', bold: true })
+    // Battery combiner label (between battery and inverter)
+    elements.push({ type: 'text', x: battWireMidX, y: invTopY + invSize.h / 2 - 18, text: '(N) BATTERY COMBINER', fontSize: 4.5, anchor: 'middle', bold: true })
+
     // Monitoring gateway (right of inverter)
     const gwX = invX + invSize.w + 25
     elements.push({ type: 'line', x1: invX + invSize.w, y1: invTopY + 20, x2: gwX, y2: invTopY + 20, strokeWidth: 1 })
