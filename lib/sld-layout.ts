@@ -434,24 +434,48 @@ export function calculateSldLayout(config: SldConfig): SldLayout {
     elements.push({ type: 'callout', cx: invCenterX + 22, cy: busY - 5, number: 6 })
   }
 
-  // ── Bus bar ──
+  // ── Main Service Panel (physical rectangle, not just a line) ──
   const busLeft = 50
-  const busRight = sheetWidth - utilChainWidth - 20 // leave full chain width + margin
-  elements.push({ type: 'line', x1: busLeft, y1: busY, x2: busRight, y2: busY, strokeWidth: 3 })
-  elements.push({ type: 'text', x: (busLeft + busRight) / 2, y: busY - 12, text: '(E) EXISTING HOME ELECTRICAL PANEL', fontSize: 7, anchor: 'middle', bold: true })
-  elements.push({ type: 'text', x: (busLeft + busRight) / 2, y: busY + 22, text: '200A RATED, 240V, SINGLE PHASE', fontSize: 5, anchor: 'middle', fill: '#666' })
+  const busRight = sheetWidth - utilChainWidth - 20
+  const mspW = busRight - busLeft
+  const mspH = 30
+  // MSP as a physical box
+  elements.push({ type: 'rect', x: busLeft, y: busY - mspH / 2, w: mspW, h: mspH, strokeWidth: 2 })
+  elements.push({ type: 'text', x: (busLeft + busRight) / 2, y: busY - 2, text: '(E) MAIN SERVICE PANEL', fontSize: 7, anchor: 'middle', bold: true })
+  elements.push({ type: 'text', x: (busLeft + busRight) / 2, y: busY + 8, text: '200A RATED, 240V, 200A MAIN (EXTERIOR MOUNTED)', fontSize: 4.5, anchor: 'middle', fill: '#666' })
+  // Bus bar inside MSP
+  elements.push({ type: 'line', x1: busLeft + 10, y1: busY, x2: busRight - 10, y2: busY, strokeWidth: 2.5 })
 
-  // Main breaker
-  elements.push({ type: 'line', x1: busLeft - 10, y1: busY, x2: busLeft - 10, y2: busY + 30, strokeWidth: 1.5 })
-  elements.push({ type: 'breaker', x: busLeft - 10, y: busY + 25, label: '(E) MAIN', amps: '200A' })
-  elements.push({ type: 'text', x: busLeft - 10, y: busY + 55, text: 'TO LOADS', fontSize: 5.5, anchor: 'middle' })
+  // Sub panel (above MSP, dashed — interior mounted)
+  const subPanelY = busY - mspH / 2 - 50
+  elements.push({ type: 'rect', x: busLeft, y: subPanelY, w: 130, h: 35, dash: true, strokeWidth: 1 })
+  elements.push({ type: 'text', x: busLeft + 65, y: subPanelY + 14, text: '(E) SUB PANEL', fontSize: 5.5, anchor: 'middle', fill: '#666' })
+  elements.push({ type: 'text', x: busLeft + 65, y: subPanelY + 24, text: '200A RATED, 240V (INTERIOR)', fontSize: 4.5, anchor: 'middle', fill: '#999' })
+  elements.push({ type: 'line', x1: busLeft + 65, y1: subPanelY + 35, x2: busLeft + 65, y2: busY - mspH / 2, strokeWidth: 1, dash: true })
+
+  // Surge protector (above MSP right side)
+  const surgeX = busRight - 100
+  elements.push({ type: 'rect', x: surgeX, y: subPanelY, w: 90, h: 30, strokeWidth: 1 })
+  elements.push({ type: 'text', x: surgeX + 45, y: subPanelY + 14, text: '(N) SURGE PROTECTOR', fontSize: 5, anchor: 'middle', bold: true })
+  elements.push({ type: 'text', x: surgeX + 45, y: subPanelY + 24, text: 'TYPE 2 SPD', fontSize: 4.5, anchor: 'middle', fill: '#666' })
+  elements.push({ type: 'line', x1: surgeX + 45, y1: subPanelY + 30, x2: surgeX + 45, y2: busY - mspH / 2, strokeWidth: 1 })
+
+  // Main breaker (left of MSP, drops down)
+  elements.push({ type: 'line', x1: busLeft + 15, y1: busY + mspH / 2, x2: busLeft + 15, y2: busY + mspH / 2 + 25, strokeWidth: 1.5 })
+  elements.push({ type: 'breaker', x: busLeft + 15, y: busY + mspH / 2 + 20, label: '(E) MAIN', amps: '200A' })
+  elements.push({ type: 'text', x: busLeft + 15, y: busY + mspH / 2 + 50, text: 'TO LOADS', fontSize: 5.5, anchor: 'middle' })
+
+  // IMO Rapid Shutdown Device (left of sub panel)
+  elements.push({ type: 'rect', x: busLeft + 145, y: subPanelY, w: 100, h: 30, strokeWidth: 1 })
+  elements.push({ type: 'text', x: busLeft + 195, y: subPanelY + 14, text: '(N) IMO RAPID SHUTDOWN', fontSize: 5, anchor: 'middle', bold: true })
+  elements.push({ type: 'text', x: busLeft + 195, y: subPanelY + 24, text: 'DEVICE', fontSize: 5, anchor: 'middle', bold: true })
 
   // Ground system
-  elements.push({ type: 'line', x1: busLeft + 50, y1: busY, x2: busLeft + 50, y2: busY + 50, strokeWidth: 1 })
-  elements.push({ type: 'ground', x: busLeft + 50, y: busY + 50 })
-  elements.push({ type: 'text', x: busLeft + 65, y: busY + 50, text: 'EXISTING GROUNDING', fontSize: 5.5 })
-  elements.push({ type: 'text', x: busLeft + 65, y: busY + 58, text: 'ELECTRODE SYSTEM', fontSize: 5.5 })
-  elements.push({ type: 'text', x: busLeft + 65, y: busY + 66, text: 'NEC 250.50, 250.52(A)', fontSize: 5, fill: '#666' })
+  elements.push({ type: 'line', x1: busLeft + 80, y1: busY + mspH / 2, x2: busLeft + 80, y2: busY + mspH / 2 + 45, strokeWidth: 1 })
+  elements.push({ type: 'ground', x: busLeft + 80, y: busY + mspH / 2 + 45 })
+  elements.push({ type: 'text', x: busLeft + 95, y: busY + mspH / 2 + 45, text: 'EXISTING GROUNDING', fontSize: 5.5 })
+  elements.push({ type: 'text', x: busLeft + 95, y: busY + mspH / 2 + 53, text: 'ELECTRODE SYSTEM', fontSize: 5.5 })
+  elements.push({ type: 'text', x: busLeft + 95, y: busY + mspH / 2 + 61, text: 'NEC 250.50, 250.52(A)', fontSize: 5, fill: '#666' })
 
   // Existing PV breaker (if applicable)
   if (config.existingPanels) {
