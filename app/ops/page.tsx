@@ -113,6 +113,7 @@ function OpsContent({ embedded }: { embedded: boolean }) {
       setLoading(true)
       let q = db().from('projects')
         .select('id, name, stage, disposition, sale_date, install_complete_date, pto_date, contract, systemkw, financier, utility, ahj, city, pm, consultant, blocker, battery, energy_community, module, module_qty, dealer')
+        .not('disposition', 'in', '("In Service","Loyalty","Cancelled","Legal","On Hold")')
         .limit(5000)
       if (orgId) q = q.eq('org_id', orgId)
       const { data } = await q

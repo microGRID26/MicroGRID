@@ -69,6 +69,7 @@ function SubmitNTPModal({
         .from('projects')
         .select('id, name, stage')
         .or(`name.ilike.%${q}%,id.ilike.%${q}%`)
+        .not('disposition', 'in', '("In Service","Loyalty","Cancelled","Legal","On Hold")')
         .eq('org_id', orgId)
         .limit(10)
       setSearchResults((data ?? []) as { id: string; name: string; stage: string }[])

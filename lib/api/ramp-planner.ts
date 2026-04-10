@@ -212,7 +212,7 @@ export async function loadRampConfig(orgId?: string): Promise<RampConfig> {
   let query = db().from('ramp_config').select('config_key, value').limit(50)
   if (orgId) query = query.eq('org_id', orgId)
   const { data } = await query
-  const map = new Map<string, string>((data ?? []).map((r: any) => [r.config_key as string, r.value as string]))
+  const map = new Map<string, string>((data ?? []).map((r: { config_key: string; value: string }) => [r.config_key, r.value]))
   return {
     warehouse_lat: parseFloat(map.get('warehouse_lat') ?? '29.9902'),
     warehouse_lng: parseFloat(map.get('warehouse_lng') ?? '-95.4152'),
@@ -237,12 +237,14 @@ export async function updateRampConfig(key: string, value: string): Promise<bool
 // ── Readiness CRUD ───────────────────────────────────────────────────────────
 
 export async function loadReadiness(projectId: string): Promise<ProjectReadiness | null> {
-  const { data } = await db().from('project_readiness').select('id, project_id, ntp_approved, redesign_complete, ext_scope_clear, permit_clear, equipment_ready, utility_approved, hoa_approved, blocker_notes, readiness_score, updated_at, updated_by').eq('project_id', projectId).single()
+  const { data, error } = await db().from('project_readiness').select('id, project_id, ntp_approved, redesign_complete, ext_scope_clear, permit_clear, equipment_ready, utility_approved, hoa_approved, blocker_notes, readiness_score, updated_at, updated_by').eq('project_id', projectId).single()
+  if (error && error.code !== 'PGRST116') console.error('[loadReadiness]', error.message)
   return data as ProjectReadiness | null
 }
 
 export async function loadAllReadiness(): Promise<Map<string, ProjectReadiness>> {
-  const { data } = await db().from('project_readiness').select('id, project_id, ntp_approved, redesign_complete, ext_scope_clear, permit_clear, equipment_ready, utility_approved, hoa_approved, blocker_notes, readiness_score, updated_at, updated_by').limit(2000)
+  const { data, error } = await db().from('project_readiness').select('id, project_id, ntp_approved, redesign_complete, ext_scope_clear, permit_clear, equipment_ready, utility_approved, hoa_approved, blocker_notes, readiness_score, updated_at, updated_by').limit(2000)
+  if (error) console.error('[loadAllReadiness]', error.message)
   const map = new Map<string, ProjectReadiness>()
   for (const r of (data ?? []) as ProjectReadiness[]) {
     map.set(r.project_id, r)
@@ -254,9 +256,11 @@ export async function upsertReadiness(projectId: string, updates: Partial<Projec
   const score = computeReadinessScore(updates)
   const existing = await loadReadiness(projectId)
   if (existing) {
-    await db().from('project_readiness').update({ ...updates, readiness_score: score, updated_by: updatedBy }).eq('project_id', projectId)
+    const { error } = await db().from('project_readiness').update({ ...updates, readiness_score: score, updated_by: updatedBy }).eq('project_id', projectId)
+    if (error) console.error('[upsertReadiness] update failed:', error.message)
   } else {
-    await db().from('project_readiness').insert({ ...updates, project_id: projectId, readiness_score: score, updated_by: updatedBy })
+    const { error } = await db().from('project_readiness').insert({ ...updates, project_id: projectId, readiness_score: score, updated_by: updatedBy })
+    if (error) console.error('[upsertReadiness] insert failed:', error.message)
   }
 }
 
@@ -274,7 +278,7 @@ export async function loadAllSchedule(): Promise<RampScheduleEntry[]> {
 
 export async function loadScheduledProjectIds(): Promise<Set<string>> {
   const { data } = await db().from('ramp_schedule').select('project_id').not('status', 'in', '(cancelled,rescheduled)').limit(2000)
-  return new Set((data ?? []).map((r: any) => r.project_id))
+  return new Set((data ?? []).map((r: { project_id: string }) => r.project_id))
 }
 
 export async function scheduleProject(entry: Partial<RampScheduleEntry>): Promise<RampScheduleEntry | null> {

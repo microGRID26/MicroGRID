@@ -249,7 +249,8 @@ export function NewProjectModal({ onClose, onCreated, existingIds, pms }: Props)
 
     // ── Auto-create Google Drive folder structure ────────────────────────
     try {
-      const driveWebhookUrl = process.env.NEXT_PUBLIC_DRIVE_WEBHOOK_URL || 'https://script.google.com/macros/s/AKfycbzQY8s4U51KatxMY-y0aXfpYIBDWL4IqhpiAMHm3dWvH94OlrdCN2UovgQz_zO1qknV/exec'
+      const driveWebhookUrl = process.env.NEXT_PUBLIC_DRIVE_WEBHOOK_URL
+      if (!driveWebhookUrl) { console.warn('[NewProject] NEXT_PUBLIC_DRIVE_WEBHOOK_URL not set — skipping Drive folder creation'); throw new Error('Drive webhook not configured') }
       const driveRes = await fetch(driveWebhookUrl, {
         method: 'POST',
         body: JSON.stringify({ project_id: id, customer_name: form.name.trim() }),

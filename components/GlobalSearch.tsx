@@ -19,6 +19,7 @@ export function GlobalSearch() {
       const { data } = await db().from('projects')
         .select('id, name, city, stage')
         .or(`name.ilike.%${escaped}%,id.ilike.%${escaped}%,city.ilike.%${escaped}%`)
+        .not('disposition', 'in', '("In Service","Loyalty","Cancelled","Legal","On Hold")')
         .limit(8)
       if (!stale && data) setResults(data as { id: string; name: string; city: string | null; stage: string }[])
     }, 200)

@@ -352,7 +352,8 @@ async function recalcInvoiceTotals(invoiceId: string): Promise<void> {
   const subtotal = (items as { total: number }[] | null)?.reduce((sum, i) => sum + i.total, 0) ?? 0
   const currentTax = (inv as { tax: number } | null)?.tax ?? 0
   const total = subtotal + currentTax
-  await supabase.from('invoices').update({ subtotal, total }).eq('id', invoiceId)
+  const { error: recalcErr } = await supabase.from('invoices').update({ subtotal, total }).eq('id', invoiceId)
+  if (recalcErr) console.error('[recalcInvoiceTotals]', recalcErr.message)
 }
 
 // ── Org name enrichment ──────────────────────────────────────────────────

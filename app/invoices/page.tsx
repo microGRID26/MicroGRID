@@ -62,11 +62,13 @@ export default function InvoicesPage() {
     // Load line items for all invoices
     if (data.length > 0) {
       const invoiceIds = data.map(inv => inv.id)
-      const { data: items } = await supabase
+      const { data: items, error: itemsErr } = await supabase
         .from('invoice_line_items')
         .select('*')
         .in('invoice_id', invoiceIds)
         .order('sort_order', { ascending: true })
+        .limit(5000)
+      if (itemsErr) console.error('[invoices] line items load failed:', itemsErr.message)
       if (items) {
         const map: Record<string, InvoiceLineItem[]> = {}
         for (const item of items as InvoiceLineItem[]) {

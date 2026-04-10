@@ -504,11 +504,12 @@ export function useProjectTasks(opts: UseProjectTasksOptions): UseProjectTasksRe
       const milestoneField = taskId === 'ntp' ? 'm1_status' : taskId === 'install_done' ? 'm2_status' : taskId === 'pto' ? 'm3_status' : null
       if (milestoneField) {
         // Only update if status is currently null/empty (not already submitted/funded)
-        const { data: fundingRow } = await supabase
+        const { data: fundingRow, error: fundingReadErr } = await supabase
           .from('project_funding')
           .select(milestoneField)
           .eq('project_id', pid)
           .maybeSingle()
+        if (fundingReadErr) console.error('[useProjectTasks] funding read failed:', fundingReadErr.message)
         const currentMsStatus = fundingRow?.[milestoneField]
         if (!currentMsStatus || currentMsStatus === 'Not Submitted') {
           const { error: fundingErr } = await supabase.from('project_funding').upsert(

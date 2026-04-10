@@ -48,6 +48,7 @@ export interface TicketComment {
   author_id: string | null
   message: string
   is_internal: boolean
+  image_url: string | null
   created_at: string
 }
 
@@ -226,12 +227,13 @@ export async function updateTicket(id: string, updates: Partial<Ticket>): Promis
       // Look up the user ID for the new assignee
       const { data: users } = await db().from('users').select('id').eq('name', updates.assigned_to).limit(1)
       if (users?.[0]) {
-        await db().from('mention_notifications').insert({
+        const { error: mentionErr } = await db().from('mention_notifications').insert({
           project_id: existing.project_id ?? 'TICKET',
           mentioned_user_id: users[0].id,
           mentioned_by: 'System',
           message: `Ticket ${existing.ticket_number} assigned to you: ${existing.title}`,
         })
+        if (mentionErr) console.error('[updateTicket] mention_notifications insert failed:', mentionErr.message)
         // Trigger notification refresh
         // (client-side dispatch handled by caller)
       }
@@ -317,7 +319,8 @@ export async function addTicketComment(ticketId: string, author: string, authorI
   }
 
   // Touch updated_at so mobile badge can detect new activity
-  await db().from('tickets').update({ updated_at: new Date().toISOString() }).eq('id', ticketId)
+  const { error: touchErr } = await db().from('tickets').update({ updated_at: new Date().toISOString() }).eq('id', ticketId)
+  if (touchErr) console.error('[addTicketComment] updated_at touch failed:', touchErr.message)
 
   // Send push notification to customer (fire-and-forget, non-internal only)
   if (!isInternal && ticket?.project_id) {
@@ -364,7 +367,8 @@ export async function loadTicketHistory(ticketId: string): Promise<TicketHistory
 }
 
 export async function addTicketHistory(ticketId: string, field: string, oldValue: string | null, newValue: string | null, changedBy: string, changedById?: string): Promise<void> {
-  await db().from('ticket_history').insert({ ticket_id: ticketId, field, old_value: oldValue, new_value: newValue, changed_by: changedBy, changed_by_id: changedById })
+  const { error } = await db().from('ticket_history').insert({ ticket_id: ticketId, field, old_value: oldValue, new_value: newValue, changed_by: changedBy, changed_by_id: changedById })
+  if (error) console.error('[addTicketHistory]', error.message)
 }
 
 // ── Categories & Resolution Codes ────────────────────────────────────────────

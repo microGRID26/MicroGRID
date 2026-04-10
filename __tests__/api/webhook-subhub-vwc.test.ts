@@ -153,20 +153,16 @@ describe('POST /api/webhooks/subhub-vwc — auth', () => {
     expect(res.status).toBe(200)
   })
 
-  it('allows request when no secret is configured (optional auth)', async () => {
+  it('returns 503 when no secret is configured (auth required)', async () => {
     delete process.env.SUBHUB_WEBHOOK_SECRET
-
-    const insertChain = mockChain({ data: null, error: null })
-    insertChain.then = vi.fn((cb: any) => Promise.resolve({ data: null, error: null }).then(cb))
-    mockDb.from.mockReturnValue(insertChain)
 
     const req = makeRequest({ event_type: 'survey_completed' })
     const { POST } = await import('@/app/api/webhooks/subhub-vwc/route')
     const res = await POST(req)
 
-    expect(res.status).toBe(200)
+    expect(res.status).toBe(503)
     const json = await res.json()
-    expect(json.received).toBe(true)
+    expect(json.error).toContain('not configured')
   })
 })
 
@@ -174,11 +170,11 @@ describe('POST /api/webhooks/subhub-vwc — auth', () => {
 
 describe('POST /api/webhooks/subhub-vwc — validation', () => {
   it('returns 400 for invalid JSON', async () => {
-    delete process.env.SUBHUB_WEBHOOK_SECRET
+    process.env.SUBHUB_WEBHOOK_SECRET = 'test-secret'
 
     const req = new Request('https://localhost/api/webhooks/subhub-vwc', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer test-secret' },
       body: 'not{valid}json',
     })
     const { POST } = await import('@/app/api/webhooks/subhub-vwc/route')
@@ -194,7 +190,7 @@ describe('POST /api/webhooks/subhub-vwc — validation', () => {
 
 describe('POST /api/webhooks/subhub-vwc — storage', () => {
   it('successfully stores payload and returns stored: true', async () => {
-    delete process.env.SUBHUB_WEBHOOK_SECRET
+    process.env.SUBHUB_WEBHOOK_SECRET = 'test-secret'
 
     const insertChain = mockChain({ data: null, error: null })
     insertChain.then = vi.fn((cb: any) => Promise.resolve({ data: null, error: null }).then(cb))
@@ -206,7 +202,7 @@ describe('POST /api/webhooks/subhub-vwc — storage', () => {
       event_type: 'survey_completed',
       answers: { question1: 'Yes', question2: 'No' },
     }
-    const req = makeRequest(payload)
+    const req = makeRequest(payload, { Authorization: 'Bearer test-secret' })
     const { POST } = await import('@/app/api/webhooks/subhub-vwc/route')
     const res = await POST(req)
 
@@ -228,7 +224,7 @@ describe('POST /api/webhooks/subhub-vwc — storage', () => {
   })
 
   it('handles storage failure gracefully (returns 200 with stored: false)', async () => {
-    delete process.env.SUBHUB_WEBHOOK_SECRET
+    process.env.SUBHUB_WEBHOOK_SECRET = 'test-secret'
 
     const insertChain = mockChain({ data: null, error: null })
     insertChain.then = vi.fn((cb: any) =>
@@ -236,7 +232,7 @@ describe('POST /api/webhooks/subhub-vwc — storage', () => {
     )
     mockDb.from.mockReturnValue(insertChain)
 
-    const req = makeRequest({ event_type: 'survey_completed' })
+    const req = makeRequest({ event_type: 'survey_completed' }, { Authorization: 'Bearer test-secret' })
     const { POST } = await import('@/app/api/webhooks/subhub-vwc/route')
     const res = await POST(req)
 
@@ -252,13 +248,15 @@ describe('POST /api/webhooks/subhub-vwc — storage', () => {
 // ── Identifier extraction ────────────────────────────────────────────────────
 
 describe('POST /api/webhooks/subhub-vwc — identifier extraction', () => {
+  const AUTH = { Authorization: 'Bearer test-secret' }
+
   it('extracts source_id from subhub_id field', async () => {
-    delete process.env.SUBHUB_WEBHOOK_SECRET
+    process.env.SUBHUB_WEBHOOK_SECRET = 'test-secret'
     const insertChain = mockChain({ data: null, error: null })
     insertChain.then = vi.fn((cb: any) => Promise.resolve({ data: null, error: null }).then(cb))
     mockDb.from.mockReturnValue(insertChain)
 
-    const req = makeRequest({ subhub_id: 'SH-100' })
+    const req = makeRequest({ subhub_id: 'SH-100' }, AUTH)
     const { POST } = await import('@/app/api/webhooks/subhub-vwc/route')
     await POST(req)
 
@@ -267,12 +265,12 @@ describe('POST /api/webhooks/subhub-vwc — identifier extraction', () => {
   })
 
   it('extracts source_id from subhub_uuid field', async () => {
-    delete process.env.SUBHUB_WEBHOOK_SECRET
+    process.env.SUBHUB_WEBHOOK_SECRET = 'test-secret'
     const insertChain = mockChain({ data: null, error: null })
     insertChain.then = vi.fn((cb: any) => Promise.resolve({ data: null, error: null }).then(cb))
     mockDb.from.mockReturnValue(insertChain)
 
-    const req = makeRequest({ subhub_uuid: 'uuid-abc-123' })
+    const req = makeRequest({ subhub_uuid: 'uuid-abc-123' }, AUTH)
     const { POST } = await import('@/app/api/webhooks/subhub-vwc/route')
     await POST(req)
 
@@ -281,12 +279,12 @@ describe('POST /api/webhooks/subhub-vwc — identifier extraction', () => {
   })
 
   it('extracts source_id from proposal_id field', async () => {
-    delete process.env.SUBHUB_WEBHOOK_SECRET
+    process.env.SUBHUB_WEBHOOK_SECRET = 'test-secret'
     const insertChain = mockChain({ data: null, error: null })
     insertChain.then = vi.fn((cb: any) => Promise.resolve({ data: null, error: null }).then(cb))
     mockDb.from.mockReturnValue(insertChain)
 
-    const req = makeRequest({ proposal_id: 'PROP-42' })
+    const req = makeRequest({ proposal_id: 'PROP-42' }, AUTH)
     const { POST } = await import('@/app/api/webhooks/subhub-vwc/route')
     await POST(req)
 
@@ -295,12 +293,12 @@ describe('POST /api/webhooks/subhub-vwc — identifier extraction', () => {
   })
 
   it('extracts source_id from project_id field', async () => {
-    delete process.env.SUBHUB_WEBHOOK_SECRET
+    process.env.SUBHUB_WEBHOOK_SECRET = 'test-secret'
     const insertChain = mockChain({ data: null, error: null })
     insertChain.then = vi.fn((cb: any) => Promise.resolve({ data: null, error: null }).then(cb))
     mockDb.from.mockReturnValue(insertChain)
 
-    const req = makeRequest({ project_id: 'PROJ-99' })
+    const req = makeRequest({ project_id: 'PROJ-99' }, AUTH)
     const { POST } = await import('@/app/api/webhooks/subhub-vwc/route')
     await POST(req)
 
@@ -309,12 +307,12 @@ describe('POST /api/webhooks/subhub-vwc — identifier extraction', () => {
   })
 
   it('extracts customer_name from name field', async () => {
-    delete process.env.SUBHUB_WEBHOOK_SECRET
+    process.env.SUBHUB_WEBHOOK_SECRET = 'test-secret'
     const insertChain = mockChain({ data: null, error: null })
     insertChain.then = vi.fn((cb: any) => Promise.resolve({ data: null, error: null }).then(cb))
     mockDb.from.mockReturnValue(insertChain)
 
-    const req = makeRequest({ name: 'Bob Smith' })
+    const req = makeRequest({ name: 'Bob Smith' }, AUTH)
     const { POST } = await import('@/app/api/webhooks/subhub-vwc/route')
     await POST(req)
 
@@ -323,12 +321,12 @@ describe('POST /api/webhooks/subhub-vwc — identifier extraction', () => {
   })
 
   it('extracts customer_name from customer_name field', async () => {
-    delete process.env.SUBHUB_WEBHOOK_SECRET
+    process.env.SUBHUB_WEBHOOK_SECRET = 'test-secret'
     const insertChain = mockChain({ data: null, error: null })
     insertChain.then = vi.fn((cb: any) => Promise.resolve({ data: null, error: null }).then(cb))
     mockDb.from.mockReturnValue(insertChain)
 
-    const req = makeRequest({ customer_name: 'Alice Jones' })
+    const req = makeRequest({ customer_name: 'Alice Jones' }, AUTH)
     const { POST } = await import('@/app/api/webhooks/subhub-vwc/route')
     await POST(req)
 
@@ -337,12 +335,12 @@ describe('POST /api/webhooks/subhub-vwc — identifier extraction', () => {
   })
 
   it('extracts event_type from event field', async () => {
-    delete process.env.SUBHUB_WEBHOOK_SECRET
+    process.env.SUBHUB_WEBHOOK_SECRET = 'test-secret'
     const insertChain = mockChain({ data: null, error: null })
     insertChain.then = vi.fn((cb: any) => Promise.resolve({ data: null, error: null }).then(cb))
     mockDb.from.mockReturnValue(insertChain)
 
-    const req = makeRequest({ event: 'call_scheduled' })
+    const req = makeRequest({ event: 'call_scheduled' }, AUTH)
     const { POST } = await import('@/app/api/webhooks/subhub-vwc/route')
     await POST(req)
 
@@ -351,12 +349,12 @@ describe('POST /api/webhooks/subhub-vwc — identifier extraction', () => {
   })
 
   it('defaults event_type to "unknown" when not provided', async () => {
-    delete process.env.SUBHUB_WEBHOOK_SECRET
+    process.env.SUBHUB_WEBHOOK_SECRET = 'test-secret'
     const insertChain = mockChain({ data: null, error: null })
     insertChain.then = vi.fn((cb: any) => Promise.resolve({ data: null, error: null }).then(cb))
     mockDb.from.mockReturnValue(insertChain)
 
-    const req = makeRequest({ some_other_field: 'value' })
+    const req = makeRequest({ some_other_field: 'value' }, AUTH)
     const { POST } = await import('@/app/api/webhooks/subhub-vwc/route')
     await POST(req)
 
@@ -365,12 +363,12 @@ describe('POST /api/webhooks/subhub-vwc — identifier extraction', () => {
   })
 
   it('sets source_id to null when no identifier fields present', async () => {
-    delete process.env.SUBHUB_WEBHOOK_SECRET
+    process.env.SUBHUB_WEBHOOK_SECRET = 'test-secret'
     const insertChain = mockChain({ data: null, error: null })
     insertChain.then = vi.fn((cb: any) => Promise.resolve({ data: null, error: null }).then(cb))
     mockDb.from.mockReturnValue(insertChain)
 
-    const req = makeRequest({ random_field: 'value' })
+    const req = makeRequest({ random_field: 'value' }, AUTH)
     const { POST } = await import('@/app/api/webhooks/subhub-vwc/route')
     await POST(req)
 

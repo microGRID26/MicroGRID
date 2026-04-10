@@ -154,9 +154,11 @@ export async function reviewNTPRequest(
   if (status === 'approved' && data?.project_id) {
     const { data: existing } = await supabase.from('project_readiness').select('id').eq('project_id', data.project_id).maybeSingle()
     if (existing) {
-      await supabase.from('project_readiness').update({ ntp_approved: true }).eq('project_id', data.project_id)
+      const { error: readErr } = await supabase.from('project_readiness').update({ ntp_approved: true }).eq('project_id', data.project_id)
+      if (readErr) console.error('[reviewNTPRequest] readiness update failed:', readErr.message)
     } else {
-      await supabase.from('project_readiness').insert({ project_id: data.project_id, ntp_approved: true, readiness_score: 20 })
+      const { error: readErr } = await supabase.from('project_readiness').insert({ project_id: data.project_id, ntp_approved: true, readiness_score: 20 })
+      if (readErr) console.error('[reviewNTPRequest] readiness insert failed:', readErr.message)
     }
   }
 

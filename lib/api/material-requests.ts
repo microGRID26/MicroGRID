@@ -130,6 +130,7 @@ export async function loadMaterialRequests(filters?: {
       .from('projects')
       .select('id, name, address')
       .in('id', projectIds)
+      .not('disposition', 'in', '("In Service","Loyalty","Cancelled","Legal","On Hold")')
     if (projects && Array.isArray(projects)) {
       const projMap: Record<string, { name: string; address: string | null }> = {}
       for (const p of projects as { id: string; name: string; address: string | null }[]) {

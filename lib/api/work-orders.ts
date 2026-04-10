@@ -173,6 +173,7 @@ export async function loadWorkOrders(filters?: WorkOrderFilters, orgId?: string)
       .from('projects')
       .select('id, name, city, address, pm')
       .in('id', projectIds)
+      .not('disposition', 'in', '("In Service","Loyalty","Cancelled","Legal","On Hold")')
     if (projData) {
       const projMap: Record<string, { name: string; city: string | null; address: string | null; pm: string | null }> = {}
       ;(projData as { id: string; name: string; city: string | null; address: string | null; pm: string | null }[]).forEach(p => {

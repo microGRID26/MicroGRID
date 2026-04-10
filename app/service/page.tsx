@@ -110,7 +110,7 @@ export default function ServicePage() {
   const [sortAsc, setSortAsc] = useState(false)
 
   const { data: calls, loading, refresh, totalCount, hasMore, currentPage, nextPage, prevPage, setPage } = useSupabaseQuery('service_calls', {
-    select: 'id, project_id, status, type, issue, created, date, resolution, pm, pm_id, priority, project:projects(name, city)',
+    select: 'id, project_id, status, type, issue, created, date, resolution, pm, pm_id, priority, ticket_category, project:projects(name, city)',
     order: { column: 'created', ascending: false },
     page: 1,
     pageSize: 100,

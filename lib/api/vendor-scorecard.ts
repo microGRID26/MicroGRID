@@ -129,7 +129,7 @@ export async function loadVendorScores(orgId?: string): Promise<VendorScore[]> {
     .from('engineering_assignments')
     .select('id, assigned_org, status, revision_count, created_at, completed_at')
     .limit(5000)
-  if (orgId) assignQ = assignQ.eq('org_id', orgId)
+  // Note: engineering_assignments has no org_id column — org scoping is via project_id FK + RLS
   const { data: assignments, error: assignErr } = await assignQ
 
   if (assignErr) console.error('[loadVendorScores] assignments:', assignErr.message)
@@ -143,7 +143,7 @@ export async function loadVendorScores(orgId?: string): Promise<VendorScore[]> {
     .from('work_orders')
     .select('id, type, status, assigned_crew, assigned_to, time_on_site_minutes, created_at, completed_at')
     .limit(5000)
-  if (orgId) woQ = woQ.eq('org_id', orgId)
+  // Note: work_orders has no org_id column — org scoping is via project_id FK + RLS
   const { data: workOrders, error: woErr } = await woQ
 
   if (woErr) console.error('[loadVendorScores] work_orders:', woErr.message)

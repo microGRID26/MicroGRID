@@ -134,6 +134,7 @@ export default function SchedulePage() {
   // Sales role: load project IDs to filter schedule
   const { data: salesProjectsRaw } = useSupabaseQuery('projects', {
     select: 'id, consultant, advisor',
+    filters: { disposition: { not_in: ['In Service', 'Loyalty', 'Cancelled', 'Legal', 'On Hold'] } },
     limit: 5000,
   })
   const salesProjectIds = useMemo(() => {

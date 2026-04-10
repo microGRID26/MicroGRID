@@ -19,9 +19,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Server not configured' }, { status: 503 })
   }
 
-  // Optional auth — if secret is set, validate it
+  // Auth — require secret when configured, reject all requests when not configured
   const webhookSecret = process.env.SUBHUB_WEBHOOK_SECRET
-  if (webhookSecret) {
+  if (!webhookSecret) {
+    console.error('[subhub-vwc] SUBHUB_WEBHOOK_SECRET not configured — rejecting request')
+    return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 })
+  }
+  {
     const authHeader = req.headers.get('authorization') ?? req.headers.get('x-webhook-secret') ?? ''
     const candidate = authHeader.replace(/^Bearer\s+/i, '')
     const a = Buffer.from(candidate)

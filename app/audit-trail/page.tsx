@@ -74,7 +74,8 @@ export default function AuditTrailPage() {
       .from('audit_log')
       .select('changed_by, field')
       .limit(5000)
-      .then(({ data }: { data: { changed_by: string | null; field: string }[] | null }) => {
+      .then(({ data, error }: { data: { changed_by: string | null; field: string }[] | null; error: { message: string } | null }) => {
+        if (error) { console.error('[audit-trail] dropdown load failed:', error.message); return }
         if (data) {
           setFieldNames([...new Set(data.map(d => d.field).filter(Boolean))].sort())
           setUserNames(

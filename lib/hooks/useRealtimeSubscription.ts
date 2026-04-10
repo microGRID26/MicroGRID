@@ -84,8 +84,8 @@ export function useRealtimeSubscription(table: TableName, options: RealtimeOptio
 
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer)
-      channelRef.current = null
       supabase.removeChannel(channel)
+      channelRef.current = null
     }
   }, [table, event, filter, debounceMs, enabled])
 

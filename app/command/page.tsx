@@ -45,6 +45,7 @@ export default function CommandPage() {
   // ── Data queries via useSupabaseQuery ────────────────────────────────────
   const projectsQuery = useSupabaseQuery('projects', {
     select: 'id, name, city, pm, pm_id, stage, stage_date, sale_date, contract, blocker, disposition, address, financier, follow_up_date, consultant, advisor, install_complete_date',
+    filters: { disposition: { not_in: ['In Service', 'Loyalty', 'Cancelled', 'Legal', 'On Hold'] } },
     order: { column: 'stage_date', ascending: true },
     limit: 5000,
   })

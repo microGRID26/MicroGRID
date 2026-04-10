@@ -254,8 +254,10 @@ export default function FieldPage() {
           .from('projects')
           .select('id, name, phone, email, address, city, zip, systemkw, module, module_qty, stage, stage_date, blocker, survey_date, install_complete_date, pto_date')
           .in('id', pids)
+          .limit(500)
         if (projError) {
           setToast({ message: 'Failed to load project details', type: 'error' })
+          return
         }
         if (projData) {
           (projData as ProjRow[]).forEach((p) => { projMap[p.id] = p })

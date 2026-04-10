@@ -48,6 +48,17 @@ const ALLOWED_TABLES = [
   'change_orders',
 ]
 
+/** Per-table column allowlists to prevent AI-injected column names from joining across tables */
+const ALLOWED_COLUMNS: Record<string, Set<string>> = {
+  projects: new Set(['id','name','city','zip','address','phone','email','sale_date','stage','stage_date','pm','pm_id','disposition','contract','systemkw','financier','ahj','utility','advisor','consultant','blocker','financing_type','down_payment','module','module_qty','inverter','inverter_qty','battery','battery_qty','hoa','esid','permit_number','utility_app_number','permit_fee','reinspection_fee','dealer','site_surveyor','follow_up_date','city_permit_date','utility_permit_date','ntp_date','survey_scheduled_date','survey_date','install_scheduled_date','install_complete_date','city_inspection_date','utility_inspection_date','pto_date','in_service_date','created_at','org_id']),
+  project_funding: new Set(['project_id','m1_amount','m1_funded_date','m1_cb','m1_cb_credit','m1_notes','m1_status','m2_amount','m2_funded_date','m2_cb','m2_cb_credit','m2_notes','m2_status','m3_amount','m3_funded_date','m3_projected','m3_notes','m3_status','nonfunded_code_1','nonfunded_code_2','nonfunded_code_3']),
+  task_state: new Set(['project_id','task_id','status','reason','completed_date','started_date','notes','follow_up_date']),
+  notes: new Set(['id','project_id','task_id','text','time','pm','pm_id']),
+  schedule: new Set(['id','project_id','crew_id','job_type','date','time','notes','status','pm']),
+  service_calls: new Set(['id','project_id','status','type','issue','created','date','resolution','pm','priority','ticket_category']),
+  change_orders: new Set(['id','project_id','title','status','priority','type','reason','assigned_to','created_by','notes']),
+}
+
 const MAX_RESULTS = 500
 
 // ── System Prompt ────────────────────────────────────────────────────────────
@@ -266,6 +277,23 @@ function validateQueryPlan(plan: QueryPlan): string | null {
     for (const f of plan.query.clientFilters) {
       if (!f.field || !f.op) return `Invalid client filter: ${JSON.stringify(f)}`
       if (!validClientOps.includes(f.op)) return `Invalid client filter op: ${f.op}`
+      const clientAllowed = ALLOWED_COLUMNS[plan.query.table]
+      if (clientAllowed && !clientAllowed.has(f.field)) return `Client filter field "${f.field}" is not allowed on table "${plan.query.table}"`
+    }
+  }
+
+  // Validate select columns and filter fields against per-table allowlist
+  const allowedCols = ALLOWED_COLUMNS[plan.query.table]
+  if (allowedCols) {
+    const selectCols = plan.query.select.split(',').map(c => c.trim())
+    for (const col of selectCols) {
+      if (!allowedCols.has(col)) return `Column "${col}" is not allowed on table "${plan.query.table}"`
+    }
+    for (const f of plan.query.filters) {
+      if (!allowedCols.has(f.field)) return `Filter field "${f.field}" is not allowed on table "${plan.query.table}"`
+    }
+    if (plan.query.order && !allowedCols.has(plan.query.order.column)) {
+      return `Order column "${plan.query.order.column}" is not allowed on table "${plan.query.table}"`
     }
   }
 
@@ -377,22 +405,23 @@ export async function POST(request: NextRequest) {
   // Server-side auth check — Manager+ role required.
   // This supplements the frontend role gate (isManager check in the Reports page).
   const userSupabase = getUserSupabase(request)
-  if (userSupabase) {
-    const { data: { user } } = await userSupabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
-    }
-    // Check role — only manager, admin, super_admin allowed
-    const { data: userRow } = await userSupabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-    const role = userRow?.role ?? 'user'
-    const allowedRoles = ['manager', 'admin', 'super_admin']
-    if (!allowedRoles.includes(role)) {
-      return NextResponse.json({ error: 'Insufficient permissions. Manager role required.' }, { status: 403 })
-    }
+  if (!userSupabase) {
+    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+  }
+  const { data: { user } } = await userSupabase.auth.getUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+  }
+  // Check role — only manager, admin, super_admin allowed
+  const { data: userRow } = await userSupabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+  const role = userRow?.role ?? 'user'
+  const allowedRoles = ['manager', 'admin', 'super_admin']
+  if (!allowedRoles.includes(role)) {
+    return NextResponse.json({ error: 'Insufficient permissions. Manager role required.' }, { status: 403 })
   }
 
   // Parse request body
@@ -467,7 +496,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: 'Failed to parse AI response as a query plan',
-          rawResponse: textBlock.text,
+          // rawResponse omitted to avoid leaking AI internals
         },
         { status: 500 }
       )

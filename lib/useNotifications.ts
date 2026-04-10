@@ -64,7 +64,7 @@ export function useNotifications(filterPrefs?: NotificationFilterPrefs) {
       .from('projects')
       .select('id, name, blocker, stage')
       .eq('pm_id', user.id)
-      .not('disposition', 'in', '("Cancelled","In Service")') as { data: { id: string; name: string; blocker: string | null; stage: string }[] | null }
+      .not('disposition', 'in', '("In Service","Loyalty","Cancelled","Legal","On Hold")') as { data: { id: string; name: string; blocker: string | null; stage: string }[] | null }
 
     const pids = (projects ?? []).map(p => p.id)
 

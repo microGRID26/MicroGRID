@@ -53,7 +53,7 @@ export default function FundingPage() {
   const loadDashboard = useCallback(async () => {
     const supabase = createClient()
     const { data, error } = await db().from('funding_dashboard').select('*').limit(5000)
-    if (error) console.error('funding_dashboard load failed:', error)
+    if (error) { console.error('funding_dashboard load failed:', error); setDashLoading(false); return }
     if (data) {
       const projList: Project[] = []
       const fundMap: Record<string, ProjectFunding> = {}

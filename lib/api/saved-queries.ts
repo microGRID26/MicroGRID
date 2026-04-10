@@ -77,11 +77,12 @@ export async function deleteSavedQuery(id: string): Promise<boolean> {
 export async function recordQueryRun(id: string): Promise<boolean> {
   // Use Supabase RPC or direct SQL for atomic increment
   // Fallback: read-then-write (acceptable at current scale — single user per query)
-  const { data: current } = await db()
+  const { data: current, error: readErr } = await db()
     .from('saved_queries')
     .select('run_count')
     .eq('id', id)
     .single()
+  if (readErr) { console.error('[recordQueryRun] read failed:', readErr.message); return false }
 
   const count = ((current as { run_count: number } | null)?.run_count ?? 0) + 1
 

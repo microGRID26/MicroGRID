@@ -10,6 +10,21 @@ import {
 import type { TestCase, TestResult, TestComment, Status } from '../types'
 import { STATUS_META, PRIORITY_META } from '../types'
 
+/** Strip dangerous tags/attributes from HTML to prevent stored XSS */
+function sanitizeHtml(html: string): string {
+  return html
+    .replace(/<script[\s>][\s\S]*?<\/script>/gi, '')
+    .replace(/<iframe[\s>][\s\S]*?<\/iframe>/gi, '')
+    .replace(/<object[\s>][\s\S]*?<\/object>/gi, '')
+    .replace(/<embed[\s>][\s\S]*?>/gi, '')
+    .replace(/<link[\s>][\s\S]*?>/gi, '')
+    .replace(/\son\w+\s*=\s*"[^"]*"/gi, '')
+    .replace(/\son\w+\s*=\s*'[^']*'/gi, '')
+    .replace(/\son\w+\s*=[^\s>]*/gi, '')
+    .replace(/javascript\s*:/gi, '')
+    .replace(/data\s*:[^;]*;base64/gi, '')
+}
+
 interface SplitViewProps {
   selectedCase: TestCase
   resultMap: Map<string, TestResult>
@@ -152,7 +167,7 @@ export function SplitView({
             <h4 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Instructions</h4>
             <div
               className="text-sm text-gray-300 leading-relaxed prose prose-sm prose-invert max-w-none [&_ol]:list-decimal [&_ul]:list-disc [&_li]:ml-4"
-              dangerouslySetInnerHTML={{ __html: selectedCase.instructions }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(selectedCase.instructions) }}
             />
           </div>
         )}
@@ -161,7 +176,7 @@ export function SplitView({
             <h4 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Expected Result</h4>
             <div
               className="text-sm text-gray-300 leading-relaxed bg-gray-900 rounded-lg px-4 py-3 border border-gray-700"
-              dangerouslySetInnerHTML={{ __html: selectedCase.expected_result }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(selectedCase.expected_result) }}
             />
           </div>
         )}

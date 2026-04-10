@@ -128,6 +128,7 @@ export async function searchProjects(query: string, limit = 10): Promise<Pick<Pr
   const { data, error } = await supabase.from('projects')
     .select('id, name, city, pm, pm_id, systemkw, module, module_qty, financier, financing_type, contract, tpo_escalator, financier_adv_pmt, down_payment')
     .or(`name.ilike.%${escaped}%,id.ilike.%${escaped}%`)
+    .not('disposition', 'in', INACTIVE_DISPOSITION_FILTER)
     .limit(limit)
   if (error) console.error('project search failed:', error)
   return (data ?? []) as Pick<Project, 'id' | 'name' | 'city' | 'pm' | 'pm_id' | 'systemkw' | 'module' | 'module_qty' | 'financier' | 'financing_type' | 'contract' | 'tpo_escalator' | 'financier_adv_pmt' | 'down_payment'>[]

@@ -473,9 +473,11 @@ export async function updatePurchaseOrderStatus(id: string, status: string): Pro
     if (po?.project_id) {
       const { data: existing } = await supabase.from('project_readiness').select('id').eq('project_id', po.project_id).maybeSingle()
       if (existing) {
-        await supabase.from('project_readiness').update({ equipment_ready: true }).eq('project_id', po.project_id)
+        const { error: readErr } = await supabase.from('project_readiness').update({ equipment_ready: true }).eq('project_id', po.project_id)
+        if (readErr) console.error('[updatePurchaseOrderStatus] readiness update failed:', readErr.message)
       } else {
-        await supabase.from('project_readiness').insert({ project_id: po.project_id, equipment_ready: true, readiness_score: 20 })
+        const { error: readErr } = await supabase.from('project_readiness').insert({ project_id: po.project_id, equipment_ready: true, readiness_score: 20 })
+        if (readErr) console.error('[updatePurchaseOrderStatus] readiness insert failed:', readErr.message)
       }
     }
   }
