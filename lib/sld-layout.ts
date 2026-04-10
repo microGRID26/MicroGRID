@@ -313,10 +313,11 @@ export function calculateSldLayout(config: SldConfig): SldLayout {
       elements.push({ type: 'text', x: stringsBaseX, y: sy + moduleH + 10, text: '(N) RSD-D-20 ROOFTOP MODULE LEVEL RAPID SHUTDOWN DEVICE', fontSize: 4.5, fill: '#444' })
     })
 
-    // Roof array wiring label
+    // Roof array wiring label (RUSH style: bold header + detail lines)
     const afterStringsY = stringsTopY + stringsForInv.length * stringRowH + 5
-    elements.push({ type: 'text', x: stringsBaseX, y: afterStringsY, text: 'ROOF ARRAY WIRING', fontSize: 5.5, fill: '#444', italic: true })
-    elements.push({ type: 'text', x: stringsBaseX + 10, y: afterStringsY + 10, text: `${config.dcStringWire ?? '#10 AWG CU PV WIRE'}, ${config.dcConduit ?? '3/4" EMT TYPE CONDUIT'}`, fontSize: 5, fill: '#444', italic: true })
+    elements.push({ type: 'text', x: stringsBaseX, y: afterStringsY, text: 'ROOF ARRAY WIRING', fontSize: 5.5, bold: true })
+    elements.push({ type: 'text', x: stringsBaseX + 10, y: afterStringsY + 9, text: `${config.dcStringWire ?? '#10 AWG CU PV WIRE'}, PV TRUNK CABLE`, fontSize: 4.5, fill: '#444' })
+    elements.push({ type: 'text', x: stringsBaseX + 10, y: afterStringsY + 17, text: `INSTALLED IN ${config.dcConduit ?? '3/4" EMT TYPE CONDUIT'}`, fontSize: 4.5, fill: '#444' })
 
     // Junction box — centered under string arrays
     const jbW = 65, jbBoxH = 24
@@ -411,6 +412,22 @@ export function calculateSldLayout(config: SldConfig): SldLayout {
     // CT clamp text below bridge
     elements.push({ type: 'text', x: gwX + gwSize.w / 2, y: wbY + wbSize.h + 10, text: 'CT CLAMPS ON MAIN', fontSize: 3.5, anchor: 'middle', fill: '#666' })
     elements.push({ type: 'text', x: gwX + gwSize.w / 2, y: wbY + wbSize.h + 17, text: 'SERVICE ENTRANCE', fontSize: 3.5, anchor: 'middle', fill: '#666' })
+
+    // CAN to CANBUS cable (from gateway to DPC)
+    elements.push({ type: 'text', x: gwX - 5, y: invTopY + 5, text: 'CAN TO CANBUS CABLE', fontSize: 3.5, fill: '#999', anchor: 'end' })
+
+    // Link extension cable (between inverters in multi-inverter systems)
+    if (config.inverterCount > 1 && inv < config.inverterCount - 1) {
+      const nextCol = (inv + 1) % MAX_COLS_PER_ROW
+      const nextRow = Math.floor((inv + 1) / MAX_COLS_PER_ROW)
+      if (nextRow === row) {
+        // Same row — draw horizontal link cable
+        const nextCenterX = rowColumnsStartX(row) + nextCol * (invColWidth + COL_GAP) + invColWidth / 2
+        const linkY = invTopY + invSize.h - 10
+        elements.push({ type: 'line', x1: invX + invSize.w, y1: linkY, x2: nextCenterX - invSize.w / 2, y2: linkY, strokeWidth: 0.5, dash: true })
+        elements.push({ type: 'text', x: (invX + invSize.w + nextCenterX - invSize.w / 2) / 2, y: linkY - 4, text: 'LINK EXTENSION CABLE', fontSize: 3, anchor: 'middle', fill: '#999' })
+      }
+    }
 
     // AC output from inverter
     elements.push({ type: 'line', x1: invCenterX, y1: invTopY + invSize.h, x2: invCenterX, y2: acDiscY - 15, strokeWidth: 1.5 })
