@@ -164,8 +164,8 @@ export function calculateSldLayout(config: SldConfig): SldLayout {
   const invColWidth = battStackSize.w + 60 + invSize.w + 30 + gwSize.w
   const maxColsInAnyRow = Math.min(config.inverterCount, MAX_COLS_PER_ROW)
   const totalInvWidth = invColWidth * maxColsInAnyRow + (maxColsInAnyRow - 1) * COL_GAP
-  // Utility chain: wire(30) + genDisc(80) + wire(25) + RGM(70) + wire(25) + meter(44dia) + wire(50) + gridText(80) + margin(30)
-  const utilChainWidth = 30 + 80 + 25 + 70 + 25 + 44 + 50 + 80 + 30 // = 434
+  // Utility chain: wire(30) + servDisc(100) + wire(25) + RGM(70) + wire(25) + meter(44dia) + wire(50) + gridText(80) + margin(30)
+  const utilChainWidth = 30 + 100 + 25 + 70 + 25 + 44 + 50 + 80 + 30 // = 454
   const sheetWidth = Math.max(totalInvWidth + 100 + utilChainWidth + 50, 1600)
 
   // Per-row vertical sections
@@ -398,8 +398,9 @@ export function calculateSldLayout(config: SldConfig): SldLayout {
     const gwX = invX + invSize.w + 25
     elements.push({ type: 'line', x1: invX + invSize.w, y1: invTopY + 20, x2: gwX, y2: invTopY + 20, strokeWidth: 1 })
     elements.push({ type: 'rect', x: gwX, y: invTopY + 8, w: gwSize.w, h: gwSize.h, strokeWidth: 0.8 })
-    elements.push({ type: 'text', x: gwX + gwSize.w / 2, y: invTopY + 19, text: '(N) DCCGRGL', fontSize: 4.5, anchor: 'middle' })
-    elements.push({ type: 'text', x: gwX + gwSize.w / 2, y: invTopY + 28, text: 'DURACELL MONITORING GW', fontSize: 3.8, anchor: 'middle' })
+    elements.push({ type: 'text', x: gwX + gwSize.w / 2, y: invTopY + 16, text: '(N) DURACELL DTL', fontSize: 5, anchor: 'middle', bold: true })
+    elements.push({ type: 'text', x: gwX + gwSize.w / 2, y: invTopY + 25, text: 'SPQHD-CELL', fontSize: 4, anchor: 'middle', fill: '#666' })
+    elements.push({ type: 'text', x: gwX + gwSize.w / 2, y: invTopY + 33, text: 'MONITORING GATEWAY', fontSize: 3.8, anchor: 'middle', fill: '#666' })
 
     // Wireless bridge below gateway
     const wbY = invTopY + 8 + gwSize.h + 8
@@ -512,20 +513,26 @@ export function calculateSldLayout(config: SldConfig): SldLayout {
   const utilStartX = busRight
   elements.push({ type: 'line', x1: utilStartX, y1: busY, x2: utilStartX + 30, y2: busY, strokeWidth: 1.5 })
 
-  // Generation disconnect
+  // Service Disconnect (RUSH: visible, lockable, labeled)
   const gdX = utilStartX + 30
-  elements.push({ type: 'rect', x: gdX, y: busY - 14, w: 80, h: 28 })
-  elements.push({ type: 'text', x: gdX + 40, y: busY - 2, text: '(N) GENERATION', fontSize: 5.5, anchor: 'middle' })
-  elements.push({ type: 'text', x: gdX + 40, y: busY + 8, text: 'DISCONNECT', fontSize: 5.5, anchor: 'middle' })
-  // Callout ⑦ — Generation Disconnect
-  elements.push({ type: 'callout', cx: gdX + 40, cy: busY - 24, number: 7 })
+  elements.push({ type: 'rect', x: gdX, y: busY - 20, w: 100, h: 40 })
+  elements.push({ type: 'text', x: gdX + 50, y: busY - 8, text: '(N) SERVICE DISCONNECT', fontSize: 5, anchor: 'middle', bold: true })
+  elements.push({ type: 'text', x: gdX + 50, y: busY + 2, text: 'VISIBLE, LOCKABLE,', fontSize: 4.5, anchor: 'middle', fill: '#444' })
+  elements.push({ type: 'text', x: gdX + 50, y: busY + 10, text: 'LABELED DISCONNECT', fontSize: 4.5, anchor: 'middle', fill: '#444' })
+
+  // Expansion fittings annotation
+  elements.push({ type: 'text', x: gdX + 50, y: busY + 28, text: '(N) EXPANSION FITTINGS', fontSize: 4, anchor: 'middle', fill: '#333', bold: true })
+  elements.push({ type: 'text', x: gdX + 50, y: busY + 36, text: 'REQUIRED ON BOTH ENDS', fontSize: 4, anchor: 'middle', fill: '#666' })
+  elements.push({ type: 'text', x: gdX + 50, y: busY + 44, text: 'OF THE PVC PIPE', fontSize: 4, anchor: 'middle', fill: '#666' })
+  // Callout ⑦ — Service Disconnect
+  elements.push({ type: 'callout', cx: gdX + 50, cy: busY - 30, number: 7 })
 
   // Wire to RGM
-  elements.push({ type: 'line', x1: gdX + 80, y1: busY, x2: gdX + 105, y2: busY, strokeWidth: 1.5 })
-  elements.push({ type: 'text', x: gdX + 85, y: busY + 12, text: '(3) #20 AWG CU THWN-2', fontSize: 4, fill: '#444', italic: true })
+  elements.push({ type: 'line', x1: gdX + 100, y1: busY, x2: gdX + 125, y2: busY, strokeWidth: 1.5 })
+  elements.push({ type: 'text', x: gdX + 105, y: busY + 12, text: '(3) #20 AWG CU THWN-2', fontSize: 4, fill: '#444', italic: true })
 
   // Revenue Grade Meter
-  const rgmX = gdX + 105
+  const rgmX = gdX + 125
   elements.push({ type: 'rect', x: rgmX, y: busY - 13, w: 70, h: 26, strokeWidth: 0.8 })
   elements.push({ type: 'text', x: rgmX + 35, y: busY - 2, text: '(N) RGM', fontSize: 4.5, anchor: 'middle' })
   elements.push({ type: 'text', x: rgmX + 35, y: busY + 7, text: 'PC-PRO-RGM-W2-BA-L', fontSize: 3.8, anchor: 'middle' })
@@ -541,8 +548,18 @@ export function calculateSldLayout(config: SldConfig): SldLayout {
   elements.push({ type: 'circle', cx: umCx, cy: busY, r: 22, strokeWidth: 1.5 })
   elements.push({ type: 'text', x: umCx, y: busY - 3, text: 'M', fontSize: 8, anchor: 'middle', bold: true })
   elements.push({ type: 'text', x: umCx, y: busY + 8, text: 'kWh', fontSize: 5.5, anchor: 'middle' })
-  elements.push({ type: 'text', x: umCx, y: busY - 28, text: 'UTILITY METER', fontSize: 5.5, anchor: 'middle', fill: '#666' })
-  elements.push({ type: 'text', x: umCx, y: busY - 36, text: '(E) BIDIRECTIONAL', fontSize: 5.5, anchor: 'middle', fill: '#666' })
+  elements.push({ type: 'text', x: umCx, y: busY - 28, text: `UTILITY: ${config.utility.toUpperCase()}`, fontSize: 4.5, anchor: 'middle', fill: '#666' })
+  elements.push({ type: 'text', x: umCx, y: busY - 36, text: '(E) BI-DIRECTIONAL', fontSize: 5, anchor: 'middle', fill: '#666' })
+  elements.push({ type: 'text', x: umCx, y: busY - 44, text: 'UTILITY METER', fontSize: 5.5, anchor: 'middle', fill: '#666', bold: true })
+  // Meter + ESID numbers
+  if (config.meter) {
+    elements.push({ type: 'text', x: umCx, y: busY + 28, text: `METER: ${config.meter}`, fontSize: 4, anchor: 'middle', fill: '#555' })
+  }
+  if (config.esid) {
+    elements.push({ type: 'text', x: umCx, y: busY + 36, text: `ESID: ${config.esid}`, fontSize: 4, anchor: 'middle', fill: '#555' })
+  }
+  // Wire type annotation
+  elements.push({ type: 'text', x: umCx, y: busY + 46, text: '3-WIRE, 120/240V', fontSize: 4, anchor: 'middle', fill: '#555' })
   // Callout ⑨ — Utility Meter
   elements.push({ type: 'callout', cx: umCx, cy: busY - 48, number: 9 })
 
