@@ -28,12 +28,12 @@ export const DEFAULT_EXISTING: ExistingSystem = {
 }
 
 export const DEFAULT_TARGET: TargetSystem = {
-  panelModel: 'AMP 410W Domestic',
-  panelWattage: 410,
-  panelVoc: 37.4,
-  panelVmp: 31.3,
-  panelIsc: 14.0,
-  panelImp: 13.1,
+  panelModel: 'Seraphim SRP-440-BTD-BG',
+  panelWattage: 440,
+  panelVoc: 41.5,
+  panelVmp: 34.8,
+  panelIsc: 13.5,
+  panelImp: 12.65,
   panelLengthMm: 1722,
   panelWidthMm: 1134,
   inverterModel: 'Duracell Power Center Max Hybrid 15kW',

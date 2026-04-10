@@ -16,21 +16,60 @@ export const MICROGRID_CONTRACTOR = {
   license: '32259',
 }
 
+// ── Panel Presets ─────────────────────────────────────────────────────────
+
+export interface PanelPreset {
+  panelModel: string
+  panelWattage: number
+  panelVoc: number
+  panelVmp: number
+  panelIsc: number
+  panelImp: number
+  panelLengthMm: number
+  panelWidthMm: number
+  vocTempCoeff: number
+  designTempLow: number
+}
+
+export const PANEL_PRESETS: Record<string, PanelPreset> = {
+  'seraphim-440': {
+    panelModel: 'Seraphim SRP-440-BTD-BG',
+    panelWattage: 440,
+    panelVoc: 41.5,
+    panelVmp: 34.8,
+    panelIsc: 13.5,
+    panelImp: 12.65,
+    panelLengthMm: 1722,
+    panelWidthMm: 1134,
+    vocTempCoeff: -0.28,
+    designTempLow: -5,
+  },
+  'amp-410': {
+    panelModel: 'AMP 410W Domestic',
+    panelWattage: 410,
+    panelVoc: 37.4,
+    panelVmp: 31.3,
+    panelIsc: 14.0,
+    panelImp: 13.1,
+    panelLengthMm: 1722,
+    panelWidthMm: 1134,
+    vocTempCoeff: -0.28,
+    designTempLow: -5,
+  },
+}
+
+/** Labels for the preset dropdown */
+export const PANEL_PRESET_LABELS: Record<string, string> = {
+  'seraphim-440': 'Seraphim SRP-440-BTD-BG (440W)',
+  'amp-410': 'AMP 410W Domestic',
+}
+
 // ── Duracell Equipment Defaults ────────────────────────────────────────────
-// All current redesigns use the same target equipment.
+// Default panel is Seraphim 440 for EDGE redesigns.
 
 export const DURACELL_DEFAULTS = {
-  // Panel
-  panelModel: 'AMP 410W Domestic',
-  panelWattage: 410,
-  panelVoc: 37.4,
-  panelVmp: 31.3,
-  panelIsc: 14.0,
-  panelImp: 13.1,
-  panelLengthMm: 1722,
-  panelWidthMm: 1134,
-  vocTempCoeff: -0.28,
-  designTempLow: -5,
+  // Panel — Seraphim SRP-440-BTD-BG (standard for EDGE redesigns)
+  ...PANEL_PRESETS['seraphim-440'],
 
   // Inverter
   inverterModel: 'Duracell Power Center Max Hybrid 15kW',
@@ -267,6 +306,10 @@ export interface PlansetOverrides {
   attachmentModel?: string
   railModel?: string
 
+  // Temperature coefficients
+  vocTempCoeff?: number
+  designTempLow?: number
+
   // Site plan image URL
   sitePlanImageUrl?: string
 
@@ -298,8 +341,10 @@ export function buildPlansetData(project: Project, overrides: PlansetOverrides =
   const totalStorageKwh = batteryCount * batteryCapacity
 
   // Voc temperature correction
-  const absCoeff = Math.abs(d.vocTempCoeff / 100)
-  const vocCorrected = panelVoc * (1 + absCoeff * (25 - d.designTempLow))
+  const vocTempCoeff = overrides.vocTempCoeff ?? d.vocTempCoeff
+  const designTempLow = overrides.designTempLow ?? d.designTempLow
+  const absCoeff = Math.abs(vocTempCoeff / 100)
+  const vocCorrected = panelVoc * (1 + absCoeff * (25 - designTempLow))
 
   // PCS current setting: 120% of bus rating, or per MSP
   const busRatingNum = parseInt(mspBusRating) || 200
@@ -421,7 +466,7 @@ export function buildPlansetData(project: Project, overrides: PlansetOverrides =
     contractor: MICROGRID_CONTRACTOR,
     vocCorrected: parseFloat(vocCorrected.toFixed(2)),
     pcsCurrentSetting,
-    sheetTotal: 9,
+    sheetTotal: 9,  // base count — page.tsx overrides when enhanced mode adds sheets
     drawnDate,
   }
 }

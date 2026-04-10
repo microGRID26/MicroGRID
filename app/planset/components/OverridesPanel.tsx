@@ -3,8 +3,17 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, X } from 'lucide-react'
 import type { PlansetData, PlansetOverrides, PlansetString, PlansetRoofFace } from '@/lib/planset-types'
+import { PANEL_PRESETS, PANEL_PRESET_LABELS } from '@/lib/planset-types'
 
-export function OverridesPanel({ data, strings, onStringsChange, overrides, onOverridesChange, roofFaces, onRoofFacesChange, sitePlanImageUrl, onSitePlanChange }: {
+export interface PlansetImageUrls {
+  sitePlanImageUrl: string | null
+  roofPlanImageUrl: string | null
+  aerialPhotoUrl: string | null
+  housePhotoUrl: string | null
+  equipmentPhotos: (string | null)[]  // up to 4 slots
+}
+
+export function OverridesPanel({ data, strings, onStringsChange, overrides, onOverridesChange, roofFaces, onRoofFacesChange, images, onImagesChange, enhanced = false }: {
   data: PlansetData
   strings: PlansetString[]
   onStringsChange: (s: PlansetString[]) => void
@@ -12,9 +21,12 @@ export function OverridesPanel({ data, strings, onStringsChange, overrides, onOv
   onOverridesChange: (o: PlansetOverrides) => void
   roofFaces: PlansetRoofFace[]
   onRoofFacesChange: (rf: PlansetRoofFace[]) => void
-  sitePlanImageUrl: string | null
-  onSitePlanChange: (url: string | null) => void
+  images: PlansetImageUrls
+  onImagesChange: (imgs: PlansetImageUrls) => void
+  enhanced?: boolean
 }) {
+  const sitePlanImageUrl = images.sitePlanImageUrl
+  const onSitePlanChange = (url: string | null) => onImagesChange({ ...images, sitePlanImageUrl: url })
   const [expanded, setExpanded] = useState(false)
 
   const updateStringModules = (idx: number, modules: number) => {
@@ -58,6 +70,57 @@ export function OverridesPanel({ data, strings, onStringsChange, overrides, onOv
 
       {expanded && (
         <div className="px-4 pb-4 border-t border-gray-700 pt-4 space-y-6">
+          {/* Equipment Preset (enhanced mode) */}
+          {enhanced && <div>
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Equipment Preset</h3>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Panel Preset</label>
+                <select
+                  value={Object.entries(PANEL_PRESETS).find(([, p]) => p.panelModel === (overrides.panelModel ?? data.panelModel))?.[0] ?? 'custom'}
+                  onChange={e => {
+                    const presetKey = e.target.value
+                    if (presetKey === 'custom') return
+                    const preset = PANEL_PRESETS[presetKey]
+                    if (preset) {
+                      onOverridesChange({
+                        ...overrides,
+                        panelModel: preset.panelModel,
+                        panelWattage: preset.panelWattage,
+                        panelVoc: preset.panelVoc,
+                        panelVmp: preset.panelVmp,
+                        panelIsc: preset.panelIsc,
+                        panelImp: preset.panelImp,
+                      })
+                    }
+                  }}
+                  className="w-full px-2 py-1.5 bg-gray-900 border border-gray-600 rounded text-sm text-white focus:ring-1 focus:ring-green-500 focus:outline-none"
+                >
+                  {Object.entries(PANEL_PRESET_LABELS).map(([key, label]) => (
+                    <option key={key} value={key}>{label}</option>
+                  ))}
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Panel Model</label>
+                <input
+                  value={overrides.panelModel ?? data.panelModel}
+                  onChange={e => onOverridesChange({ ...overrides, panelModel: e.target.value })}
+                  className="w-full px-2 py-1.5 bg-gray-900 border border-gray-600 rounded text-sm text-white focus:ring-1 focus:ring-green-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Panel Wattage</label>
+                <input
+                  value={overrides.panelWattage ?? data.panelWattage}
+                  onChange={e => onOverridesChange({ ...overrides, panelWattage: parseInt(e.target.value) || 0 })}
+                  className="w-full px-2 py-1.5 bg-gray-900 border border-gray-600 rounded text-sm text-white focus:ring-1 focus:ring-green-500 focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>}
+
           {/* Building overrides */}
           <div>
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Building Info</h3>
@@ -159,6 +222,106 @@ export function OverridesPanel({ data, strings, onStringsChange, overrides, onOv
               )}
             </div>
           </div>
+
+          {/* Enhanced mode image uploads */}
+          {enhanced && <>
+          {/* Roof Plan Image (PV-4) */}
+          <div>
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Roof Plan Image (PV-4)</h3>
+            <div className="flex items-center gap-4">
+              <label className="cursor-pointer px-4 py-2 text-sm rounded-md bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors">
+                {images.roofPlanImageUrl ? 'Replace Image' : 'Upload SubHub Layout'}
+                <input type="file" accept="image/*" className="hidden" onChange={e => {
+                  const file = e.target.files?.[0]; if (!file) return
+                  if (images.roofPlanImageUrl) URL.revokeObjectURL(images.roofPlanImageUrl)
+                  onImagesChange({ ...images, roofPlanImageUrl: URL.createObjectURL(file) }); e.target.value = ''
+                }} />
+              </label>
+              {images.roofPlanImageUrl && (
+                <button onClick={() => { URL.revokeObjectURL(images.roofPlanImageUrl!); onImagesChange({ ...images, roofPlanImageUrl: null }) }}
+                  className="px-3 py-2 text-sm rounded-md bg-red-600/20 text-red-400 hover:bg-red-600/30 transition-colors">Remove</button>
+              )}
+              {images.roofPlanImageUrl && <img src={images.roofPlanImageUrl} alt="Roof plan preview" className="h-16 rounded border border-gray-600" />}
+              {!images.roofPlanImageUrl && <span className="text-xs text-gray-500">Upload the SubHub satellite screenshot showing module placement on roof.</span>}
+            </div>
+          </div>
+
+          {/* Cover Page Images (PV-1) */}
+          <div>
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Cover Page Images (PV-1)</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs text-gray-500 block mb-2">Aerial Photo (drone shot)</label>
+                <div className="flex items-center gap-3">
+                  <label className="cursor-pointer px-3 py-1.5 text-xs rounded-md bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors">
+                    {images.aerialPhotoUrl ? 'Replace' : 'Upload'}
+                    <input type="file" accept="image/*" className="hidden" onChange={e => {
+                      const file = e.target.files?.[0]; if (!file) return
+                      if (images.aerialPhotoUrl) URL.revokeObjectURL(images.aerialPhotoUrl)
+                      onImagesChange({ ...images, aerialPhotoUrl: URL.createObjectURL(file) }); e.target.value = ''
+                    }} />
+                  </label>
+                  {images.aerialPhotoUrl && (
+                    <button onClick={() => { URL.revokeObjectURL(images.aerialPhotoUrl!); onImagesChange({ ...images, aerialPhotoUrl: null }) }}
+                      className="text-xs text-red-400 hover:text-red-300">Remove</button>
+                  )}
+                  {images.aerialPhotoUrl && <img src={images.aerialPhotoUrl} alt="Aerial preview" className="h-12 rounded border border-gray-600" />}
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 block mb-2">House Photo (street view)</label>
+                <div className="flex items-center gap-3">
+                  <label className="cursor-pointer px-3 py-1.5 text-xs rounded-md bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors">
+                    {images.housePhotoUrl ? 'Replace' : 'Upload'}
+                    <input type="file" accept="image/*" className="hidden" onChange={e => {
+                      const file = e.target.files?.[0]; if (!file) return
+                      if (images.housePhotoUrl) URL.revokeObjectURL(images.housePhotoUrl)
+                      onImagesChange({ ...images, housePhotoUrl: URL.createObjectURL(file) }); e.target.value = ''
+                    }} />
+                  </label>
+                  {images.housePhotoUrl && (
+                    <button onClick={() => { URL.revokeObjectURL(images.housePhotoUrl!); onImagesChange({ ...images, housePhotoUrl: null }) }}
+                      className="text-xs text-red-400 hover:text-red-300">Remove</button>
+                  )}
+                  {images.housePhotoUrl && <img src={images.housePhotoUrl} alt="House preview" className="h-12 rounded border border-gray-600" />}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Equipment Elevation Photos (PV-3.1) */}
+          <div>
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Equipment Photos (PV-3.1)</h3>
+            <div className="grid grid-cols-4 gap-3">
+              {['Exterior Wall 1', 'Exterior Wall 2', 'Interior Wall', 'Equipment Detail'].map((label, i) => (
+                <div key={label}>
+                  <label className="text-xs text-gray-500 block mb-2">{label}</label>
+                  <div className="flex flex-col items-start gap-2">
+                    <label className="cursor-pointer px-3 py-1.5 text-xs rounded-md bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors">
+                      {images.equipmentPhotos[i] ? 'Replace' : 'Upload'}
+                      <input type="file" accept="image/*" className="hidden" onChange={e => {
+                        const file = e.target.files?.[0]; if (!file) return
+                        const updated = [...images.equipmentPhotos]
+                        if (updated[i]) URL.revokeObjectURL(updated[i]!)
+                        updated[i] = URL.createObjectURL(file)
+                        onImagesChange({ ...images, equipmentPhotos: updated }); e.target.value = ''
+                      }} />
+                    </label>
+                    {images.equipmentPhotos[i] && (
+                      <>
+                        <img src={images.equipmentPhotos[i]!} alt={`${label} preview`} className="h-12 rounded border border-gray-600" />
+                        <button onClick={() => {
+                          const updated = [...images.equipmentPhotos]; URL.revokeObjectURL(updated[i]!); updated[i] = null
+                          onImagesChange({ ...images, equipmentPhotos: updated })
+                        }} className="text-xs text-red-400 hover:text-red-300">Remove</button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          </>}
 
           {/* Roof Faces */}
           <div>

@@ -8,7 +8,7 @@ import { handleApiError } from '@/lib/errors'
 import { loadProjectById } from '@/lib/api'
 import { buildPlansetData, DURACELL_DEFAULTS } from '@/lib/planset-types'
 import { autoDistributeStrings } from '@/lib/planset-calcs'
-import { SheetPV1, SheetPV2, SheetPV3, SheetPV5, SheetPV51, SheetPV6, SheetPV7, SheetPV71, SheetPV8 } from '@/components/planset'
+import { SheetPV1, SheetPV2, SheetPV3, SheetPV31, SheetPV4, SheetPV5, SheetPV51, SheetPV6, SheetPV7, SheetPV71, SheetPV8, UtilityBatteryLetter } from '@/components/planset'
 import type { PlansetData, PlansetOverrides, PlansetString, PlansetRoofFace } from '@/lib/planset-types'
 import { Loader2 } from 'lucide-react'
 import { ProjectSelector } from './components/ProjectSelector'
@@ -375,13 +375,16 @@ function PlanSetPageInner() {
   const searchParams = useSearchParams()
   const [toast, setToast] = useState<{message: string, type: 'success'|'error'|'info'} | null>(null)
 
+  const enhanced = searchParams.get('enhanced') === '1'
   const [projectId, setProjectId] = useState<string>('')
   const [data, setData] = useState<PlansetData | null>(null)
   const [loading, setLoading] = useState(false)
   const [strings, setStrings] = useState<PlansetString[]>([])
   const [roofFaces, setRoofFaces] = useState<PlansetRoofFace[]>([])
   const [overrides, setOverrides] = useState<PlansetOverrides>({})
-  const [sitePlanUrl, setSitePlanUrl] = useState<string | null>(null)
+  const [images, setImages] = useState<{ sitePlanImageUrl: string | null, roofPlanImageUrl: string | null, aerialPhotoUrl: string | null, housePhotoUrl: string | null, equipmentPhotos: (string | null)[] }>({
+    sitePlanImageUrl: null, roofPlanImageUrl: null, aerialPhotoUrl: null, housePhotoUrl: null, equipmentPhotos: [null, null, null, null],
+  })
 
   const loadProject = useCallback(async (id: string) => {
     setLoading(true)
@@ -413,7 +416,8 @@ function PlanSetPageInner() {
       const finalStrings = overrides.strings ?? autoStrings
       setStrings(finalStrings)
 
-      const plansetData = buildPlansetData(project, { ...overrides, strings: finalStrings, roofFaces: roofFaces.length > 0 ? roofFaces : undefined, sitePlanImageUrl: sitePlanUrl ?? undefined })
+      const plansetData = buildPlansetData(project, { ...overrides, strings: finalStrings, roofFaces: roofFaces.length > 0 ? roofFaces : undefined, sitePlanImageUrl: images.sitePlanImageUrl ?? undefined })
+      if (enhanced) plansetData.sheetTotal = 12  // 9 base + utility letter + PV-3.1 + PV-4
       setRoofFaces(plansetData.roofFaces)
       setData(plansetData)
       setProjectId(id)
@@ -424,7 +428,7 @@ function PlanSetPageInner() {
     } finally {
       setLoading(false)
     }
-  }, [overrides, roofFaces, sitePlanUrl])
+  }, [overrides, roofFaces, images.sitePlanImageUrl])
 
   useEffect(() => {
     const urlProject = searchParams.get('project')
@@ -439,12 +443,13 @@ function PlanSetPageInner() {
     try {
       const project = await loadProjectById(projectId)
       if (!project) return
-      const plansetData = buildPlansetData(project, { ...overrides, strings, roofFaces: roofFaces.length > 0 ? roofFaces : undefined, sitePlanImageUrl: sitePlanUrl ?? undefined })
+      const plansetData = buildPlansetData(project, { ...overrides, strings, roofFaces: roofFaces.length > 0 ? roofFaces : undefined, sitePlanImageUrl: images.sitePlanImageUrl ?? undefined })
+      if (enhanced) plansetData.sheetTotal = 12
       setData(plansetData)
     } finally {
       setLoading(false)
     }
-  }, [projectId, strings, overrides, roofFaces, sitePlanUrl])
+  }, [projectId, strings, overrides, roofFaces, images.sitePlanImageUrl])
 
   const rebuildTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
@@ -452,7 +457,7 @@ function PlanSetPageInner() {
     if (rebuildTimerRef.current) clearTimeout(rebuildTimerRef.current)
     rebuildTimerRef.current = setTimeout(() => rebuildData(), 500)
     return () => { if (rebuildTimerRef.current) clearTimeout(rebuildTimerRef.current) }
-  }, [projectId, strings, overrides, roofFaces, sitePlanUrl, rebuildData])
+  }, [projectId, strings, overrides, roofFaces, images.sitePlanImageUrl, rebuildData])
 
   const clearProject = () => {
     setProjectId('')
@@ -460,8 +465,12 @@ function PlanSetPageInner() {
     setStrings([])
     setRoofFaces([])
     setOverrides({})
-    if (sitePlanUrl) URL.revokeObjectURL(sitePlanUrl)
-    setSitePlanUrl(null)
+    if (images.sitePlanImageUrl) URL.revokeObjectURL(images.sitePlanImageUrl)
+    if (images.roofPlanImageUrl) URL.revokeObjectURL(images.roofPlanImageUrl)
+    if (images.aerialPhotoUrl) URL.revokeObjectURL(images.aerialPhotoUrl)
+    if (images.housePhotoUrl) URL.revokeObjectURL(images.housePhotoUrl)
+    images.equipmentPhotos.forEach(u => { if (u) URL.revokeObjectURL(u) })
+    setImages({ sitePlanImageUrl: null, roofPlanImageUrl: null, aerialPhotoUrl: null, housePhotoUrl: null, equipmentPhotos: [null, null, null, null] })
   }
 
   if (!userLoading && currentUser && !currentUser.isManager) {
@@ -509,6 +518,17 @@ function PlanSetPageInner() {
                 </p>
               </div>
               <div className="flex items-center gap-3">
+                {enhanced ? (
+                  <a href={`/planset?project=${projectId}`}
+                    className="px-3 py-1.5 text-xs rounded-md bg-amber-600/20 text-amber-400 border border-amber-600/30">
+                    Enhanced Mode &mdash; click for Classic
+                  </a>
+                ) : (
+                  <a href={`/planset?project=${projectId}&enhanced=1`}
+                    className="px-3 py-1.5 text-xs rounded-md bg-gray-800 text-gray-400 hover:text-green-400 hover:bg-gray-700 transition-colors">
+                    Enable Enhanced Mode
+                  </a>
+                )}
                 <button
                   onClick={clearProject}
                   className="px-4 py-2 text-sm rounded-md bg-gray-800 text-gray-300 hover:bg-gray-700 transition-colors">
@@ -535,44 +555,55 @@ function PlanSetPageInner() {
               onOverridesChange={setOverrides}
               roofFaces={roofFaces}
               onRoofFacesChange={setRoofFaces}
-              sitePlanImageUrl={sitePlanUrl}
-              onSitePlanChange={setSitePlanUrl}
+              images={images}
+              onImagesChange={setImages}
+              enhanced={enhanced}
             />
 
             {/* Sheets — rendered at print size, scaled down for screen */}
             <div id="planset-sheets" className="space-y-8">
               {[
+                ...(enhanced ? [{ id: 'UTIL', label: 'Utility Battery Letter', component: <UtilityBatteryLetter data={data} />, portrait: true }] : []),
                 { id: 'PV-1', label: 'Cover Page & General Notes', component: <SheetPV1 data={data} /> },
                 { id: 'PV-2', label: 'Project Data', component: <SheetPV2 data={data} /> },
                 { id: 'PV-3', label: 'Site Plan', component: <SheetPV3 data={data} /> },
+                ...(enhanced ? [
+                  { id: 'PV-3.1', label: 'Equipment Elevation', component: <SheetPV31 data={data} equipmentPhotos={images.equipmentPhotos} /> },
+                  { id: 'PV-4', label: 'Roof Plan with Modules', component: <SheetPV4 data={data} roofPlanImageUrl={images.roofPlanImageUrl} /> },
+                ] : []),
                 { id: 'PV-5', label: 'Single Line Diagram', component: <SheetPV5 data={data} /> },
                 { id: 'PV-5.1', label: 'PCS Labels', component: <SheetPV51 data={data} /> },
                 { id: 'PV-6', label: 'Wiring Calculations', component: <SheetPV6 data={data} /> },
                 { id: 'PV-7', label: 'Warning Labels', component: <SheetPV7 data={data} /> },
                 { id: 'PV-7.1', label: 'Equipment Placards', component: <SheetPV71 data={data} /> },
                 { id: 'PV-8', label: 'Conductor Schedule & BOM', component: <SheetPV8 data={data} /> },
-              ].map(sheet => (
-                <div key={sheet.id}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs font-bold text-green-400 bg-gray-800 px-2 py-1 rounded">{sheet.id}</span>
-                    <span className="text-sm text-gray-400">{sheet.label}</span>
-                  </div>
-                  <div className="border border-gray-700 rounded-lg overflow-hidden" style={{
-                    width: `${16.5 * 96 * screenScale}px`,
-                    height: `${10.5 * 96 * screenScale}px`,
-                  }}>
-                    <div style={{
-                      transform: `scale(${screenScale})`,
-                      transformOrigin: 'top left',
-                      width: '16.5in',
-                      height: '10.5in',
-                      background: 'white',
+              ].map(sheet => {
+                const isPortrait = 'portrait' in sheet && sheet.portrait
+                const sheetW = isPortrait ? 8.5 : 16.5
+                const sheetH = isPortrait ? 11 : 10.5
+                return (
+                  <div key={sheet.id}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-green-400 bg-gray-800 px-2 py-1 rounded">{sheet.id}</span>
+                      <span className="text-sm text-gray-400">{sheet.label}</span>
+                    </div>
+                    <div className="border border-gray-700 rounded-lg overflow-hidden" style={{
+                      width: `${sheetW * 96 * screenScale}px`,
+                      height: `${sheetH * 96 * screenScale}px`,
                     }}>
-                      {sheet.component}
+                      <div style={{
+                        transform: `scale(${screenScale})`,
+                        transformOrigin: 'top left',
+                        width: `${sheetW}in`,
+                        height: `${sheetH}in`,
+                        background: 'white',
+                      }}>
+                        {sheet.component}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             <div className="mt-8 mb-4 text-center text-xs text-gray-600">
