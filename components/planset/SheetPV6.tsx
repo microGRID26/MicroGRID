@@ -46,9 +46,64 @@ export function SheetPV6({ data }: { data: PlansetData }) {
   return (
     <div className="sheet" style={{ display: 'grid', gridTemplateColumns: '1fr 2.5in', border: '2px solid #000', fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '8pt', width: '16.5in', height: '10.5in', overflow: 'hidden', position: 'relative' }}>
       <div className="sheet-content" style={{ padding: '0.15in 0.2in', overflow: 'hidden' }}>
-        <div style={{ fontSize: '14pt', fontWeight: 'bold', color: '#111' }}>WIRING CALCULATIONS</div>
-        <div style={{ fontSize: '8pt', color: '#555', marginBottom: '6pt' }}>ALL CONDUCTORS COPPER (CU), RATED 75&deg;C MINIMUM. VOLTAGE DROP LIMIT: 2% DC, 3% AC.</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <div style={{ fontSize: '14pt', fontWeight: 'bold', color: '#111' }}>WIRING CALCULATIONS</div>
+          <div style={{ fontSize: '6pt', color: '#555' }}>ALL CONDUCTORS COPPER (CU), RATED 75&deg;C MIN. VOLTAGE DROP: 2% DC, 3% AC.</div>
+        </div>
 
+        {/* ── TAG-BASED WIRE CHART (matches SLD callout circles ①-⑨) ── */}
+        <div style={{ fontWeight: 'bold', fontSize: '8pt', color: '#111', marginTop: '4px', marginBottom: '2px', borderBottom: '2px solid #111', paddingBottom: '2px' }}>WIRE CHART</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px', fontSize: '5.5pt', marginBottom: '6px' }}>
+          {[
+            { tag: 1, from: 'FROM PV MODULES TO JBOX', specs: [
+              `(${data.strings.length * 2}) ${data.dcStringWire}`,
+              `(1) #6 AWG BARE CU EGC`,
+              `${data.dcConduit}`,
+            ]},
+            { tag: 2, from: 'FROM JBOX TO PV LOAD CENTER', specs: [
+              `(8) #10 AWG CU THWN-2`,
+              `(1) #8 AWG CU EGC`,
+              `1" EMT TYPE CONDUIT`,
+            ]},
+            { tag: 3, from: `FROM NON-FUSED PV DISCONNECT TO ${data.inverterModel.split(' ').slice(0, 4).join(' ').toUpperCase()}`, specs: [
+              `(3) #3 AWG CU THWN-2`,
+              `(1) #8 AWG CU EGC`,
+              `1" EMT TYPE CONDUIT`,
+            ]},
+            { tag: 4, from: `FROM ${data.inverterModel.split(' ').slice(0, 4).join(' ').toUpperCase()} TO MAIN SERVICE PANEL`, specs: [
+              `(3) ${data.acWireToPanel}`,
+              `(1) #6 AWG CU EGC`,
+              `${data.acConduit}`,
+            ]},
+            ...(data.batteryCount > 0 ? [
+              { tag: 5, from: `FROM DURAS BATTERY TO BATTERY COMBINER`, specs: [
+                `${data.batteryWire}`,
+                `#8 AWG CU, 1" EMT`,
+              ]},
+              { tag: 6, from: `FROM BATTERY COMBINER TO ${data.inverterModel.split(' ').slice(0, 4).join(' ').toUpperCase()}`, specs: [
+                `(4) #3 AWG CU THWN-2`,
+                `(1) #8 AWG CU EGC`,
+                `1-1/4" EMT TYPE CONDUIT`,
+              ]},
+            ] : []),
+            { tag: 7, from: 'FROM SERVICE DISCONNECT TO UTILITY METER', specs: [
+              `(3) #20 AWG CU THWN-2`,
+              `2-1/2" PVC TYPE CONDUIT`,
+              `ROUGHLY ${data.acRunLengthFt} FEET (DIRT) TRENCHING`,
+              `FROM UTILITY POLE TO HOME WALL`,
+            ]},
+          ].map(({ tag, from, specs }) => (
+            <div key={tag} style={{ display: 'flex', gap: '4px', borderBottom: '1px solid #ddd', paddingBottom: '2px', paddingTop: '2px' }}>
+              <div style={{ width: '14px', height: '14px', borderRadius: '50%', background: '#111', color: '#fff', fontSize: '7pt', fontWeight: 'bold', textAlign: 'center', lineHeight: '14px', flexShrink: 0 }}>{tag}</div>
+              <div>
+                <div style={{ fontWeight: 'bold', color: '#111', marginBottom: '1px' }}>{from}</div>
+                {specs.map((s, i) => <div key={i} style={{ color: '#444' }}>{s}</div>)}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── DETAILED CALCULATIONS ── */}
         {/* DC STRING WIRING */}
         <div style={{ fontWeight: 'bold', fontSize: '9pt', color: '#111', marginBottom: '3px' }}>DC STRING WIRE SIZING (NEC 690.8)</div>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '6.5pt', marginBottom: '8px' }}>
