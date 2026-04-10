@@ -12,7 +12,7 @@ export function SheetPV6({ data }: { data: PlansetData }) {
     const vocCold = s.vocCold
     const vmp = s.vmpNominal
     const isc = data.panelIsc
-    const runFt = 100
+    const runFt = data.dcRunLengthFt
     const wireSize = '#10'
     const conductor125 = isc * 1.25
     const vDrop = (2 * runFt * isc * wireResistance[wireSize]) / 1000
@@ -29,7 +29,7 @@ export function SheetPV6({ data }: { data: PlansetData }) {
 
   const acCurrentPerInv = data.inverterAcPower * 1000 / 240
   const acCurrent125 = acCurrentPerInv * 1.25
-  const acRunFt = 50
+  const acRunFt = data.acRunLengthFt
   const acVDrop = (2 * acRunFt * acCurrentPerInv * wireResistance['#4']) / 1000
   const acVDropPct = (acVDrop / 240) * 100
 

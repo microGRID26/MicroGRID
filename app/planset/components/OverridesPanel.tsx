@@ -150,6 +150,26 @@ export function OverridesPanel({ data, strings, onStringsChange, overrides, onOv
             </div>
           </div>
 
+          {/* Wire run lengths */}
+          <div>
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Wire Run Lengths</h3>
+            <div className="grid grid-cols-4 gap-3">
+              {[
+                { label: 'DC Run (ft)', key: 'dcRunLengthFt' as const, val: String(overrides.dcRunLengthFt ?? data.dcRunLengthFt) },
+                { label: 'AC Run (ft)', key: 'acRunLengthFt' as const, val: String(overrides.acRunLengthFt ?? data.acRunLengthFt) },
+              ].map(f => (
+                <div key={f.key}>
+                  <label className="text-xs text-gray-500 block mb-1">{f.label}</label>
+                  <input
+                    value={f.val}
+                    onChange={e => onOverridesChange({ ...overrides, [f.key]: parseInt(e.target.value) || 0 })}
+                    className="w-full px-2 py-1.5 bg-gray-900 border border-gray-600 rounded text-sm text-white focus:ring-1 focus:ring-green-500 focus:outline-none"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Existing system overrides */}
           <div>
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Existing System (Optional)</h3>

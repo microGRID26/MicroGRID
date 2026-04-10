@@ -98,6 +98,8 @@ export const DURACELL_DEFAULTS = {
   acWireInverter: '#10 AWG CU THWN-2',
   acWireToPanel: '#6 AWG CU THWN-2',
   acConduit: '1-1/4" EMT',
+  dcRunLengthFt: 100,
+  acRunLengthFt: 50,
   batteryWire: '#4/0 AWG CU THWN-2',
   batteryConduit: '2" EMT',
   batteryEgc: '#6 AWG CU',
@@ -225,6 +227,8 @@ export interface PlansetData {
   acWireInverter: string
   acWireToPanel: string
   acConduit: string
+  dcRunLengthFt: number
+  acRunLengthFt: number
   batteryWire: string
   batteryConduit: string
 
@@ -286,6 +290,8 @@ export interface PlansetOverrides {
   acWireInverter?: string
   acWireToPanel?: string
   acConduit?: string
+  dcRunLengthFt?: number
+  acRunLengthFt?: number
   batteryWire?: string
   batteryConduit?: string
 
@@ -446,6 +452,8 @@ export function buildPlansetData(project: Project, overrides: PlansetOverrides =
 
     dcStringWire: overrides.dcStringWire ?? d.dcStringWire,
     dcConduit: overrides.dcConduit ?? d.dcConduit,
+    dcRunLengthFt: overrides.dcRunLengthFt ?? d.dcRunLengthFt,
+    acRunLengthFt: overrides.acRunLengthFt ?? d.acRunLengthFt,
     acWireInverter: overrides.acWireInverter ?? d.acWireInverter,
     acWireToPanel: overrides.acWireToPanel ?? d.acWireToPanel,
     acConduit: overrides.acConduit ?? d.acConduit,
