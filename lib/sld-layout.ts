@@ -763,9 +763,11 @@ function calculateSldLayoutSpatial(config: SldConfig): SldLayout {
   elements.push({ type: 'text', x: jbX + 30, y: jbY + 19, text: '600V, NEMA 3R', fontSize: 4, anchor: 'middle', fill: '#666' })
   elements.push({ type: 'callout', cx: jbX + 30, cy: jbY - 12, number: 1 })
 
-  // Wire from JB → right
+  // Wire from JB → DC Disc (full wire spec stack)
   elements.push({ type: 'line', x1: jbX + 60, y1: jbY + 12, x2: 320, y2: jbY + 12, strokeWidth: 1.5 })
-  elements.push({ type: 'text', x: jbX + 70, y: jbY + 6, text: config.dcHomerunWire ?? '(2) #10 AWG CU THWN-2', fontSize: 4, fill: '#444', italic: true })
+  elements.push({ type: 'text', x: jbX + 65, y: jbY + 2, text: config.dcHomerunWire ?? '(2) #10 AWG CU THWN-2', fontSize: 3.5, fill: '#444', italic: true })
+  elements.push({ type: 'text', x: jbX + 65, y: jbY - 5, text: config.dcEgc ?? '(1) #6 AWG BARE CU EGC', fontSize: 3.5, fill: '#444', italic: true })
+  elements.push({ type: 'text', x: jbX + 65, y: jbY + 24, text: config.dcHomerunConduit ?? '3/4" EMT TYPE CONDUIT', fontSize: 3.5, fill: '#444', italic: true })
 
   // ══════════════════════════════════════════════════════════════
   // CENTER-LEFT: DC Disconnect (x: 320-400)
@@ -777,6 +779,8 @@ function calculateSldLayoutSpatial(config: SldConfig): SldLayout {
 
   // Wire from DC disc → DPC
   elements.push({ type: 'line', x1: dcDiscX + 15, y1: jbY + 12, x2: 420, y2: jbY + 12, strokeWidth: 1.5 })
+  elements.push({ type: 'text', x: dcDiscX + 25, y: jbY + 2, text: '(3) #3 AWG CU THWN-2', fontSize: 3.5, fill: '#444', italic: true })
+  elements.push({ type: 'text', x: dcDiscX + 25, y: jbY + 24, text: '1" EMT TYPE CONDUIT', fontSize: 3.5, fill: '#444', italic: true })
 
   // ══════════════════════════════════════════════════════════════
   // CENTER: Duracell Power Center blocks (x: 420-750)
@@ -922,6 +926,8 @@ function calculateSldLayoutSpatial(config: SldConfig): SldLayout {
   // ── Utility chain (right of MSP) ──
   const utilY = mspY + mspH / 2
   elements.push({ type: 'line', x1: mspX + mspW, y1: utilY, x2: mspX + mspW + 25, y2: utilY, strokeWidth: 1.5 })
+  // Wire spec MSP → Service Disconnect
+  elements.push({ type: 'text', x: mspX + mspW + 3, y: utilY - 8, text: '(3) #20 AWG CU THWN-2', fontSize: 3, fill: '#444', italic: true })
 
   // Service Disconnect
   const sdX = mspX + mspW + 25
@@ -973,6 +979,13 @@ function calculateSldLayoutSpatial(config: SldConfig): SldLayout {
   elements.push({ type: 'circle', cx: ctX, cy: mspY + 80, r: 7, strokeWidth: 1 })
   elements.push({ type: 'text', x: ctX, y: mspY + 82, text: 'CT', fontSize: 4, anchor: 'middle', bold: true })
   elements.push({ type: 'text', x: ctX + 15, y: mspY + 80, text: 'CONSUMPTION CT.', fontSize: 3.5, fill: '#444' })
+
+  // Trenching detail (below utility chain)
+  const trenchY = utilY + 50
+  elements.push({ type: 'text', x: sdX, y: trenchY, text: '2-1/2" PVC TYPE CONDUIT', fontSize: 4, fill: '#444', italic: true })
+  elements.push({ type: 'text', x: sdX, y: trenchY + 8, text: 'ROUGHLY 11 FEET (DIRT/ROCK)', fontSize: 4, fill: '#444', italic: true })
+  elements.push({ type: 'text', x: sdX, y: trenchY + 16, text: 'TRENCHING FROM UTILITY POLE', fontSize: 4, fill: '#444', italic: true })
+  elements.push({ type: 'text', x: sdX, y: trenchY + 24, text: 'TO HOME WALL', fontSize: 4, fill: '#444', italic: true })
 
   // ── Notes section (bottom) ──
   const notesY = H - 110
