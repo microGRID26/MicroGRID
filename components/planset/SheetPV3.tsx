@@ -53,8 +53,8 @@ export function SheetPV3({ data }: { data: PlansetData }) {
         <line x1={houseX + houseW} y1={roofPeakY} x2={houseX + houseW / 2} y2={roofPeakY - 20} stroke="#333" strokeWidth="1" />
         <line x1={houseX} y1={roofPeakY} x2={houseX} y2={houseY} stroke="#333" strokeWidth="1" />
         <line x1={houseX + houseW} y1={roofPeakY} x2={houseX + houseW} y2={houseY} stroke="#333" strokeWidth="1" />
-        {/* Roof label */}
-        <text x={houseX + houseW / 2} y={roofPeakY - 25} textAnchor="middle" fontSize="5" fill="#333">{d.roofType?.toUpperCase() || 'COMP SHINGLE'}</text>
+        {/* Roof label — inside house to avoid overlap */}
+        <text x={houseX + houseW / 2} y={houseY + houseH - 20} textAnchor="middle" fontSize="4.5" fill="#aaa">{d.roofType?.toUpperCase() || 'COMP SHINGLE'}</text>
 
         {/* Setback lines */}
         <rect x={houseX + 8} y={roofPeakY + 5} width={houseW - 16} height={houseH - 15} fill="none" stroke="#cc0000" strokeWidth="0.5" strokeDasharray="4,2" />
@@ -182,13 +182,10 @@ export function SheetPV3({ data }: { data: PlansetData }) {
         <text x="80" y="242" textAnchor="middle" fontSize="5" fill="#666">RATED 100A MAIN</text>
         <text x="80" y="252" textAnchor="middle" fontSize="5" fill="#666">NEMA3R, UL LISTED</text>
 
-        {/* PV Disconnect */}
-        <rect x="40" y="290" width="80" height="40" fill="none" stroke="#333" strokeWidth="1.5" />
-        <text x="80" y="310" textAnchor="middle" fontSize="6" fill="#333" fontWeight="bold">(N) PV DISCONNECT</text>
-        <text x="80" y="322" textAnchor="middle" fontSize="5" fill="#666">VISIBLE LOCKABLE</text>
-
-        {/* Conduit from PV LC to PV Disc */}
-        <line x1="80" y1="280" x2="80" y2="290" stroke="#333" strokeWidth="1" />
+        {/* Conduit from PV Load Center to main flow */}
+        <line x1="80" y1="280" x2="80" y2="310" stroke="#333" strokeWidth="1" />
+        <line x1="80" y1="310" x2="200" y2="310" stroke="#333" strokeWidth="1" strokeDasharray="4,2" />
+        <text x="140" y="305" textAnchor="middle" fontSize="4" fill="#666">CONDUIT TO EQUIPMENT</text>
 
         {/* 1" EMT conduit run label */}
         <text x="20" y="170" fontSize="6" fill="#444">1&quot; EMT CONDUIT RUN</text>
@@ -200,20 +197,17 @@ export function SheetPV3({ data }: { data: PlansetData }) {
         <text x="245" y="212" textAnchor="middle" fontSize="5" fill="#666">RAPID SHUTDOWN</text>
         <text x="245" y="222" textAnchor="middle" fontSize="5" fill="#666">DEVICE</text>
 
-        {/* DPC high CT */}
-        <text x="245" y="248" textAnchor="middle" fontSize="5" fill="#666">DPC HIGH CT</text>
+        {/* Conduit from main breaker down */}
+        <line x1="245" y1="230" x2="245" y2="260" stroke="#333" strokeWidth="1" />
+        <text x="300" y="244" fontSize="4" fill="#444">1-1/4&quot; EMT</text>
+        <text x="300" y="252" fontSize="4" fill="#444">#3 AWG CU THWN-2</text>
 
         {/* ── PV Disconnect / Non-Fused ── */}
         <rect x="200" y="260" width="90" height="50" fill="none" stroke="#333" strokeWidth="1.5" />
         <text x="245" y="278" textAnchor="middle" fontSize="5.5" fill="#333" fontWeight="bold">(N) PV DISCONNECT /</text>
         <text x="245" y="288" textAnchor="middle" fontSize="5.5" fill="#333" fontWeight="bold">NON-FUSIBLE</text>
         <text x="245" y="300" textAnchor="middle" fontSize="5" fill="#666">200A, 2P, 240V (N)</text>
-
-        {/* Conduit from main breaker to PV disc */}
-        <line x1="245" y1="230" x2="245" y2="260" stroke="#333" strokeWidth="1" />
-
-        {/* Wire label */}
-        <text x="255" y="250" fontSize="5" fill="#444">(3) #3 AWG CU THWN-2</text>
+        <text x="245" y="316" textAnchor="middle" fontSize="4" fill="#999">VISIBLE, LOCKABLE</text>
 
         {/* ── Right-center: Main Service Panel ── */}
         <rect x="380" y="140" width="100" height="120" fill="none" stroke="#333" strokeWidth="2" />
@@ -233,7 +227,6 @@ export function SheetPV3({ data }: { data: PlansetData }) {
 
         {/* Conduit from PV Disc to MSP */}
         <line x1="290" y1="285" x2="380" y2="200" stroke="#333" strokeWidth="1" />
-        <text x="320" y="235" fontSize="5" fill="#444" transform="rotate(-30 320 235)">{data.acConduit}</text>
 
         {/* ── Far right: Utility Meter ── */}
         <circle cx="580" cy="230" r="25" fill="none" stroke="#333" strokeWidth="2" />
