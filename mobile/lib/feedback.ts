@@ -115,29 +115,34 @@ export interface SubmitResult {
 export async function submitFeedback(input: FeedbackSubmission): Promise<SubmitResult> {
   const result: SubmitResult = { feedbackId: null, attachmentsUploaded: 0, attachmentsFailed: 0 }
 
-  const account = await getCustomerAccount()
-  if (!account) {
-    console.error('[feedback] no customer account — cannot submit')
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    console.error('[feedback] not authenticated — cannot submit')
     return result
   }
 
-  // Look up org_id from project so RLS gives CRM users visibility
-  const { data: proj, error: projError } = await supabase
-    .from('projects')
-    .select('org_id')
-    .eq('id', account.project_id)
-    .single()
+  const account = await getCustomerAccount()
 
-  if (projError) {
-    console.warn('[feedback] could not determine org_id:', projError.message)
+  // Look up org_id from project so RLS gives CRM users visibility
+  let orgId: string | null = null
+  if (account) {
+    const { data: proj, error: projError } = await supabase
+      .from('projects')
+      .select('org_id')
+      .eq('id', account.project_id)
+      .single()
+
+    if (projError) {
+      console.warn('[feedback] could not determine org_id:', projError.message)
+    }
+    orgId = (proj as { org_id: string | null } | null)?.org_id ?? null
   }
-  const orgId = (proj as { org_id: string | null } | null)?.org_id ?? null
 
   const { data: inserted, error: insertError } = await supabase
     .from('customer_feedback')
     .insert({
-      customer_account_id: account.id,
-      project_id: account.project_id,
+      customer_account_id: account?.id ?? null,
+      project_id: account?.project_id ?? 'INTERNAL',
       category: input.category,
       rating: input.rating ?? null,
       message: input.message.trim(),
@@ -146,6 +151,7 @@ export async function submitFeedback(input: FeedbackSubmission): Promise<SubmitR
       device_info: getDeviceInfo(),
       status: 'new',
       org_id: orgId,
+      submitted_by_user_id: user.id,
     })
     .select('id')
     .single()
