@@ -441,7 +441,7 @@ function PlanSetPageInner() {
       setStrings(finalStrings)
 
       const plansetData = buildPlansetData(project, { ...overrides, strings: finalStrings, roofFaces: roofFaces.length > 0 ? roofFaces : undefined, sitePlanImageUrl: images.sitePlanImageUrl ?? undefined })
-      if (enhanced) plansetData.sheetTotal = 13  // 9 base + utility letter + PV-3.1 + PV-4 + PV-4.1  // 9 base + utility letter + PV-3.1 + PV-4
+      if (enhanced) plansetData.sheetTotal = 13  // 9 base + 4 enhanced (utility letter, PV-3.1, PV-4, PV-4.1)
       setRoofFaces(plansetData.roofFaces)
       setData(plansetData)
       setProjectId(id)

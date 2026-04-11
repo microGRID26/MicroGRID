@@ -103,9 +103,6 @@ export const DURACELL_DEFAULTS = {
   batteryMaxCurrentA: 62.5, // Duracell Max Hybrid inverter battery port max continuous current
   batteryWire: '#4/0 AWG CU THWN-2',
   batteryConduit: '2" EMT',
-  batteryEgc: '#6 AWG CU',
-  feederWire: '#2 AWG CU THWN-2',
-  feederConduit: '1" EMT',
 
   // Building defaults (can be overridden per project)
   roofType: 'COMP SHINGLE',

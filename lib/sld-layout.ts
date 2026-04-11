@@ -55,9 +55,9 @@ export interface SldConfig {
   pcsCurrentSetting?: number  // default: 200
 }
 
-// Text width estimation: ~0.52 * fontSize * charCount for Arial
+// Text width estimation: ~0.58 * fontSize * charCount for Arial (padded to prevent overflow)
 function estimateTextWidth(text: string, fontSize: number): number {
-  return text.length * fontSize * 0.52
+  return text.length * fontSize * 0.58
 }
 
 // Calculate box size to fit lines of text with padding
