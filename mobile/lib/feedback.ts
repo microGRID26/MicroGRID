@@ -64,6 +64,8 @@ function getAppVersion(): string {
  * Returns the public URL + size on success, null on failure.
  * Matches the uploadTicketPhoto pattern in lib/api.ts.
  */
+const MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024 // 5MB
+
 async function uploadAttachment(
   feedbackId: string,
   uri: string,
@@ -71,9 +73,17 @@ async function uploadAttachment(
   mimeType: string,
 ): Promise<{ url: string; size: number } | null> {
   try {
-    const response = await fetch(uri)
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 30000)
+    const response = await fetch(uri, { signal: controller.signal })
+    clearTimeout(timeout)
     const arrayBuffer = await response.arrayBuffer()
     const uint8 = new Uint8Array(arrayBuffer)
+
+    if (uint8.byteLength > MAX_ATTACHMENT_SIZE) {
+      console.warn('[feedback] attachment too large:', (uint8.byteLength / 1024 / 1024).toFixed(1), 'MB')
+      return null
+    }
 
     const path = `${feedbackId}/${Date.now()}-${fileName}`
     const { error: uploadError } = await supabase.storage

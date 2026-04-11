@@ -107,7 +107,9 @@ export default function MessagesScreen() {
           }
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') console.warn('[messages] subscription:', status)
+      })
 
     return () => { supabase.removeChannel(channel) }
   }, [account?.project_id])

@@ -23,6 +23,7 @@ export default function TabLayout() {
         .select('id', { count: 'exact', head: true })
         .eq('project_id', acct.project_id)
         .gt('updated_at', lastSeen)
+        .not('status', 'in', '(resolved,closed)')
 
       setUnreadCount(count ?? 0)
     } catch (err) {

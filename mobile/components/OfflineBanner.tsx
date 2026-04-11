@@ -11,6 +11,7 @@ export function OfflineBanner() {
   const [offline, setOffline] = useState(false)
   const [opacity] = useState(new Animated.Value(0))
   const appActive = useRef(true)
+  const failCount = useRef(0)
 
   useEffect(() => {
     const checkConnection = async () => {
@@ -23,9 +24,11 @@ export function OfflineBanner() {
           signal: controller.signal,
         })
         clearTimeout(timeout)
+        failCount.current = 0
         setOffline(false)
       } catch {
-        setOffline(true)
+        failCount.current++
+        if (failCount.current >= 2) setOffline(true)
       }
     }
 

@@ -19,7 +19,7 @@ export function getCache<T>(key: string): T | null {
   const entry = memCache[CACHE_PREFIX + key]
   if (!entry) return null
   // Expire after 24 hours
-  if (Date.now() - entry.timestamp > 24 * 60 * 60 * 1000) {
+  if (Date.now() - entry.timestamp > 6 * 60 * 60 * 1000) {
     delete memCache[CACHE_PREFIX + key]
     return null
   }
@@ -45,7 +45,7 @@ export async function loadPersistentCache(): Promise<void> {
       const raw = await SecureStore.getItemAsync(CACHE_PREFIX + key)
       if (raw) {
         const entry = JSON.parse(raw)
-        if (Date.now() - entry.timestamp < 24 * 60 * 60 * 1000) {
+        if (Date.now() - entry.timestamp < 6 * 60 * 60 * 1000) {
           memCache[CACHE_PREFIX + key] = entry
         }
       }
@@ -57,9 +57,15 @@ export async function loadPersistentCache(): Promise<void> {
 const memCache: Record<string, CacheEntry<any>> = {}
 
 /**
- * Clear all cached data.
+ * Clear all cached data (in-memory + persistent).
+ * Call on sign-out and account deletion to prevent data leaking to next user.
  */
 export function clearCache(): void {
-  Object.keys(memCache).forEach(k => delete memCache[k])
+  const keys = Object.keys(memCache)
+  keys.forEach(k => delete memCache[k])
+  // Also clear persistent SecureStore entries
+  for (const key of ['account', 'project', 'timeline', 'schedule', 'documents', 'taskStates']) {
+    SecureStore.deleteItemAsync(CACHE_PREFIX + key).catch(() => {})
+  }
 }
 

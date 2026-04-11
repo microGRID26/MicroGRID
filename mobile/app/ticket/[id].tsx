@@ -58,7 +58,7 @@ export default function TicketDetailScreen() {
         loadComments(id).catch(() => []),
         getCustomerAccount().catch(() => null),
       ])
-      setComments(c as { id: string; message: string; author: string; created_at: string; is_internal: boolean }[])
+      setComments(c)
       if (acct) setCustomerName(acct.name)
       // Mark as read — clears the Support tab badge
       await SecureStore.setItemAsync('mg_support_seen', new Date().toISOString())
@@ -81,9 +81,11 @@ export default function TicketDetailScreen() {
         table: 'ticket_comments',
         filter: `ticket_id=eq.${id}`,
       }, () => {
-        loadComments(id).then(setComments)
+        loadComments(id).then(setComments).catch(() => {})
       })
-      .subscribe()
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') console.warn('[ticket] comments subscription:', status)
+      })
 
     return () => { channel.unsubscribe(); supabase.removeChannel(channel) }
   }, [id])
@@ -104,7 +106,9 @@ export default function TicketDetailScreen() {
           setCurrentStatus(updated.status)
         }
       })
-      .subscribe()
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') console.warn('[ticket] status subscription:', status)
+      })
 
     return () => { channel.unsubscribe(); supabase.removeChannel(channel) }
   }, [id])

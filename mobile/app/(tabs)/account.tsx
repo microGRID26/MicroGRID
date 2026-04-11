@@ -7,6 +7,7 @@ import Constants from 'expo-constants'
 import { theme, useThemeColors } from '../../lib/theme'
 import { supabase } from '../../lib/supabase'
 import { getCustomerAccount, loadProject, loadReferrals, submitReferral, deleteCustomerAccount } from '../../lib/api'
+import { clearCache } from '../../lib/cache'
 import type { CustomerAccount, CustomerProject, CustomerReferral } from '../../lib/types'
 
 export default function AccountScreen() {
@@ -59,6 +60,15 @@ export default function AccountScreen() {
 
   const handleSubmitReferral = async () => {
     if (!account || !refName.trim() || !refPhone.trim()) return
+    const digits = refPhone.replace(/\D/g, '')
+    if (digits.length < 10) {
+      Alert.alert('Invalid Phone', 'Please enter a valid 10-digit phone number.')
+      return
+    }
+    if (refEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(refEmail.trim())) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address.')
+      return
+    }
     setSubmitting(true)
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     const ok = await submitReferral(
@@ -99,6 +109,9 @@ export default function AccountScreen() {
         text: 'Sign Out', style: 'destructive',
         onPress: async () => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+          clearCache()
+          await SecureStore.deleteItemAsync('atlas_chat_history').catch(() => {})
+          await SecureStore.deleteItemAsync('mg_support_seen').catch(() => {})
           await supabase.auth.signOut()
         },
       },
@@ -140,7 +153,12 @@ export default function AccountScreen() {
       Alert.alert(
         'Account Deleted',
         'Your account has been permanently deleted. Thank you for being part of MicroGRID.',
-        [{ text: 'OK', onPress: async () => { await supabase.auth.signOut() } }],
+        [{ text: 'OK', onPress: async () => {
+        clearCache()
+        await SecureStore.deleteItemAsync('atlas_chat_history').catch(() => {})
+        await SecureStore.deleteItemAsync('mg_support_seen').catch(() => {})
+        await supabase.auth.signOut()
+      } }],
       )
     } else {
       Alert.alert('Could not delete account', result.error ?? 'Please try again or contact support.')

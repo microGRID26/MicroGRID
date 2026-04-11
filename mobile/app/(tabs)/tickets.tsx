@@ -45,11 +45,15 @@ export default function TicketsScreen() {
   const [category, setCategory] = useState('service')
 
   const load = useCallback(async () => {
-    const acct = await getCustomerAccount()
-    if (!acct) return
-    setAccount(acct)
-    const tix = await loadTickets(acct.project_id)
-    setTickets(tix)
+    try {
+      const acct = await getCustomerAccount()
+      if (!acct) { setLoading(false); return }
+      setAccount(acct)
+      const tix = await loadTickets(acct.project_id)
+      setTickets(tix)
+    } catch (err) {
+      console.error('[tickets] load failed:', err)
+    }
     setLoading(false)
   }, [])
 

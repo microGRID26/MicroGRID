@@ -21,10 +21,9 @@ export async function getCustomerAccount(): Promise<CustomerAccount | null> {
     .eq('auth_user_id', user.id)
     .eq('status', 'active')
     .limit(1)
-    .single()
 
-  if (error || !data) return null
-  return data as CustomerAccount
+  if (error || !data || data.length === 0) return null
+  return data[0] as CustomerAccount
 }
 
 // ── Project ─────────────────────────────────────────────────────────────────
@@ -286,14 +285,22 @@ export async function sendAtlasMessage(
   if (!session?.access_token) throw new Error('Not authenticated')
 
   const url = `${API_BASE}/api/portal/chat`
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify({ messages }),
-  })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 30000)
+  let res: Response
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ messages }),
+      signal: controller.signal,
+    })
+  } finally {
+    clearTimeout(timeout)
+  }
 
   if (!res.ok) {
     const errorText = await res.text().catch(() => 'unknown')

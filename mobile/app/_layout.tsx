@@ -91,6 +91,7 @@ export default function RootLayout() {
         case 'stage_advance':
         case 'schedule_created':
         case 'feedback_reply':
+        default:
           router.push('/(tabs)')
           break
       }
