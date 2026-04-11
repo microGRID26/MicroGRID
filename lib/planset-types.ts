@@ -338,7 +338,8 @@ export function buildPlansetData(project: Project, overrides: PlansetOverrides =
   // New system inverter count: use override or default (NOT project.inverter_qty which is the OLD microinverter count)
   const inverterCount = overrides.inverterCount ?? d.inverterCount
   const inverterAcPower = overrides.inverterAcPower ?? d.inverterAcPower
-  const batteryCount = overrides.batteryCount ?? project.battery_qty ?? d.batteryCount
+  // New system battery count: use override or default (NOT project.battery_qty which is the OLD system)
+  const batteryCount = overrides.batteryCount ?? d.batteryCount
   const batteryCapacity = overrides.batteryCapacity ?? d.batteryCapacity
   const panelVoc = overrides.panelVoc ?? d.panelVoc
   const mspBusRating = project.msp_bus_rating ?? '200'
@@ -436,7 +437,8 @@ export function buildPlansetData(project: Project, overrides: PlansetOverrides =
     batteryModel: overrides.batteryModel ?? d.batteryModel,
     batteryCount,
     batteryCapacity,
-    batteriesPerStack: overrides.batteriesPerStack ?? d.batteriesPerStack,
+    // Batteries per stack: override → default, but cap at actual battery count per inverter
+    batteriesPerStack: overrides.batteriesPerStack ?? Math.min(d.batteriesPerStack, Math.ceil(batteryCount / inverterCount)),
 
     rackingModel: overrides.rackingModel ?? d.rackingModel,
     racking,
