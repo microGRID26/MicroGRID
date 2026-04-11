@@ -5,13 +5,14 @@ export function SheetPV3({ data }: { data: PlansetData }) {
   // Auto-generated roof plan with panels — shows house outline + module placement
   function RoofPlanDiagram({ data: d }: { data: PlansetData }) {
     // House dimensions (schematic, not to scale)
-    const houseW = 280, houseH = 200
-    const houseX = 80, houseY = 100
-    const roofPeakY = houseY - 50
+    // House fills most of the drawing area
+    const houseW = 380, houseH = 260
+    const houseX = 50, houseY = 80
+    const roofPeakY = houseY - 40
 
-    // Calculate panel layout per roof face
-    const panelW = 10, panelH = 16, panelGap = 1.5
-    const maxPanelsPerRow = Math.floor((houseW - 40) / (panelW + panelGap))
+    // Panel sizing — larger for readability
+    const panelW = 14, panelH = 22, panelGap = 2
+    const maxPanelsPerRow = Math.floor((houseW - 30) / (panelW + panelGap))
 
     return (
       <svg viewBox="0 0 500 450" style={{ width: '100%', height: '100%' }}>
@@ -35,13 +36,13 @@ export function SheetPV3({ data }: { data: PlansetData }) {
         {/* House outline with garage */}
         <rect x={houseX} y={houseY} width={houseW} height={houseH} fill="#f5f5f0" stroke="#333" strokeWidth="1.5" />
         {/* Garage extension */}
-        <rect x={houseX + houseW - 70} y={houseY + houseH} width={70} height={40} fill="#eee" stroke="#333" strokeWidth="1" />
-        <text x={houseX + houseW - 35} y={houseY + houseH + 22} textAnchor="middle" fontSize="5" fill="#999">GARAGE</text>
+        <rect x={houseX + houseW - 90} y={houseY + houseH} width={90} height={45} fill="#eee" stroke="#333" strokeWidth="1" />
+        <text x={houseX + houseW - 45} y={houseY + houseH + 25} textAnchor="middle" fontSize="6" fill="#999">GARAGE</text>
         {/* Driveway */}
-        <rect x={houseX + houseW - 55} y={houseY + houseH + 40} width={40} height={55} fill="#e8e8e8" stroke="#aaa" strokeWidth="0.5" strokeDasharray="3,2" />
-        <text x={houseX + houseW - 35} y={houseY + houseH + 75} textAnchor="middle" fontSize="4" fill="#bbb">DRIVEWAY</text>
+        <rect x={houseX + houseW - 70} y={houseY + houseH + 45} width={50} height={40} fill="#e8e8e8" stroke="#aaa" strokeWidth="0.5" strokeDasharray="3,2" />
+        <text x={houseX + houseW - 45} y={houseY + houseH + 70} textAnchor="middle" fontSize="5" fill="#bbb">DRIVEWAY</text>
         {/* Front door */}
-        <rect x={houseX + 30} y={houseY + houseH - 2} width={18} height={4} fill="#999" stroke="#333" strokeWidth="0.5" />
+        <rect x={houseX + 40} y={houseY + houseH - 2} width={22} height={5} fill="#999" stroke="#333" strokeWidth="0.5" />
         {/* Building type label */}
         <text x={houseX + houseW / 2} y={houseY + houseH - 8} textAnchor="middle" fontSize="4" fill="#999">
           {d.stories === 1 ? 'ONE' : 'TWO'} STORY {d.buildingType?.toUpperCase() || 'BUILDING'}
@@ -104,12 +105,12 @@ export function SheetPV3({ data }: { data: PlansetData }) {
                 return (
                   <g key={s.id}>
                     <rect x={labelPanel.x - 1} y={labelPanel.y - 1} width={panelW + 2} height={panelH + 2} fill="none" stroke="#fff" strokeWidth="1.5" />
-                    <text x={labelPanel.x + panelW / 2} y={labelPanel.y + panelH / 2 + 2} textAnchor="middle" fontSize="5" fill="#fff" fontWeight="bold">
+                    <text x={labelPanel.x + panelW / 2} y={labelPanel.y + panelH / 2 + 3} textAnchor="middle" fontSize="7" fill="#fff" fontWeight="bold">
                       S{s.id}
                     </text>
                     {/* Inverter assignment label below string label */}
                     {invIdx >= 0 && (
-                      <text x={labelPanel.x + panelW / 2} y={labelPanel.y + panelH + 6} textAnchor="middle" fontSize="3" fill="#0d5c36">
+                      <text x={labelPanel.x + panelW / 2} y={labelPanel.y + panelH + 8} textAnchor="middle" fontSize="4.5" fill="#0d5c36" fontWeight="bold">
                         INV {invIdx + 1}
                       </text>
                     )}
@@ -133,7 +134,7 @@ export function SheetPV3({ data }: { data: PlansetData }) {
         </text>
 
         {/* Compass rose */}
-        <g transform="translate(440, 80)">
+        <g transform="translate(460, 65)">
           <line x1="0" y1="15" x2="0" y2="-15" stroke="#333" strokeWidth="1.5" />
           <polygon points="0,-15 -4,-5 4,-5" fill="#333" />
           <text x="0" y="-19" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#333">N</text>
@@ -151,9 +152,12 @@ export function SheetPV3({ data }: { data: PlansetData }) {
         </text>
 
         {/* Junction box location */}
-        <rect x={houseX + houseW + 15} y={houseY + houseH / 2 - 10} width="40" height="20" fill="none" stroke="#333" strokeWidth="1" />
-        <text x={houseX + houseW + 35} y={houseY + houseH / 2 + 3} textAnchor="middle" fontSize="4" fill="#333">(N) JB</text>
-        <line x1={houseX + houseW} y1={houseY + houseH / 2} x2={houseX + houseW + 15} y2={houseY + houseH / 2} stroke="#333" strokeWidth="0.8" />
+        <rect x={houseX + houseW + 10} y={houseY + houseH / 2 - 12} width="45" height="24" fill="none" stroke="#333" strokeWidth="1" />
+        <text x={houseX + houseW + 32} y={houseY + houseH / 2 + 3} textAnchor="middle" fontSize="5" fill="#333">(N) JB</text>
+        <line x1={houseX + houseW} y1={houseY + houseH / 2} x2={houseX + houseW + 10} y2={houseY + houseH / 2} stroke="#333" strokeWidth="1" />
+        {/* Conduit run from JB to equipment */}
+        <line x1={houseX + houseW + 32} y1={houseY + houseH / 2 + 12} x2={houseX + houseW + 32} y2={houseY + houseH + 20} stroke="#333" strokeWidth="0.5" strokeDasharray="4,2" />
+        <text x={houseX + houseW + 36} y={houseY + houseH + 10} fontSize="3.5" fill="#666">CONDUIT RUN</text>
       </svg>
     )
   }

@@ -255,6 +255,13 @@ export function calculateSldLayout(config: SldConfig): SldLayout {
     elements.push({ type: 'text', x: battScopeX + 8, y: 40 + i * 9, text: line, fontSize: 5.5, bold: isBold })
   })
 
+  // SCOPE block (below battery scope)
+  const scopeY = 16 + battScopeEnhancedSize.h + 22
+  elements.push({ type: 'rect', x: battScopeX, y: scopeY, w: battScopeEnhancedSize.w, h: 40 })
+  elements.push({ type: 'text', x: battScopeX + 8, y: scopeY + 12, text: 'SCOPE', fontSize: 5.5, bold: true })
+  elements.push({ type: 'text', x: battScopeX + 8, y: scopeY + 22, text: `(${config.inverterCount}) ${config.inverterModel.toUpperCase()}`, fontSize: 4.5, fill: '#444' })
+  elements.push({ type: 'text', x: battScopeX + 8, y: scopeY + 32, text: `(${config.batteryCount}) ${config.batteryModel.toUpperCase()}`, fontSize: 4.5, fill: '#444' })
+
   // Installation notes box (below STC + meter boxes)
   const installNotesY = 16 + stcSize.h + 12
   const installNotes = [
