@@ -95,6 +95,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .single() as { data: { id: string } | null }
 
   if (result_row?.id) {
+    // Best-effort backreference. qa_runs.test_result_id is not read by any
+    // UI (the /testing admin feed queries test_results directly) so a failed
+    // link is a logging-level concern, not a user-visible bug. We do NOT 500
+    // here — the main finalization already succeeded, and returning 500 would
+    // make the client retry against a row that's now in a terminal status
+    // (409 from the `.eq('status', 'started')` guard above) and duplicate the
+    // test_results insert.
     const { error: linkErr } = await admin
       .from('qa_runs')
       .update({ test_result_id: result_row.id })
