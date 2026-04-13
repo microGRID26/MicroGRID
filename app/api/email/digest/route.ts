@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/email'
 import { rateLimit } from '@/lib/rate-limit'
 import { SLA_THRESHOLDS, INTERNAL_DOMAINS } from '@/lib/utils'
+import { reportFleetRun, type FleetRunStatus } from '@/lib/hq-fleet'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nova.gomicrogridenergy.com'
 
@@ -50,6 +51,14 @@ export async function GET(req: Request) {
 
   const supabase = createClient(supabaseUrl, serviceKey)
 
+  const fleetStartedAt = new Date()
+  let fleetStatus: FleetRunStatus = 'success'
+  let fleetItems: number | null = 0
+  let fleetSummary: string | null = null
+  let fleetError: string | null = null
+
+  try {
+
   // Load active PMs (users with role >= manager who are active)
   const { data: users, error: usersErr } = await supabase
     .from('users')
@@ -60,6 +69,8 @@ export async function GET(req: Request) {
 
   if (usersErr || !users) {
     console.error('[digest] users query failed:', usersErr?.message)
+    fleetStatus = 'error'
+    fleetError = `Users query failed: ${usersErr?.message ?? 'null result'}`
     return NextResponse.json({ error: 'Failed to load users' }, { status: 500 })
   }
 
@@ -68,6 +79,7 @@ export async function GET(req: Request) {
     .filter(u => u.email && INTERNAL_DOMAINS.some(d => u.email.includes(`@${d}`)))
 
   if (pms.length === 0) {
+    fleetSummary = 'No PMs to notify'
     return NextResponse.json({ sent: 0, message: 'No PMs to notify' })
   }
 
@@ -193,7 +205,25 @@ export async function GET(req: Request) {
   }
 
   console.log(`[digest] Sent ${sent} digests, ${errors.length} errors`)
+  fleetItems = sent
+  fleetSummary = `Sent ${sent} PM digests (${pms.length} PMs, ${errors.length} errors)`
+  if (errors.length > 0) fleetStatus = 'partial'
   return NextResponse.json({ sent, errors: errors.length, pmCount: pms.length })
+  } catch (err) {
+    fleetStatus = 'error'
+    fleetError = String(err)
+    return NextResponse.json({ error: String(err) }, { status: 500 })
+  } finally {
+    await reportFleetRun({
+      slug: 'mg-email-digest',
+      status: fleetStatus,
+      startedAt: fleetStartedAt,
+      finishedAt: new Date(),
+      itemsProcessed: fleetItems,
+      outputSummary: fleetSummary,
+      errorMessage: fleetError,
+    })
+  }
 }
 
 // ── Email HTML Builder ──────────────────────────────────────────────────────

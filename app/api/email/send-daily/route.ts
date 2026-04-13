@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/email'
 import { getTemplate, getMaxDay } from '@/lib/email-templates'
 import { rateLimit } from '@/lib/rate-limit'
+import { reportFleetRun, type FleetRunStatus } from '@/lib/hq-fleet'
 
 // Supabase admin client for server-side cron (no user auth)
 function getAdminClient() {
@@ -36,6 +37,12 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const fleetStartedAt = new Date()
+  let fleetStatus: FleetRunStatus = 'success'
+  let fleetItems: number | null = 0
+  let fleetSummary: string | null = null
+  let fleetError: string | null = null
+
   try {
     const supabase = getAdminClient()
     const today = new Date().toISOString().slice(0, 10)
@@ -50,10 +57,13 @@ export async function GET(req: Request) {
 
     if (error) {
       console.error('[send-daily] query error:', error)
+      fleetStatus = 'error'
+      fleetError = `Enrollment query failed: ${error.message}`
       return NextResponse.json({ error: 'Failed to load enrollments' }, { status: 500 })
     }
 
     if (!enrollments || enrollments.length === 0) {
+      fleetSummary = 'No active enrollments'
       return NextResponse.json({ sent: 0, message: 'No active enrollments' })
     }
 
@@ -114,6 +124,10 @@ export async function GET(req: Request) {
       }
     }
 
+    fleetItems = sent
+    fleetSummary = `Sent ${sent}/${enrollments.length} daily emails (${completed} completed, ${skipped} skipped, ${failed} failed)`
+    if (failed > 0) fleetStatus = 'partial'
+
     return NextResponse.json({
       sent,
       skipped,
@@ -124,6 +138,18 @@ export async function GET(req: Request) {
     })
   } catch (err) {
     console.error('[send-daily] error:', err)
+    fleetStatus = 'error'
+    fleetError = String(err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  } finally {
+    await reportFleetRun({
+      slug: 'mg-email-send-daily',
+      status: fleetStatus,
+      startedAt: fleetStartedAt,
+      finishedAt: new Date(),
+      itemsProcessed: fleetItems,
+      outputSummary: fleetSummary,
+      errorMessage: fleetError,
+    })
   }
 }

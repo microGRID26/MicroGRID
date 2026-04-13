@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'crypto'
 import { createClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/email'
 import { rateLimit } from '@/lib/rate-limit'
+import { reportFleetRun, type FleetRunStatus } from '@/lib/hq-fleet'
 
 /**
  * GET /api/email/onboarding-reminder
@@ -43,6 +44,14 @@ export async function GET(req: Request) {
 
   const supabase = createClient(supabaseUrl, serviceKey)
 
+  const fleetStartedAt = new Date()
+  let fleetStatus: FleetRunStatus = 'success'
+  let fleetItems: number | null = 0
+  let fleetSummary: string | null = null
+  let fleetError: string | null = null
+
+  try {
+
   // Find docs in 'sent' status where sent_at is > 24 hours ago
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 
@@ -55,10 +64,13 @@ export async function GET(req: Request) {
 
   if (error) {
     console.error('[onboarding-reminder] query error:', error.message)
+    fleetStatus = 'error'
+    fleetError = `Query failed: ${error.message}`
     return NextResponse.json({ error: 'Query failed' }, { status: 500 })
   }
 
   if (!staleDocs || staleDocs.length === 0) {
+    fleetSummary = 'No stale documents found'
     return NextResponse.json({ sent: 0, message: 'No stale documents found' })
   }
 
@@ -138,5 +150,23 @@ export async function GET(req: Request) {
   }
 
   console.log(`[onboarding-reminder] Sent ${sent} reminders, ${errors.length} errors`)
+  fleetItems = sent
+  fleetSummary = `Sent ${sent} reminders (${staleDocs.length} stale docs, ${errors.length} errors)`
+  if (errors.length > 0) fleetStatus = 'partial'
   return NextResponse.json({ sent, errors: errors.length, staleCount: staleDocs.length })
+  } catch (err) {
+    fleetStatus = 'error'
+    fleetError = String(err)
+    return NextResponse.json({ error: String(err) }, { status: 500 })
+  } finally {
+    await reportFleetRun({
+      slug: 'mg-email-onboarding-reminder',
+      status: fleetStatus,
+      startedAt: fleetStartedAt,
+      finishedAt: new Date(),
+      itemsProcessed: fleetItems,
+      outputSummary: fleetSummary,
+      errorMessage: fleetError,
+    })
+  }
 }

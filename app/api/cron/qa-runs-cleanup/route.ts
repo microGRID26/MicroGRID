@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { timingSafeEqual } from 'crypto'
 import { getQaAdmin, QA_RUN_ABANDON_AFTER_HOURS } from '@/lib/qa/server'
+import { reportFleetRun, type FleetRunStatus } from '@/lib/hq-fleet'
 
 export async function GET(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
@@ -21,6 +22,12 @@ export async function GET(request: NextRequest) {
   } catch { ok = false }
   if (!ok) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const fleetStartedAt = new Date()
+  let fleetStatus: FleetRunStatus = 'success'
+  let fleetItems: number | null = 0
+  let fleetSummary: string | null = null
+  let fleetError: string | null = null
+
   try {
     const admin = getQaAdmin()
     const cutoff = new Date(Date.now() - QA_RUN_ABANDON_AFTER_HOURS * 60 * 60 * 1000).toISOString()
@@ -31,7 +38,10 @@ export async function GET(request: NextRequest) {
       .lt('started_at', cutoff) as { data: { id: string }[] | null }
 
     const ids = (stale ?? []).map((r) => r.id)
-    if (ids.length === 0) return NextResponse.json({ success: true, abandoned: 0 })
+    if (ids.length === 0) {
+      fleetSummary = 'No stale QA runs found'
+      return NextResponse.json({ success: true, abandoned: 0 })
+    }
 
     const now = new Date().toISOString()
     const { error } = await admin
@@ -41,13 +51,29 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('cleanup update failed', error)
+      fleetStatus = 'error'
+      fleetError = `Failed to abandon stale runs: ${error.message}`
       return NextResponse.json({ error: 'Failed to abandon stale runs' }, { status: 500 })
     }
 
     console.log(`QA cron: abandoned ${ids.length} stale runs`)
+    fleetItems = ids.length
+    fleetSummary = `Abandoned ${ids.length} stale QA runs`
     return NextResponse.json({ success: true, abandoned: ids.length })
   } catch (err) {
     console.error('cron error', err)
+    fleetStatus = 'error'
+    fleetError = String(err)
     return NextResponse.json({ error: 'Cron error' }, { status: 500 })
+  } finally {
+    await reportFleetRun({
+      slug: 'mg-qa-runs-cleanup',
+      status: fleetStatus,
+      startedAt: fleetStartedAt,
+      finishedAt: new Date(),
+      itemsProcessed: fleetItems,
+      outputSummary: fleetSummary,
+      errorMessage: fleetError,
+    })
   }
 }
