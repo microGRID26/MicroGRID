@@ -88,20 +88,37 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(cached.value)
   }
 
-  // Load project folder_id
-  const queryResult = await supabase
-    .from('projects')
-    .select('id, folder_id')
-    .eq('id', projectId)
+  // Load project folder from project_folders table.
+  // Canonical source: project_folders.folder_url (100% populated).
+  // project_folders.folder_id column is only populated for ~1.6% of rows,
+  // so we parse the folder ID out of the URL ourselves when needed.
+  // Typed db() helper (untyped) because project_folders isn't in Database types.
+  const pfResult = await (supabase as unknown as {
+    from: (t: string) => {
+      select: (c: string) => {
+        eq: (col: string, val: string) => {
+          maybeSingle: () => Promise<{ data: { folder_id: string | null; folder_url: string | null } | null; error: unknown }>
+        }
+      }
+    }
+  })
+    .from('project_folders')
+    .select('folder_id, folder_url')
+    .eq('project_id', projectId)
     .maybeSingle()
 
-  const project = queryResult.data as { id: string; folder_id: string | null } | null
-  if (queryResult.error || !project) {
-    return NextResponse.json(emptyResult(null, `project not found or not accessible`, started))
+  if (pfResult.error || !pfResult.data) {
+    return NextResponse.json(emptyResult(null, `project_folders row not found`, started))
   }
-  const folderId = project.folder_id
+
+  // Prefer the column; fall back to parsing out of folder_url.
+  let folderId = pfResult.data.folder_id
+  if (!folderId && pfResult.data.folder_url) {
+    const match = pfResult.data.folder_url.match(/\/folders\/([a-zA-Z0-9_-]+)/)
+    if (match) folderId = match[1]
+  }
   if (!folderId) {
-    const result = emptyResult(null, 'project has no folder_id', started)
+    const result = emptyResult(null, 'project has no drive folder (column null + url unparseable)', started)
     cache.set(projectId, { value: result, expiresAt: Date.now() + CACHE_TTL_MS })
     return NextResponse.json(result)
   }
