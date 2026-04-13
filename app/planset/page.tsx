@@ -409,6 +409,7 @@ function PlanSetPageInner() {
   const [images, setImages] = useState<{ sitePlanImageUrl: string | null, roofPlanImageUrl: string | null, aerialPhotoUrl: string | null, housePhotoUrl: string | null, equipmentPhotos: (string | null)[] }>({
     sitePlanImageUrl: null, roofPlanImageUrl: null, aerialPhotoUrl: null, housePhotoUrl: null, equipmentPhotos: [null, null, null, null],
   })
+  const [driveStatus, setDriveStatus] = useState<{ state: 'idle' | 'loading' | 'success' | 'error', matched?: number, message?: string } | null>(null)
 
   const loadProject = useCallback(async (id: string) => {
     setLoading(true)
@@ -483,18 +484,85 @@ function PlanSetPageInner() {
     return () => { if (rebuildTimerRef.current) clearTimeout(rebuildTimerRef.current) }
   }, [projectId, strings, overrides, roofFaces, images.sitePlanImageUrl, rebuildData])
 
+  // Phase 6: auto-pull photos from the project's Google Drive folder when a new
+  // project is loaded. Fires ONCE per projectId — does not re-run on manual
+  // uploads (which don't change projectId) so user uploads aren't clobbered.
+  // Missing photos (null slots) fall through to the existing manual upload UI.
+  useEffect(() => {
+    if (!projectId) return
+    let cancelled = false
+    const controller = new AbortController()
+    setDriveStatus({ state: 'loading' })
+    fetch(`/api/planset/drive-photos?projectId=${encodeURIComponent(projectId)}`, { signal: controller.signal })
+      .then(async r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json() as Promise<{
+          aerialPhotoUrl: string | null
+          housePhotoUrl: string | null
+          sitePlanImageUrl: string | null
+          roofPlanImageUrl: string | null
+          equipmentPhotos: (string | null)[]
+          meta: { imagesMatched: number; fallbackReason?: string; subfoldersSearched: string[] }
+        }>
+      })
+      .then(photos => {
+        if (cancelled) return
+        if (photos.meta?.fallbackReason) {
+          setDriveStatus({ state: 'error', message: photos.meta.fallbackReason })
+          return
+        }
+        const matched = photos.meta?.imagesMatched ?? 0
+        if (matched === 0) {
+          setDriveStatus({ state: 'success', matched: 0, message: 'No photos found in 07 Site Survey or 08 Design — upload manually below' })
+          return
+        }
+        setImages(prev => {
+          // Revoke any existing blob URLs for slots we are about to overwrite.
+          const revokeBlob = (u: string | null) => { if (u?.startsWith('blob:')) URL.revokeObjectURL(u) }
+          if (photos.aerialPhotoUrl) revokeBlob(prev.aerialPhotoUrl)
+          if (photos.housePhotoUrl) revokeBlob(prev.housePhotoUrl)
+          if (photos.sitePlanImageUrl) revokeBlob(prev.sitePlanImageUrl)
+          if (photos.roofPlanImageUrl) revokeBlob(prev.roofPlanImageUrl)
+          const newEquipment = [...prev.equipmentPhotos]
+          for (let i = 0; i < 4; i++) {
+            const incoming = photos.equipmentPhotos?.[i] ?? null
+            if (incoming) { revokeBlob(newEquipment[i]); newEquipment[i] = incoming }
+          }
+          return {
+            sitePlanImageUrl: photos.sitePlanImageUrl ?? prev.sitePlanImageUrl,
+            roofPlanImageUrl: photos.roofPlanImageUrl ?? prev.roofPlanImageUrl,
+            aerialPhotoUrl: photos.aerialPhotoUrl ?? prev.aerialPhotoUrl,
+            housePhotoUrl: photos.housePhotoUrl ?? prev.housePhotoUrl,
+            equipmentPhotos: newEquipment,
+          }
+        })
+        setDriveStatus({ state: 'success', matched })
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return
+        if (err instanceof Error && err.name === 'AbortError') return
+        const msg = err instanceof Error ? err.message : 'drive fetch failed'
+        setDriveStatus({ state: 'error', message: msg })
+      })
+    return () => { cancelled = true; controller.abort() }
+  }, [projectId])
+
   const clearProject = () => {
     setProjectId('')
     setData(null)
     setStrings([])
     setRoofFaces([])
     setOverrides({})
-    if (images.sitePlanImageUrl) URL.revokeObjectURL(images.sitePlanImageUrl)
-    if (images.roofPlanImageUrl) URL.revokeObjectURL(images.roofPlanImageUrl)
-    if (images.aerialPhotoUrl) URL.revokeObjectURL(images.aerialPhotoUrl)
-    if (images.housePhotoUrl) URL.revokeObjectURL(images.housePhotoUrl)
-    images.equipmentPhotos.forEach(u => { if (u) URL.revokeObjectURL(u) })
+    // Only revoke manually-uploaded blob URLs — auto-pulled /api/planset/drive-image URLs
+    // are remote references and must not be passed to revokeObjectURL.
+    const revokeBlob = (u: string | null) => { if (u?.startsWith('blob:')) URL.revokeObjectURL(u) }
+    revokeBlob(images.sitePlanImageUrl)
+    revokeBlob(images.roofPlanImageUrl)
+    revokeBlob(images.aerialPhotoUrl)
+    revokeBlob(images.housePhotoUrl)
+    images.equipmentPhotos.forEach(revokeBlob)
     setImages({ sitePlanImageUrl: null, roofPlanImageUrl: null, aerialPhotoUrl: null, housePhotoUrl: null, equipmentPhotos: [null, null, null, null] })
+    setDriveStatus(null)
   }
 
   if (!userLoading && currentUser && !currentUser.isManager) {
@@ -570,6 +638,20 @@ function PlanSetPageInner() {
                 <span className="text-xs text-gray-500">Select &quot;Save as PDF&quot; in the print dialog</span>
               </div>
             </div>
+
+            {driveStatus && driveStatus.state !== 'idle' && (
+              <div className={`mb-4 px-3 py-2 rounded-md text-xs border ${
+                driveStatus.state === 'loading' ? 'bg-blue-900/20 border-blue-800 text-blue-300' :
+                driveStatus.state === 'success' && (driveStatus.matched ?? 0) > 0 ? 'bg-green-900/20 border-green-800 text-green-300' :
+                driveStatus.state === 'success' ? 'bg-gray-800 border-gray-700 text-gray-400' :
+                'bg-amber-900/20 border-amber-800 text-amber-300'
+              }`}>
+                {driveStatus.state === 'loading' && 'Fetching photos from Google Drive...'}
+                {driveStatus.state === 'success' && (driveStatus.matched ?? 0) > 0 && `Auto-pulled ${driveStatus.matched} photo${driveStatus.matched === 1 ? '' : 's'} from Drive.`}
+                {driveStatus.state === 'success' && (driveStatus.matched ?? 0) === 0 && (driveStatus.message ?? 'No photos matched.')}
+                {driveStatus.state === 'error' && `Drive auto-pull: ${driveStatus.message ?? 'failed'} — upload photos manually below.`}
+              </div>
+            )}
 
             <OverridesPanel
               data={data}
