@@ -59,7 +59,9 @@ function fmtKw(v: number | string | null | undefined): string {
 }
 
 function fmtMarkupX(v: number | string | null | undefined): string {
-  return `${num(v).toFixed(2)}x`
+  const n = num(v)
+  if (n === 0) return '—'
+  return `${n.toFixed(2)}x`
 }
 
 function fmtDate(d: Date): string {
@@ -69,25 +71,33 @@ function fmtDate(d: Date): string {
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const BRAND_GREEN = '#1D9E75'
+const BRAND_GREEN_DARK = '#0f5040'
 const INK = '#111827'
 const MUTED = '#6b7280'
 const DIVIDER = '#e5e7eb'
 const LIGHT_BG = '#f9fafb'
+const EPC_INTERNAL_BG = '#fffbeb'
+const EPC_INTERNAL_BORDER = '#fbbf24'
+const ITC_EXCLUDED_BG = '#fef2f2'
+const ITC_EXCLUDED_BORDER = '#ef4444'
 
 const styles = StyleSheet.create({
   page: {
-    padding: 36,
+    paddingTop: 40,
+    paddingBottom: 56,
+    paddingHorizontal: 40,
     fontSize: 9,
     fontFamily: 'Helvetica',
     color: INK,
     lineHeight: 1.4,
   },
+  // ── Header ──────────────────────────────────────────────────────────────
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-    paddingBottom: 12,
+    alignItems: 'flex-end',
+    marginBottom: 18,
+    paddingBottom: 14,
     borderBottomWidth: 2,
     borderBottomColor: BRAND_GREEN,
   },
@@ -95,76 +105,88 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   brandTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontFamily: 'Helvetica-Bold',
     color: BRAND_GREEN,
+    lineHeight: 1.05,
+    marginBottom: 6,
   },
   brandSubtitle: {
     fontSize: 8,
     color: MUTED,
-    marginTop: 2,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 1.2,
   },
   headerRight: {
     alignItems: 'flex-end',
   },
   docLabel: {
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: 'Helvetica-Bold',
     color: INK,
+    letterSpacing: 0.5,
   },
   docDate: {
     fontSize: 9,
     color: MUTED,
-    marginTop: 2,
+    marginTop: 3,
   },
-  // Project summary block
+  // ── Project summary block ──────────────────────────────────────────────
   projectBlock: {
     flexDirection: 'row',
-    marginBottom: 16,
-    paddingHorizontal: 8,
-    paddingVertical: 8,
+    marginBottom: 18,
+    padding: 12,
     backgroundColor: LIGHT_BG,
     borderRadius: 4,
+    borderLeftWidth: 3,
+    borderLeftColor: BRAND_GREEN,
+  },
+  projectColWide: {
+    flex: 2.2,
+    paddingRight: 16,
   },
   projectCol: {
-    flex: 1,
+    flex: 1.5,
     paddingRight: 12,
+  },
+  projectColNarrow: {
+    flex: 1,
+    paddingRight: 0,
   },
   projectLabel: {
     fontSize: 7,
     color: MUTED,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
     marginBottom: 2,
   },
   projectValue: {
     fontSize: 10,
     fontFamily: 'Helvetica-Bold',
     color: INK,
+    lineHeight: 1.3,
   },
-  // Section headers
+  // ── Section headers ────────────────────────────────────────────────────
   sectionHeader: {
     flexDirection: 'row',
     backgroundColor: BRAND_GREEN,
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    marginTop: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    marginTop: 14,
   },
   sectionHeaderText: {
     fontSize: 9,
     fontFamily: 'Helvetica-Bold',
     color: '#ffffff',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
   },
-  // Line item table
+  // ── Line item table ────────────────────────────────────────────────────
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: '#f3f4f6',
-    paddingVertical: 4,
-    paddingHorizontal: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
     borderBottomWidth: 1,
     borderBottomColor: DIVIDER,
   },
@@ -172,45 +194,47 @@ const styles = StyleSheet.create({
     fontSize: 7,
     color: MUTED,
     textTransform: 'uppercase',
-    letterSpacing: 0.3,
+    letterSpacing: 0.4,
     fontFamily: 'Helvetica-Bold',
   },
   tableRow: {
     flexDirection: 'row',
-    paddingVertical: 3,
-    paddingHorizontal: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
     borderBottomWidth: 0.5,
     borderBottomColor: DIVIDER,
+    alignItems: 'center',
   },
   tableRowEpcInternal: {
-    backgroundColor: '#fffbeb',
+    backgroundColor: EPC_INTERNAL_BG,
   },
   tableRowItcExcluded: {
-    backgroundColor: '#fef2f2',
+    backgroundColor: ITC_EXCLUDED_BG,
   },
-  cellItem: { flex: 4, fontSize: 8 },
-  cellBucket: { flex: 1, fontSize: 7, color: MUTED, textAlign: 'left' as const },
-  cellRaw: { flex: 1.2, fontSize: 8, textAlign: 'right' as const },
-  cellMarkup: { flex: 0.8, fontSize: 7, color: MUTED, textAlign: 'right' as const },
-  cellEpc: { flex: 1.4, fontSize: 8, textAlign: 'right' as const, fontFamily: 'Helvetica-Bold' },
-  cellBattery: { flex: 1.2, fontSize: 7, textAlign: 'right' as const, color: '#0284c7' },
-  cellPv: { flex: 1.2, fontSize: 7, textAlign: 'right' as const, color: '#16a34a' },
-  cellEligibility: { flex: 0.8, fontSize: 7, textAlign: 'center' as const, color: MUTED },
-  // Summary block
+  cellItem: { flex: 5.5, fontSize: 8, paddingRight: 6 },
+  cellBucket: { flex: 0.7, fontSize: 7, color: MUTED, textAlign: 'left' as const, paddingRight: 4 },
+  cellRaw: { flex: 1.1, fontSize: 8, textAlign: 'right' as const, color: MUTED, paddingRight: 4 },
+  cellMarkup: { flex: 0.6, fontSize: 7, color: MUTED, textAlign: 'right' as const, paddingRight: 4 },
+  cellEpc: { flex: 1.4, fontSize: 8, textAlign: 'right' as const, fontFamily: 'Helvetica-Bold', paddingRight: 6 },
+  cellBattery: { flex: 1.1, fontSize: 7, textAlign: 'right' as const, color: '#0284c7', paddingRight: 4 },
+  cellPv: { flex: 1.1, fontSize: 7, textAlign: 'right' as const, color: '#16a34a', paddingRight: 4 },
+  cellEligibility: { flex: 0.6, fontSize: 7, textAlign: 'center' as const, color: MUTED },
+  // ── Summary block ──────────────────────────────────────────────────────
   summaryBlock: {
-    marginTop: 16,
-    padding: 12,
+    marginTop: 18,
+    padding: 14,
     borderWidth: 1,
     borderColor: BRAND_GREEN,
     borderRadius: 4,
+    backgroundColor: '#ffffff',
   },
   summaryTitle: {
     fontSize: 10,
     fontFamily: 'Helvetica-Bold',
     color: BRAND_GREEN,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
+    letterSpacing: 0.8,
+    marginBottom: 10,
   },
   summaryGrid: {
     flexDirection: 'row',
@@ -224,21 +248,21 @@ const styles = StyleSheet.create({
     color: MUTED,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 2,
+    marginBottom: 3,
   },
   summaryValue: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: 'Helvetica-Bold',
     color: INK,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   summaryPct: {
     fontSize: 8,
     color: MUTED,
   },
   itcBlock: {
-    marginTop: 8,
-    paddingTop: 8,
+    marginTop: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: DIVIDER,
     flexDirection: 'row',
@@ -246,39 +270,68 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   itcLabel: {
-    fontSize: 9,
-    color: MUTED,
+    fontSize: 10,
+    color: INK,
+    fontFamily: 'Helvetica-Bold',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
   },
   itcValue: {
-    fontSize: 14,
+    fontSize: 18,
     fontFamily: 'Helvetica-Bold',
     color: BRAND_GREEN,
   },
-  // Legend
+  // ── Legend ─────────────────────────────────────────────────────────────
   legend: {
-    marginTop: 12,
+    marginTop: 14,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    fontSize: 7,
-    color: MUTED,
   },
   legendItem: {
     flex: 1,
-    marginRight: 8,
+    marginRight: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  // Footer
+  legendItemLast: {
+    flex: 1.4,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  legendSwatch: {
+    width: 8,
+    height: 8,
+    marginRight: 5,
+    borderWidth: 0.5,
+  },
+  legendSwatchEpc: {
+    backgroundColor: EPC_INTERNAL_BG,
+    borderColor: EPC_INTERNAL_BORDER,
+  },
+  legendSwatchItc: {
+    backgroundColor: ITC_EXCLUDED_BG,
+    borderColor: ITC_EXCLUDED_BORDER,
+  },
+  legendText: {
+    fontSize: 7,
+    color: MUTED,
+  },
+  legendNote: {
+    fontSize: 7,
+    color: MUTED,
+    fontStyle: 'italic',
+  },
+  // ── Footer ─────────────────────────────────────────────────────────────
   footer: {
     position: 'absolute',
     bottom: 24,
-    left: 36,
-    right: 36,
+    left: 40,
+    right: 40,
     fontSize: 7,
     color: MUTED,
     borderTopWidth: 1,
     borderTopColor: DIVIDER,
-    paddingTop: 6,
+    paddingTop: 8,
     textAlign: 'center',
     lineHeight: 1.5,
   },
@@ -311,32 +364,32 @@ export function CostBasisPDF({ project, lineItems, summary, generatedAt }: CostB
 
         {/* Project summary */}
         <View style={styles.projectBlock}>
-          <View style={styles.projectCol}>
+          <View style={styles.projectColWide}>
             <Text style={styles.projectLabel}>Project</Text>
             <Text style={styles.projectValue}>{project.name}</Text>
-            <Text style={[styles.projectLabel, { marginTop: 4 }]}>Project ID</Text>
+            <Text style={[styles.projectLabel, { marginTop: 6 }]}>Project ID</Text>
             <Text style={styles.projectValue}>{project.id}</Text>
           </View>
           <View style={styles.projectCol}>
             <Text style={styles.projectLabel}>System Size</Text>
             <Text style={styles.projectValue}>{fmtKw(project.systemkw)}</Text>
-            <Text style={[styles.projectLabel, { marginTop: 4 }]}>Battery Units</Text>
+            <Text style={[styles.projectLabel, { marginTop: 6 }]}>Battery Units</Text>
             <Text style={styles.projectValue}>
               {project.battery_qty ? `${project.battery_qty} units` : '—'}
             </Text>
           </View>
-          <View style={styles.projectCol}>
+          <View style={styles.projectColWide}>
             <Text style={styles.projectLabel}>Address</Text>
             <Text style={styles.projectValue}>{project.address ?? '—'}</Text>
-            <Text style={[styles.projectLabel, { marginTop: 4 }]}>City / Utility</Text>
+            <Text style={[styles.projectLabel, { marginTop: 6 }]}>City / Utility</Text>
             <Text style={styles.projectValue}>
               {[project.city, project.utility].filter(Boolean).join(' · ') || '—'}
             </Text>
           </View>
-          <View style={styles.projectCol}>
+          <View style={styles.projectColNarrow}>
             <Text style={styles.projectLabel}>AHJ</Text>
             <Text style={styles.projectValue}>{project.ahj ?? '—'}</Text>
-            <Text style={[styles.projectLabel, { marginTop: 4 }]}>Sale Date</Text>
+            <Text style={[styles.projectLabel, { marginTop: 6 }]}>Sale Date</Text>
             <Text style={styles.projectValue}>
               {project.sale_date ? fmtDate(new Date(project.sale_date)) : '—'}
             </Text>
@@ -417,17 +470,22 @@ export function CostBasisPDF({ project, lineItems, summary, generatedAt }: CostB
           </View>
         </View>
 
-        {/* Legend */}
+        {/* Legend — colored View swatches instead of unicode symbols (Helvetica
+            has no ▣ glyph, so the unicode version rendered as £). */}
         <View style={styles.legend}>
-          <Text style={styles.legendItem}>
-            ▣ Yellow rows: EPC internal cost (attestation only)
-          </Text>
-          <Text style={styles.legendItem}>
-            ▣ Red rows: ITC excluded (e.g. GPU)
-          </Text>
-          <Text style={styles.legendItem}>
-            Markup column "K" is the additional factor: distro = raw × (1 + K)
-          </Text>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendSwatch, styles.legendSwatchEpc]} />
+            <Text style={styles.legendText}>EPC internal cost (attestation only)</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendSwatch, styles.legendSwatchItc]} />
+            <Text style={styles.legendText}>ITC excluded (e.g. GPU)</Text>
+          </View>
+          <View style={styles.legendItemLast}>
+            <Text style={styles.legendNote}>
+              Markup "K" is the additional factor: distro = raw × (1 + K)
+            </Text>
+          </View>
         </View>
 
         {/* Footer */}
