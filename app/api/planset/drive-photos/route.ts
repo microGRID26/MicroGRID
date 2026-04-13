@@ -245,6 +245,14 @@ export async function GET(req: NextRequest) {
     },
   }
 
+  // Slot-fill policy: auto-pull ONLY PV-1 (aerial + house) + PV-3.1 equipment.
+  // PV-3 and PV-4 are intentionally skipped — those sheets render auto-generated
+  // vector module/roof plans from the project data, and dropping a satellite
+  // photo into either slot would cover up the exact module placement drawing
+  // Rush Engineering needs to stamp. site_plan/roof_plan classifications are
+  // still counted in `breakdown` for diagnostics but never populate a slot.
+  // Manual upload via OverridesPanel remains available for the rare case where
+  // a user wants to override the auto-generated drawing with a photo.
   let matched = 0
   const equipmentFound: string[] = []
   for (const { img, label } of classifications) {
@@ -253,12 +261,6 @@ export async function GET(req: NextRequest) {
     }
     if (label === 'house' && !result.housePhotoUrl) {
       result.housePhotoUrl = proxyUrl(img.id); matched++; continue
-    }
-    if (label === 'site_plan' && !result.sitePlanImageUrl) {
-      result.sitePlanImageUrl = proxyUrl(img.id); matched++; continue
-    }
-    if (label === 'roof_plan' && !result.roofPlanImageUrl) {
-      result.roofPlanImageUrl = proxyUrl(img.id); matched++; continue
     }
     if (EQUIPMENT_LABELS.has(label) && equipmentFound.length < 4) {
       equipmentFound.push(proxyUrl(img.id)); matched++
