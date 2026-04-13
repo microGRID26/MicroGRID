@@ -22,6 +22,7 @@ export interface DriveFile {
   mimeType: string
   size?: string
   parents?: string[]
+  driveId?: string
 }
 
 const DRIVE_API = 'https://www.googleapis.com/drive/v3'
@@ -125,8 +126,13 @@ async function driveFetch(path: string, init: RequestInit = {}): Promise<Respons
 /**
  * List immediate children of a Drive folder. Supports Shared Drives.
  * Handles pagination internally. Returns up to `maxResults` files.
+ *
+ * If driveId is provided, uses corpora=drive + driveId (matches the proven
+ * pattern in scripts/walk-shared-drive.py). If not, falls back to
+ * corpora=allDrives which is less reliable for service accounts but works
+ * for OAuth users.
  */
-export async function listFolderChildren(folderId: string, maxResults = 200): Promise<DriveFile[]> {
+export async function listFolderChildren(folderId: string, maxResults = 200, driveId?: string): Promise<DriveFile[]> {
   const files: DriveFile[] = []
   let pageToken: string | undefined
   const pageSize = Math.min(100, maxResults)
@@ -134,16 +140,17 @@ export async function listFolderChildren(folderId: string, maxResults = 200): Pr
   while (files.length < maxResults) {
     const params = new URLSearchParams({
       q: `'${folderId}' in parents and trashed = false`,
-      fields: 'nextPageToken, files(id,name,mimeType,size,parents)',
+      fields: 'nextPageToken, files(id,name,mimeType,size,parents,driveId)',
       pageSize: String(pageSize),
       supportsAllDrives: 'true',
       includeItemsFromAllDrives: 'true',
-      // corpora=allDrives is REQUIRED for service accounts to see Shared Drive
-      // contents. Default is corpora=user which only searches the caller's
-      // My Drive — and a service account's My Drive is empty, so listings
-      // silently return 0 children without this flag.
-      corpora: 'allDrives',
     })
+    if (driveId) {
+      params.set('corpora', 'drive')
+      params.set('driveId', driveId)
+    } else {
+      params.set('corpora', 'allDrives')
+    }
     if (pageToken) params.set('pageToken', pageToken)
 
     try {
@@ -169,8 +176,8 @@ export async function listFolderChildren(folderId: string, maxResults = 200): Pr
  * Find a named subfolder (exact case-insensitive match) inside a parent folder.
  * Returns the folder id, or null if not found.
  */
-export async function findSubfolder(parentFolderId: string, name: string): Promise<string | null> {
-  const children = await listFolderChildren(parentFolderId, 100)
+export async function findSubfolder(parentFolderId: string, name: string, driveId?: string): Promise<string | null> {
+  const children = await listFolderChildren(parentFolderId, 100, driveId)
   const target = name.trim().toLowerCase()
   for (const child of children) {
     if (child.mimeType === 'application/vnd.google-apps.folder' && child.name.trim().toLowerCase() === target) {
@@ -183,7 +190,7 @@ export async function findSubfolder(parentFolderId: string, name: string): Promi
 /** Get file metadata (for MIME check / size gate before streaming). */
 export async function getFileMetadata(fileId: string): Promise<DriveFile | null> {
   const params = new URLSearchParams({
-    fields: 'id,name,mimeType,size,parents',
+    fields: 'id,name,mimeType,size,parents,driveId',
     supportsAllDrives: 'true',
   })
   try {
