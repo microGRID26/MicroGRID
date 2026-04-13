@@ -171,15 +171,16 @@ export default function LegacyPage() {
       : <ChevronDown className="w-3 h-3 text-green-400 inline ml-1" />
   }
 
-  // Role gate: Manager+ only (after all hooks to respect Rules of Hooks)
-  if (!legacyUserLoading && legacyUser && !legacyUser.isManager) {
+  // Role gate: authenticated user+ only (server-side gate in proxy.ts is the source of truth;
+  // this client check is a fallback for pre-auth paint and sales-role exclusion)
+  if (!legacyUserLoading && legacyUser && legacyUser.isSales) {
     return (
       <>
         <Nav active="Legacy" />
         <div className="min-h-screen bg-gray-900 flex items-center justify-center">
           <div className="text-center">
             <p className="text-lg text-gray-400">Access Restricted</p>
-            <p className="text-sm text-gray-500 mt-2">Legacy data is available to Managers and above.</p>
+            <p className="text-sm text-gray-500 mt-2">Legacy data is not available to the sales role.</p>
             <a href="/command" className="inline-block mt-4 text-xs text-blue-400 hover:text-blue-300 transition-colors">
               ← Back to Command Center
             </a>

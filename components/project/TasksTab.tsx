@@ -382,7 +382,7 @@ export function TasksTab({
                       <div
                         className={`flex items-center gap-2 px-3 py-2 border-b border-gray-800/60 ${
                           rowStyle(status)
-                        } ${locked ? 'opacity-40' : ''}`}
+                        }`}
                       >
                         {/* Batch checkbox */}
                         {batchMode && !locked && status !== 'Complete' && (
@@ -410,7 +410,7 @@ export function TasksTab({
 
                         {/* Task name + note icon */}
                         <span className={`flex-1 text-xs truncate min-w-0 flex items-center gap-1 ${
-                          locked ? 'text-gray-600' :
+                          locked ? 'text-gray-400' :
                           isTaskRequired(task, project.ahj) ? 'text-gray-100' : 'text-gray-400'
                         }`}>
                           <span className="truncate">

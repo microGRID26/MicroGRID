@@ -57,7 +57,7 @@ const ROUTE_ROLE_REQUIREMENTS: { prefix: string; minLevel: number; label: string
   { prefix: '/documents', minLevel: 2, label: 'manager' },
   { prefix: '/change-orders', minLevel: 2, label: 'manager' },
   { prefix: '/redesign', minLevel: 2, label: 'manager' },
-  { prefix: '/legacy', minLevel: 2, label: 'manager' },
+  { prefix: '/legacy', minLevel: 1, label: 'user' },
   { prefix: '/batch', minLevel: 2, label: 'manager' },
   { prefix: '/planset', minLevel: 2, label: 'manager' },
   { prefix: '/audit-trail', minLevel: 2, label: 'manager' },
