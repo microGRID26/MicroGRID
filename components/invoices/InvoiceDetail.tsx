@@ -3,7 +3,7 @@
 import { fmtDate, fmt$ } from '@/lib/utils'
 import { updateInvoiceStatus, deleteLineItem, INVOICE_STATUS_LABELS, INVOICE_STATUS_BADGE } from '@/lib/api/invoices'
 import type { Invoice, InvoiceLineItem, InvoiceStatus } from '@/lib/api/invoices'
-import { Send, CheckCircle, Ban, AlertTriangle, FileText } from 'lucide-react'
+import { Send, CheckCircle, Ban, AlertTriangle, FileText, Zap } from 'lucide-react'
 
 // ── Invoice Detail (Expandable Row) ──────────────────────────────────────────
 
@@ -26,6 +26,14 @@ export function InvoiceDetail({
 }) {
   return (
     <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 mt-2 space-y-3">
+      {invoice.generated_by === 'rule' && (
+        <div className="flex items-center gap-2 bg-amber-900/20 border border-amber-800 rounded px-3 py-2">
+          <Zap className="w-3 h-3 text-amber-400" />
+          <span className="text-xs text-amber-300">
+            Auto-generated from invoice rule — review before sending
+          </span>
+        </div>
+      )}
       {/* Invoice header details */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div>

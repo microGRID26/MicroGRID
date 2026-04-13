@@ -91,8 +91,26 @@ export default function InvoicesPage() {
     debounceMs: 500,
   })
 
-  // Status change handler
+  // Status change handler — intercepts draft→sent to trigger the actual send
+  // route (renders PDF, emails via Resend, transitions status). Other
+  // transitions bypass that and hit the DB directly via updateInvoiceStatus.
   async function handleStatusChange(invoice: Invoice, newStatus: InvoiceStatus) {
+    if (newStatus === 'sent' && invoice.status === 'draft') {
+      try {
+        const resp = await fetch(`/api/invoices/${invoice.id}/send`, { method: 'POST' })
+        const body = await resp.json().catch(() => ({}))
+        if (!resp.ok) {
+          const msg = (body as { error?: string })?.error ?? `Send failed (HTTP ${resp.status})`
+          alert(`Could not send invoice: ${msg}`)
+          return
+        }
+        loadData()
+      } catch (err) {
+        console.error('[invoice send]', err)
+        alert('Could not send invoice — network error')
+      }
+      return
+    }
     const result = await updateInvoiceStatus(invoice.id, newStatus)
     if (result) loadData()
   }

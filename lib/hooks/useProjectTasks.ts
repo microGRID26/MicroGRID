@@ -527,6 +527,17 @@ export function useProjectTasks(opts: UseProjectTasksOptions): UseProjectTasksRe
           } else if (taskId === 'pto') {
             edgeSync.notifyPTOReceived(pid, today)
           }
+          // ── Auto-generate draft invoices from rules matching this milestone ──
+          // Fire-and-forget: the server route handles idempotency via a unique
+          // index, so even if the tab reloads and re-triggers, duplicates are
+          // impossible. Failures are logged on the server and surfaced via the
+          // invoice page's draft list, not blocking the UI.
+          const invoiceMilestone = taskId === 'ntp' ? 'ntp' : taskId === 'install_done' ? 'installation' : 'pto'
+          fetch('/api/invoices/trigger', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ project_id: pid, milestone: invoiceMilestone }),
+          }).catch((err) => console.warn('[useProjectTasks] invoice trigger failed:', err))
         }
       }
     }

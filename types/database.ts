@@ -900,11 +900,14 @@ export interface Invoice {
   total: number
   due_date: string | null
   sent_at: string | null
+  viewed_at: string | null
   paid_at: string | null
   paid_amount: number | null
   payment_method: string | null
   payment_reference: string | null
   notes: string | null
+  generated_by: 'manual' | 'rule' | 'import'
+  rule_id: string | null
   created_by: string | null
   created_by_id: string | null
   created_at: string
@@ -1079,6 +1082,8 @@ export interface Organization {
   logo_url: string | null
   settings: Record<string, unknown>
   active: boolean
+  billing_email: string | null
+  billing_address: string | null
   created_at: string
   updated_at: string
 }
