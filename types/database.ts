@@ -186,7 +186,6 @@ export interface NonfundedCode {
 
 export interface ProjectFolder {
   project_id: string
-  folder_id: string | null
   folder_url: string | null
 }
 

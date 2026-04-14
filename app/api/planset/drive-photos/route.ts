@@ -120,19 +120,18 @@ export async function GET(req: NextRequest) {
   }
 
   // Load project folder from project_folders join table. folder_url is 100%
-  // populated, folder_id column is only populated for ~1.6% of rows so we
-  // parse the Drive folder ID out of the URL ourselves when needed.
+  // populated; parse the Drive folder ID out of the URL.
   const pfResult = await (supabase as unknown as {
     from: (t: string) => {
       select: (c: string) => {
         eq: (col: string, val: string) => {
-          maybeSingle: () => Promise<{ data: { folder_id: string | null; folder_url: string | null } | null; error: unknown }>
+          maybeSingle: () => Promise<{ data: { folder_url: string | null } | null; error: unknown }>
         }
       }
     }
   })
     .from('project_folders')
-    .select('folder_id, folder_url')
+    .select('folder_url')
     .eq('project_id', projectId)
     .maybeSingle()
 
@@ -140,13 +139,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(emptyResult(null, `project_folders row not found`, started))
   }
 
-  let folderId = pfResult.data.folder_id
-  if (!folderId && pfResult.data.folder_url) {
+  let folderId: string | null = null
+  if (pfResult.data.folder_url) {
     const match = pfResult.data.folder_url.match(/\/folders\/([a-zA-Z0-9_-]+)/)
     if (match) folderId = match[1]
   }
   if (!folderId) {
-    const result = emptyResult(null, 'project has no drive folder (column null + url unparseable)', started)
+    const result = emptyResult(null, 'project has no drive folder (url missing or unparseable)', started)
     cache.set(projectId, { value: result, expiresAt: Date.now() + CACHE_TTL_MS })
     return NextResponse.json(result)
   }
