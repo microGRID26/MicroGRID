@@ -7,6 +7,7 @@ import { Nav } from '@/components/Nav'
 import { db } from '@/lib/db'
 import { useCurrentUser } from '@/lib/useCurrentUser'
 import { cn, fmt$ } from '@/lib/utils'
+import { filterClaimsByEpc, countClaimsByStatus, sumOpenDeductions } from '@/lib/warranty/filters'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -119,10 +120,7 @@ export default function WarrantyClaimsPage() {
   }, [])
 
   // Client-side EPC filter: narrows the already-fetched list without another round-trip.
-  const visibleClaims = useMemo(() => {
-    if (epcFilter === 'all') return claims
-    return claims.filter((c) => c.original_epc?.id === epcFilter)
-  }, [claims, epcFilter])
+  const visibleClaims = useMemo(() => filterClaimsByEpc(claims, epcFilter), [claims, epcFilter])
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -169,14 +167,8 @@ export default function WarrantyClaimsPage() {
 
   // Status count chips reflect the EPC-filtered view so chip counts match
   // the visible list. Status filter still works independently.
-  const statusCounts = visibleClaims.reduce<Record<string, number>>((acc, c) => {
-    acc[c.status] = (acc[c.status] ?? 0) + 1
-    return acc
-  }, {})
-
-  const totalOpenDeductions = visibleClaims
-    .filter((c) => c.status === 'invoiced' && c.claim_amount)
-    .reduce((sum, c) => sum + (c.claim_amount ?? 0), 0)
+  const statusCounts = countClaimsByStatus(visibleClaims)
+  const totalOpenDeductions = sumOpenDeductions(visibleClaims)
 
   function openDeployModal(claim: WarrantyClaim) {
     setDeployClaim(claim)
