@@ -26,7 +26,7 @@ function mockChain(result: { data: any; error: any }) {
 }
 
 const mockDb = {
-  from: vi.fn(() => mockChain({ data: null, error: null })),
+  from: vi.fn((_table: string) => mockChain({ data: null, error: null })),
 }
 
 vi.mock('@supabase/supabase-js', () => ({

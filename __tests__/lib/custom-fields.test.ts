@@ -373,8 +373,8 @@ describe('Custom field value formatting per type', () => {
   })
 
   it('boolean fields store as "true" or "false" strings', () => {
-    const trueVal = 'true'
-    const falseVal = 'false'
+    const trueVal: string = 'true'
+    const falseVal: string = 'false'
     expect(trueVal === 'true').toBe(true)
     expect(falseVal === 'true').toBe(false)
   })

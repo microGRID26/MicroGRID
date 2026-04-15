@@ -280,7 +280,7 @@ describe('getVisibleUserIds', () => {
     { id: 'h2', user_id: 'u-lead', parent_id: 'h1', role: 'team_leader', label: 'Lead', sort_order: 1, org_id: null, created_at: '' },
     { id: 'h3', user_id: 'u-rep1', parent_id: 'h2', role: 'sales_rep', label: 'Rep 1', sort_order: 1, org_id: null, created_at: '' },
     { id: 'h4', user_id: 'u-rep2', parent_id: 'h2', role: 'sales_rep', label: 'Rep 2', sort_order: 2, org_id: null, created_at: '' },
-  ] as CommissionHierarchy[]
+  ] as unknown as CommissionHierarchy[]
 
   it('boss sees everyone', () => {
     const visible = getVisibleUserIds(hierarchy, 'u-boss')!

@@ -12,7 +12,7 @@ import {
   getStuckTasks as pipelineGetStuckTasks,
   matchesDaysRange as pipelineMatchesDaysRange,
 } from '@/app/pipeline/components/helpers'
-import type { Project } from '@/types/database'
+import type { Project, Stage } from '@/types/database'
 
 // ── FIXTURES ───────────────────────────────────────────────────────────────
 
@@ -67,7 +67,7 @@ describe('queue getNextTask', () => {
   })
 
   it('returns null for unknown stage', () => {
-    const p = makeProject({ stage: 'mystery' as string })
+    const p = makeProject({ stage: 'mystery' as unknown as Stage })
     expect(queueGetNextTask(p, {})).toBeNull()
   })
 })

@@ -31,7 +31,7 @@ function mockChain(result: { data: any; error: any } = mockChainResult) {
 }
 
 const mockDb = {
-  from: vi.fn(() => mockChain()),
+  from: vi.fn((_table: string) => mockChain()),
 }
 
 vi.mock('@supabase/supabase-js', () => ({

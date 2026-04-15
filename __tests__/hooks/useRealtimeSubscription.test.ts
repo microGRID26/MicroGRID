@@ -11,7 +11,7 @@ describe('useRealtimeSubscription', () => {
     const subscribeFn = vi.fn()
     const onFn = vi.fn().mockReturnThis()
     const channelObj = { on: onFn, subscribe: subscribeFn }
-    const channelFn = vi.fn(() => channelObj)
+    const channelFn = vi.fn((..._args: any[]) => channelObj)
     const removeChannelFn = vi.fn()
 
     vi.doMock('@/lib/supabase/client', () => ({
@@ -43,7 +43,7 @@ describe('useRealtimeSubscription', () => {
     const channelObj: Record<string, any> = {}
     channelObj.on = vi.fn(() => channelObj)
     channelObj.subscribe = vi.fn(() => channelObj)
-    const channelFn = vi.fn(() => channelObj)
+    const channelFn = vi.fn((..._args: any[]) => channelObj)
     const removeChannelFn = vi.fn()
 
     vi.doMock('@/lib/supabase/client', () => ({
@@ -73,7 +73,7 @@ describe('useRealtimeSubscription', () => {
     const subscribeFn = vi.fn()
     const onFn = vi.fn().mockReturnThis()
     const channelObj = { on: onFn, subscribe: subscribeFn }
-    const channelFn = vi.fn(() => channelObj)
+    const channelFn = vi.fn((..._args: any[]) => channelObj)
     const removeChannelFn = vi.fn()
 
     vi.doMock('@/lib/supabase/client', () => ({
@@ -118,7 +118,7 @@ describe('useRealtimeSubscription', () => {
     const subscribeFn = vi.fn()
     const onFn = vi.fn().mockReturnThis()
     const channelObj = { on: onFn, subscribe: subscribeFn }
-    const channelFn = vi.fn(() => channelObj)
+    const channelFn = vi.fn((..._args: any[]) => channelObj)
     const removeChannelFn = vi.fn()
 
     vi.doMock('@/lib/supabase/client', () => ({
@@ -145,7 +145,7 @@ describe('useRealtimeSubscription', () => {
     const subscribeFn = vi.fn()
     const onFn = vi.fn().mockReturnThis()
     const channelObj = { on: onFn, subscribe: subscribeFn }
-    const channelFn = vi.fn(() => channelObj)
+    const channelFn = vi.fn((..._args: any[]) => channelObj)
     const removeChannelFn = vi.fn()
 
     vi.doMock('@/lib/supabase/client', () => ({

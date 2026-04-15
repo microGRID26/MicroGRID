@@ -513,8 +513,8 @@ describe('Funding analytics', () => {
       makeProject({ id: 'P2', financier: 'GoodLeap' }),
     ]
     const funding = [
-      makeFunding({ project_id: 'P1', m2_amount: 5000 as unknown as string, m3_amount: 3000 as unknown as string }),
-      makeFunding({ project_id: 'P2', m2_amount: 8000 as unknown as string, m3_amount: null }),
+      makeFunding({ project_id: 'P1', m2_amount: 5000, m3_amount: 3000 }),
+      makeFunding({ project_id: 'P2', m2_amount: 8000, m3_amount: null }),
     ]
 
     const finFunding = new Map<string, number>()

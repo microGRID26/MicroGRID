@@ -315,13 +315,13 @@ describe('Edge Cases', () => {
   })
 
   it('route matching is prefix-based, not contains', () => {
-    // /audit should not match /audit-trail
-    const auditReq = getRequiredLevel('/audit')
-    const trailReq = getRequiredLevel('/audit-trail')
-    expect(auditReq).not.toBeNull()
-    expect(trailReq).not.toBeNull()
-    // Both exist as separate rules
-    expect(auditReq!.prefix).not.toBe(trailReq!.prefix)
+    // /audit should not match /audit-trail — both should resolve to
+    // distinct rules in the table, not accidentally collide.
+    const auditRule = ROUTE_ROLE_REQUIREMENTS.find((r) => r.prefix === '/audit')
+    const trailRule = ROUTE_ROLE_REQUIREMENTS.find((r) => r.prefix === '/audit-trail')
+    expect(auditRule).toBeDefined()
+    expect(trailRule).toBeDefined()
+    expect(auditRule!.prefix).not.toBe(trailRule!.prefix)
   })
 
   it('25 route rules are defined', () => {

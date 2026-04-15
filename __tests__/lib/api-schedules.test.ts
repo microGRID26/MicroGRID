@@ -91,8 +91,8 @@ describe('loadScheduleByDateRange', () => {
     const result = await loadScheduleByDateRange('2026-03-01', '2026-03-31')
 
     expect(result.data).toHaveLength(3)
-    expect(result.data[0].project.name).toBe('Alpha')
-    expect(result.data[2].project.name).toBe('Gamma')
+    expect(result.data[0].project?.name).toBe('Alpha')
+    expect(result.data[2].project?.name).toBe('Gamma')
   })
 
   it('returns null error on success', async () => {

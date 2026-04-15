@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { daysAgo, SLA_THRESHOLDS, STAGE_TASKS, STAGE_ORDER } from '@/lib/utils'
 import { classify, cycleDays, getSLA, getStuckTasks } from '@/lib/classify'
 import type { TaskEntry } from '@/lib/classify'
-import type { Project } from '@/types/database'
+import type { Project, Stage } from '@/types/database'
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -144,7 +144,7 @@ describe('My Projects / All toggle', () => {
       makeProject({ pm_id: 'user-taylor', pm: 'Taylor', id: 'PROJ-002' }),
       makeProject({ pm_id: 'user-greg', pm: 'Greg', id: 'PROJ-003' }),
     ]
-    const pmFilter = 'user-greg'
+    const pmFilter: string = 'user-greg'
     const filtered = projects.filter(p => p.pm_id === pmFilter)
     expect(filtered).toHaveLength(2)
     expect(filtered.every(p => p.pm_id === 'user-greg')).toBe(true)
@@ -155,19 +155,19 @@ describe('My Projects / All toggle', () => {
       makeProject({ pm_id: 'user-greg', pm: 'Greg' }),
       makeProject({ pm_id: 'user-taylor', pm: 'Taylor', id: 'PROJ-002' }),
     ]
-    const pmFilter = 'all'
+    const pmFilter: string = 'all'
     const filtered = pmFilter === 'all' ? projects : projects.filter(p => p.pm_id === pmFilter)
     expect(filtered).toHaveLength(2)
   })
 
   it('isMyProjects is true when pmFilter is a user id', () => {
-    const pmFilter = 'user-greg'
+    const pmFilter: string = 'user-greg'
     const isMyProjects = pmFilter !== 'all' && pmFilter !== 'loading'
     expect(isMyProjects).toBe(true)
   })
 
   it('isMyProjects is false when pmFilter is "all"', () => {
-    const pmFilter = 'all'
+    const pmFilter: string = 'all'
     const isMyProjects = pmFilter !== 'all' && pmFilter !== 'loading'
     expect(isMyProjects).toBe(false)
   })
@@ -292,7 +292,7 @@ describe('Action items: follow-ups', () => {
   })
 
   it('respects PM filter for follow-ups', () => {
-    const pmFilter = 'user-greg'
+    const pmFilter: string = 'user-greg'
     const followUpItems = [
       { project: makeProject({ id: 'P-1', pm_id: 'user-greg' }), daysOverdue: 2 },
       { project: makeProject({ id: 'P-2', pm_id: 'user-taylor' }), daysOverdue: 1 },
@@ -590,7 +590,7 @@ describe('Next task computation', () => {
     for (const stage of STAGE_ORDER) {
       const tasks = STAGE_TASKS[stage]
       if (!tasks || tasks.length === 0) continue
-      const p = makeProject({ stage })
+      const p = makeProject({ stage: stage as Stage })
       expect(getNextTask(p, {})).toBe(tasks[0].name)
     }
   })
@@ -712,7 +712,7 @@ describe('PM filtering', () => {
       makeProject({ pm: 'Greg', pm_id: 'user-greg' }),
       makeProject({ pm: 'Taylor', pm_id: 'user-taylor', id: 'PROJ-002' }),
     ]
-    const pmFilter = 'user-greg'
+    const pmFilter: string = 'user-greg'
     const filtered = pmFilter === 'all' ? projects : projects.filter(p => p.pm_id === pmFilter)
     expect(filtered).toHaveLength(1)
     expect(filtered[0].pm).toBe('Greg')
@@ -724,7 +724,7 @@ describe('PM filtering', () => {
       makeProject({ pm_id: 'user-greg', name: 'Jones Residence', id: 'PROJ-002' }),
       makeProject({ pm_id: 'user-taylor', name: 'Smith Home', id: 'PROJ-003' }),
     ]
-    const pmFilter = 'user-greg'
+    const pmFilter: string = 'user-greg'
     const search = 'smith'
     let result = projects
     if (pmFilter !== 'all') result = result.filter(p => p.pm_id === pmFilter)

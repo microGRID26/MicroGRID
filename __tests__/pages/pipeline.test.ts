@@ -339,12 +339,12 @@ describe('pipeline view mode (compact/detailed)', () => {
   })
 
   it('toggles between compact and detailed', () => {
+    const toggle = (mode: 'compact' | 'detailed'): 'compact' | 'detailed' =>
+      mode === 'compact' ? 'detailed' : 'compact'
     let viewMode: 'compact' | 'detailed' = 'detailed'
-    // Toggle to compact
-    viewMode = viewMode === 'compact' ? 'detailed' : 'compact'
+    viewMode = toggle(viewMode)
     expect(viewMode).toBe('compact')
-    // Toggle back
-    viewMode = viewMode === 'compact' ? 'detailed' : 'compact'
+    viewMode = toggle(viewMode)
     expect(viewMode).toBe('detailed')
   })
 })

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
+import type { CommissionRate, CommissionGeoModifier, CommissionTier, CommissionHierarchy } from '@/types/database'
 import { mockSupabase } from '../../vitest.setup'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -27,32 +28,32 @@ function mockChain(result: { data: any; error: any }) {
 
 // ── Mock Data ──────────────────────────────────────────────────────────────
 
-const MOCK_RATES = [
-  { id: 'r1', role_key: 'sales_rep', label: 'Sales Rep', rate_type: 'per_watt', rate: 0.50, active: true, sort_order: 1, org_id: null },
-  { id: 'r2', role_key: 'closer', label: 'Closer', rate_type: 'per_watt', rate: 0.25, active: true, sort_order: 2, org_id: null },
-  { id: 'r3', role_key: 'adder', label: 'Adder', rate_type: 'percentage', rate: 10.0, active: true, sort_order: 5, org_id: null },
-  { id: 'r4', role_key: 'referral', label: 'Referral', rate_type: 'flat', rate: 500, active: true, sort_order: 6, org_id: null },
+const MOCK_RATES: CommissionRate[] = [
+  { id: 'r1', role_key: 'sales_rep', label: 'Sales Rep', rate_type: 'per_watt', rate: 0.50, active: true, sort_order: 1, org_id: null, description: null, created_at: '', updated_at: '' },
+  { id: 'r2', role_key: 'closer', label: 'Closer', rate_type: 'per_watt', rate: 0.25, active: true, sort_order: 2, org_id: null, description: null, created_at: '', updated_at: '' },
+  { id: 'r3', role_key: 'adder', label: 'Adder', rate_type: 'percentage', rate: 10.0, active: true, sort_order: 5, org_id: null, description: null, created_at: '', updated_at: '' },
+  { id: 'r4', role_key: 'referral', label: 'Referral', rate_type: 'flat', rate: 500, active: true, sort_order: 6, org_id: null, description: null, created_at: '', updated_at: '' },
 ]
 
-const MOCK_TIERS = [
-  { id: 't1', rate_id: 'r1', min_deals: 1, max_deals: 5, min_watts: null, max_watts: null, rate: 0.50, label: 'Tier 1', sort_order: 1 },
-  { id: 't2', rate_id: 'r1', min_deals: 6, max_deals: 10, min_watts: null, max_watts: null, rate: 0.60, label: 'Tier 2', sort_order: 2 },
-  { id: 't3', rate_id: 'r1', min_deals: 11, max_deals: null, min_watts: null, max_watts: null, rate: 0.75, label: 'Tier 3', sort_order: 3 },
+const MOCK_TIERS: CommissionTier[] = [
+  { id: 't1', rate_id: 'r1', min_deals: 1, max_deals: 5, min_watts: null, max_watts: null, rate: 0.50, label: 'Tier 1', sort_order: 1, created_at: '' },
+  { id: 't2', rate_id: 'r1', min_deals: 6, max_deals: 10, min_watts: null, max_watts: null, rate: 0.60, label: 'Tier 2', sort_order: 2, created_at: '' },
+  { id: 't3', rate_id: 'r1', min_deals: 11, max_deals: null, min_watts: null, max_watts: null, rate: 0.75, label: 'Tier 3', sort_order: 3, created_at: '' },
 ]
 
-const MOCK_WATT_TIERS = [
-  { id: 'tw1', rate_id: 'r2', min_deals: null, max_deals: null, min_watts: 0, max_watts: 50000, rate: 0.25, label: 'Small', sort_order: 1 },
-  { id: 'tw2', rate_id: 'r2', min_deals: null, max_deals: null, min_watts: 50001, max_watts: 100000, rate: 0.30, label: 'Medium', sort_order: 2 },
-  { id: 'tw3', rate_id: 'r2', min_deals: null, max_deals: null, min_watts: 100001, max_watts: null, rate: 0.35, label: 'Large', sort_order: 3 },
+const MOCK_WATT_TIERS: CommissionTier[] = [
+  { id: 'tw1', rate_id: 'r2', min_deals: null, max_deals: null, min_watts: 0, max_watts: 50000, rate: 0.25, label: 'Small', sort_order: 1, created_at: '' },
+  { id: 'tw2', rate_id: 'r2', min_deals: null, max_deals: null, min_watts: 50001, max_watts: 100000, rate: 0.30, label: 'Medium', sort_order: 2, created_at: '' },
+  { id: 'tw3', rate_id: 'r2', min_deals: null, max_deals: null, min_watts: 100001, max_watts: null, rate: 0.35, label: 'Large', sort_order: 3, created_at: '' },
 ]
 
-const MOCK_GEO_MODIFIERS = [
-  { id: 'g1', state: 'TX', city: 'Houston', region: null, modifier: 1.2, label: 'Houston premium', active: true, org_id: null },
-  { id: 'g2', state: 'TX', city: null, region: null, modifier: 1.1, label: 'Texas', active: true, org_id: null },
-  { id: 'g3', state: null, city: null, region: 'Southeast', modifier: 0.95, label: 'SE region', active: true, org_id: null },
-  { id: 'g4', state: 'CA', city: null, region: null, modifier: 1.3, label: 'California', active: true, org_id: null },
-  { id: 'g5', state: 'TX', city: 'Dallas', region: null, modifier: 1.15, label: 'Dallas', active: true, org_id: null },
-  { id: 'g6', state: 'NY', city: null, region: null, modifier: 0.9, label: 'New York inactive', active: false, org_id: null },
+const MOCK_GEO_MODIFIERS: CommissionGeoModifier[] = [
+  { id: 'g1', state: 'TX', city: 'Houston', region: null, modifier: 1.2, label: 'Houston premium', active: true, org_id: null, created_at: '' },
+  { id: 'g2', state: 'TX', city: null, region: null, modifier: 1.1, label: 'Texas', active: true, org_id: null, created_at: '' },
+  { id: 'g3', state: null, city: null, region: 'Southeast', modifier: 0.95, label: 'SE region', active: true, org_id: null, created_at: '' },
+  { id: 'g4', state: 'CA', city: null, region: null, modifier: 1.3, label: 'California', active: true, org_id: null, created_at: '' },
+  { id: 'g5', state: 'TX', city: 'Dallas', region: null, modifier: 1.15, label: 'Dallas', active: true, org_id: null, created_at: '' },
+  { id: 'g6', state: 'NY', city: null, region: null, modifier: 0.9, label: 'New York inactive', active: false, org_id: null, created_at: '' },
 ]
 
 const MOCK_HIERARCHY = [
@@ -138,7 +139,7 @@ describe('getTieredRate', () => {
 
   it('handles tier with both deal and watt bounds (both must match)', () => {
     const bothTiers = [
-      { id: 'b1', rate_id: 'r1', min_deals: 5, max_deals: 10, min_watts: 50000, max_watts: 100000, rate: 0.80, label: 'Both', sort_order: 1 },
+      { id: 'b1', rate_id: 'r1', min_deals: 5, max_deals: 10, min_watts: 50000, max_watts: 100000, rate: 0.80, label: 'Both', sort_order: 1, created_at: '' },
     ]
     // Deals match but watts don't
     expect(getTieredRate('r1', 7, 10000, MOCK_RATES, bothTiers)).toBe(0.50) // base
@@ -326,7 +327,7 @@ describe('addCommissionTier', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('inserts tier and returns it', async () => {
-    const newTier = { rate_id: 'r1', min_deals: 1, max_deals: 5, min_watts: null, max_watts: null, rate: 0.50, label: 'T1', sort_order: 1 }
+    const newTier = { rate_id: 'r1', min_deals: 1, max_deals: 5, min_watts: null, max_watts: null, rate: 0.50, label: 'T1', sort_order: 1, created_at: '' }
     const saved = { id: 'new-id', ...newTier, created_at: '2026-03-28' }
     const chain = mockChain({ data: saved, error: null })
     mockSupabase.from.mockReturnValue(chain)
@@ -416,7 +417,7 @@ describe('addGeoModifier', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('inserts and returns the modifier', async () => {
-    const mod = { state: 'FL', city: null, region: null, modifier: 1.05, label: 'Florida', active: true, org_id: null }
+    const mod = { state: 'FL', city: null, region: null, modifier: 1.05, label: 'Florida', active: true, org_id: null, created_at: '' }
     const saved = { id: 'new-g', ...mod, created_at: '2026-03-28' }
     const chain = mockChain({ data: saved, error: null })
     mockSupabase.from.mockReturnValue(chain)

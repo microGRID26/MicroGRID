@@ -21,14 +21,14 @@ function mockChain(result: { data: any; error: any }) {
 }
 
 const mockDb = {
-  from: vi.fn(() => mockChain({ data: null, error: null })),
+  from: vi.fn((_table: string) => mockChain({ data: null, error: null })),
 }
 
 vi.mock('@supabase/supabase-js', () => ({
   createClient: vi.fn(() => mockDb),
 }))
 
-const mockSendEmail = vi.fn(() => Promise.resolve(true))
+const mockSendEmail = vi.fn((..._args: any[]) => Promise.resolve(true))
 vi.mock('@/lib/email', () => ({
   sendEmail: (...args: any[]) => mockSendEmail(...args),
 }))

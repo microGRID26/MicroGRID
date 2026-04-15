@@ -93,6 +93,9 @@ describe('addProjectMaterial', () => {
       quantity: 50,
       unit: 'each',
       source: 'warehouse',
+      sourcing: null,
+      raw_price: null,
+      sell_price: null,
       vendor: null,
       status: 'needed',
       po_number: null,
@@ -125,7 +128,8 @@ describe('addProjectMaterial', () => {
     const { addProjectMaterial } = await import('@/lib/api/inventory')
     const result = await addProjectMaterial({
       project_id: 'PROJ-001', equipment_id: null, name: 'Test', category: 'other',
-      quantity: 1, unit: 'each', source: 'tbd', vendor: null, status: 'needed',
+      quantity: 1, unit: 'each', source: 'tbd', sourcing: null, raw_price: null, sell_price: null,
+      vendor: null, status: 'needed',
       po_number: null, expected_date: null, delivered_date: null, notes: null,
     })
 
@@ -1151,6 +1155,10 @@ describe('addWarehouseStock', () => {
       unit: 'each',
       location: 'Shelf A3',
       last_counted_at: null,
+      sourcing: null,
+      raw_price: null,
+      sell_price: null,
+      barcode: null,
     }
     const created = { ...newItem, id: 'ws-abc', updated_at: '2026-03-25T00:00:00Z' }
     const chain = mockChain({ data: created, error: null })
@@ -1179,6 +1187,7 @@ describe('addWarehouseStock', () => {
       equipment_id: null, name: 'Test', category: 'other',
       quantity_on_hand: 0, reorder_point: 0, unit: 'each',
       location: null, last_counted_at: null,
+      sourcing: null, raw_price: null, sell_price: null, barcode: null,
     })
 
     expect(result).toBeNull()
@@ -1196,6 +1205,10 @@ describe('addWarehouseStock', () => {
       unit: 'each',
       location: 'Warehouse B',
       last_counted_at: '2026-03-20T10:00:00Z',
+      sourcing: null,
+      raw_price: null,
+      sell_price: null,
+      barcode: null,
     }
     const created = { ...newItem, id: 'ws-xyz', updated_at: '2026-03-25T12:00:00Z' }
     const chain = mockChain({ data: created, error: null })

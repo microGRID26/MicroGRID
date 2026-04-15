@@ -28,9 +28,9 @@ function mockChain(result: { data: any; error: any; count?: number }) {
 }
 
 const mockDb = {
-  from: vi.fn(() => mockChain({ data: [], error: null, count: 0 })),
+  from: vi.fn((_table: string) => mockChain({ data: [], error: null, count: 0 })),
   auth: {
-    getUser: vi.fn(() => Promise.resolve({
+    getUser: vi.fn((): Promise<{ data: { user: any }; error: any }> => Promise.resolve({
       data: { user: { id: 'user-1', email: 'test@gomicrogridenergy.com' } },
       error: null,
     })),

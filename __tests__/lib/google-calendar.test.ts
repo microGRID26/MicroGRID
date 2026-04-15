@@ -41,23 +41,23 @@ describe('buildEventTitle', () => {
 
 describe('buildEventDescription', () => {
   it('includes job type and project', () => {
-    const desc = buildEventDescription({ jobType: 'install', projectId: 'PROJ-100' })
+    const desc = buildEventDescription({ jobType: 'install', projectId: 'PROJ-100', crewName: '', notes: null })
     expect(desc).toContain('install')
     expect(desc).toContain('PROJ-100')
   })
 
   it('includes crew name when provided', () => {
-    const desc = buildEventDescription({ jobType: 'install', projectId: 'PROJ-1', crewName: 'HOU 1' })
+    const desc = buildEventDescription({ jobType: 'install', projectId: 'PROJ-1', crewName: 'HOU 1', notes: null })
     expect(desc).toContain('HOU 1')
   })
 
   it('includes notes when provided', () => {
-    const desc = buildEventDescription({ jobType: 'survey', projectId: 'PROJ-1', notes: 'Call before arriving' })
+    const desc = buildEventDescription({ jobType: 'survey', projectId: 'PROJ-1', crewName: '', notes: 'Call before arriving' })
     expect(desc).toContain('Call before arriving')
   })
 
   it('omits crew and notes when null', () => {
-    const desc = buildEventDescription({ jobType: 'service', projectId: 'PROJ-1', notes: null })
+    const desc = buildEventDescription({ jobType: 'service', projectId: 'PROJ-1', crewName: '', notes: null })
     expect(desc).not.toContain('Crew:')
     expect(desc).not.toContain('Notes:')
   })
