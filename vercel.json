@@ -16,6 +16,14 @@
     {
       "path": "/api/cron/qa-runs-cleanup",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/partner-event-fanout",
+      "schedule": "*/1 * * * *"
+    },
+    {
+      "path": "/api/cron/partner-logs-retention",
+      "schedule": "0 5 * * *"
     }
   ]
 }
