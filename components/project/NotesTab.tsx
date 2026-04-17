@@ -101,7 +101,7 @@ export function NotesTab({ notes, newNote, setNewNote, addNote, deleteNote, savi
               className="w-full bg-gray-800 text-white text-sm rounded-lg p-3 border border-gray-700 focus:border-green-500 focus:outline-none resize-none placeholder-gray-500"
             />
             <div className="flex justify-end mt-2">
-              <button onClick={addNote} disabled={saving || !newNote.trim()}
+              <button onClick={() => addNote()} disabled={saving || !newNote.trim()}
                 className="text-xs px-4 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg transition-colors">
                 {saving ? 'Saving...' : 'Add Note'}
               </button>

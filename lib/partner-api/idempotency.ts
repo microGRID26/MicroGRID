@@ -111,13 +111,30 @@ export async function readOrReserve(
     // quick recovery path.
     const ageMs = Date.now() - new Date(row.created_at).getTime()
     if (ageMs > STALE_RESERVATION_MS) {
-      await client
+      // R2 fix: the prior UPDATE had no timestamp predicate, so two concurrent
+      // requests could both see response_status=0 and both pass the .eq()
+      // filter — resulting in both writes succeeding and both callers
+      // proceeding to create duplicate rows. Adding .eq('created_at', row.created_at)
+      // turns this into optimistic concurrency control: only one of the racing
+      // UPDATEs matches the original timestamp, the loser's update affects 0
+      // rows and falls through to the in-flight reject path.
+      const takeover = await client
         .from('partner_idempotency_keys')
         .update({ request_hash: reqHash, response_status: 0, response_body: {}, created_at: new Date().toISOString() })
         .eq('api_key_id', apiKeyId)
         .eq('idempotency_key', idempKey)
         .eq('response_status', 0)
-      return { cached: false }
+        .eq('created_at', row.created_at)
+        .select('api_key_id')
+      if (takeover.data && takeover.data.length > 0) {
+        return { cached: false }
+      }
+      // Lost the takeover race — another request is already reprocessing.
+      throw new ApiError(
+        'idempotency_conflict',
+        'A request with this Idempotency-Key is currently in flight',
+        { idempotency_key: idempKey, retry_recommended: true },
+      )
     }
     // Still in flight from a parallel request — reject with 409 so client retries later
     throw new ApiError(

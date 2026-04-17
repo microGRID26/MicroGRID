@@ -12,7 +12,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const scripted: Array<
   | { kind: 'insert'; ok: boolean }
   | { kind: 'select'; data: unknown; error: { message: string } | null }
-  | { kind: 'update'; error: { message: string } | null }
+  | { kind: 'update'; error: { message: string } | null; data?: unknown[] }
 > = []
 
 function nextScript() {
@@ -50,10 +50,11 @@ vi.mock('@/lib/partner-api/supabase-admin', () => ({
           return { data: s.data, error: s.error }
         },
         // For update+where+where without .maybeSingle(), allow direct await.
+        // update+select (optimistic lock) returns { data: Row[], error }.
         then(cb: (v: unknown) => unknown) {
           const s = nextScript()
           if (s.kind !== 'update') throw new Error(`expected update script, got ${s.kind}`)
-          return Promise.resolve({ error: s.error }).then(cb)
+          return Promise.resolve({ data: s.data ?? null, error: s.error }).then(cb)
         },
       }
       return chain
@@ -192,9 +193,36 @@ describe('readOrReserve — stale reservation recovery (M4)', () => {
       },
       error: null,
     })
-    scripted.push({ kind: 'update', error: null }) // re-reserve succeeds
+    // re-reserve succeeds — optimistic lock matched, returns the taken-over row
+    scripted.push({ kind: 'update', error: null, data: [{ api_key_id: 'key-1' }] })
     const out = await readOrReserve('key-1', 'idem-A', 'hashA')
     expect(out).toEqual({ cached: false })
+  })
+
+  it('rejects as in-flight when the optimistic lock loses the race (0 rows updated)', async () => {
+    // Two concurrent requests both saw a stale reservation; one wins, one loses.
+    // The loser's UPDATE matches 0 rows because created_at changed underneath it.
+    scripted.push({ kind: 'insert', ok: false })
+    scripted.push({
+      kind: 'select',
+      data: {
+        request_hash: 'hashA',
+        response_status: 0,
+        response_body: {},
+        created_at: new Date(Date.now() - (STALE_RESERVATION_MS + 1_000)).toISOString(),
+      },
+      error: null,
+    })
+    // Update returns data: [] — we lost the takeover race.
+    scripted.push({ kind: 'update', error: null, data: [] })
+    try {
+      await readOrReserve('key-1', 'idem-A', 'hashA')
+      throw new Error('expected throw')
+    } catch (err) {
+      expect(err).toBeInstanceOf(ApiError)
+      expect((err as ApiError).code).toBe('idempotency_conflict')
+      expect((err as ApiError).details).toMatchObject({ retry_recommended: true })
+    }
   })
 })
 
