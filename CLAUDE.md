@@ -147,7 +147,7 @@ daysAgo(p.sale_date) ?? daysAgo(p.stage_date)   // WRONG — 0 won't trigger ??
 `active` column is a **string** (`'TRUE'`/`'FALSE'`), not boolean. Filter with `.eq('active', 'TRUE')`.
 
 ### TypeScript
-`types/database.ts` covers core tables. Some tables (project_funding, service_calls, ahjs, utilities, users) accessed via `lib/api/` or `db()` helper. **0 `as any` casts in production code** — use API layer or `db()` instead of adding new casts. 1 `: any` remains in `mobile/app/onboarding.tsx` (Feather icon name from external data, acceptable).
+`types/database.ts` covers core tables. Some tables (project_funding, service_calls, ahjs, utilities, users) accessed via `lib/api/` or `db()` helper. **~9 intentional `as any` casts in production code**, all admin/partner-API paths where the service-role client accesses untyped tables (partner_api_logs, partner_event_outbox, partner partitions) and the reports/chat planner where the query output is schema-validated at runtime. Each is tagged with `eslint-disable-next-line @typescript-eslint/no-explicit-any` and scoped to one expression. Do NOT add new casts outside these paths — use API layer or `db()` instead. 1 `: any` remains in `mobile/app/onboarding.tsx` (Feather icon name from external data, acceptable).
 
 ### Disposition Filtering
 States: `null`/`'Sale'` (active), `'Loyalty'`, `'In Service'`, `'Cancelled'`. `Cancelled` always excluded from active views. Loyalty shown in Queue/Audit (intentional). Transitions constrained: Sale → Loyalty → Cancelled (no skipping).

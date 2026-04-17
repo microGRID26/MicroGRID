@@ -38,14 +38,14 @@ export async function POST(req: Request) {
     }
   }
 
+  // Read body once so we can hash the exact bytes we parse.
+  const bodyText = await req.text()
   let payload: unknown
   try {
-    payload = await req.json()
+    payload = JSON.parse(bodyText)
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
-
-  const supabase = createClient(supabaseUrl, serviceKey)
 
   // Try to extract identifiers from common SubHub fields
   const data = payload as Record<string, unknown>
@@ -53,7 +53,22 @@ export async function POST(req: Request) {
   const customerName = data.name ?? data.customer_name ?? data.first_name ?? null
   const eventType = data.event_type ?? data.event ?? data.survey_type ?? 'unknown'
 
-  // Store raw payload for inspection
+  // Timestamp window: SubHub may or may not send one — when present, reject
+  // payloads older than 5 min to blunt captured-signature replay. When
+  // absent, rely on the dedup index below.
+  const ts = data.timestamp ?? data.event_timestamp ?? data.received_at
+  if (typeof ts === 'string' || typeof ts === 'number') {
+    const age = Date.now() - new Date(ts as string | number).getTime()
+    if (Number.isFinite(age) && age > 5 * 60 * 1000) {
+      return NextResponse.json({ error: 'Timestamp outside window' }, { status: 400 })
+    }
+  }
+
+  // Replay defense: sha256 over the raw body; unique index on
+  // (source_id, event_type, payload_hash) short-circuits a duplicate.
+  const payloadHash = crypto.createHash('sha256').update(bodyText).digest('hex')
+
+  const supabase = createClient(supabaseUrl, serviceKey)
   const { error } = await supabase
     .from('welcome_call_logs')
     .insert({
@@ -61,10 +76,16 @@ export async function POST(req: Request) {
       customer_name: customerName ? String(customerName) : null,
       event_type: String(eventType),
       payload: payload,
+      payload_hash: payloadHash,
       received_at: new Date().toISOString(),
     })
 
   if (error) {
+    // 23505 = unique_violation → exact replay, return success without storing.
+    const code = (error as { code?: string }).code
+    if (code === '23505') {
+      return NextResponse.json({ received: true, duplicate: true })
+    }
     console.error('[subhub-vwc] insert error:', error.message)
     // Still return 200 so SubHub doesn't retry
     return NextResponse.json({ received: true, stored: false, error: 'Storage failed' })

@@ -19,15 +19,16 @@ export interface PartnerContext {
 }
 
 /**
- * Generate a URL-safe request ID of the form `req_<26-char-base36>`.
- * Not a UUID — request IDs only need uniqueness within the log horizon,
- * and base36 is cheaper to generate + read in logs.
+ * Generate a URL-safe request ID of the form `req_<ts><16 hex>`.
+ * Uses crypto.randomBytes (CSPRNG) rather than Math.random so IDs are not
+ * predictable from one another — matters because request IDs land in
+ * `partner_api_logs` and external partners compare them in support tickets.
+ * A predictable RNG would let a log-tampering attacker guess other partners'
+ * request IDs.
  */
+import { randomBytes } from 'crypto'
 export function newRequestId(): string {
   const ts = Date.now().toString(36)
-  let rand = ''
-  for (let i = 0; i < 16; i++) {
-    rand += Math.floor(Math.random() * 36).toString(36)
-  }
+  const rand = randomBytes(8).toString('hex')
   return `req_${ts}${rand}`
 }

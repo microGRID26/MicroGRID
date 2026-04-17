@@ -211,8 +211,9 @@ export async function GET(req: Request) {
   return NextResponse.json({ sent, errors: errors.length, pmCount: pms.length })
   } catch (err) {
     fleetStatus = 'error'
-    fleetError = String(err)
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    fleetError = err instanceof Error ? err.message : String(err)
+    console.error('[digest] fatal:', err)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   } finally {
     await reportFleetRun({
       slug: 'mg-email-digest',

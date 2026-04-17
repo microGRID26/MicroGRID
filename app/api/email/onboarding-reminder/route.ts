@@ -156,8 +156,9 @@ export async function GET(req: Request) {
   return NextResponse.json({ sent, errors: errors.length, staleCount: staleDocs.length })
   } catch (err) {
     fleetStatus = 'error'
-    fleetError = String(err)
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    fleetError = err instanceof Error ? err.message : String(err)
+    console.error('[onboarding-reminder] fatal:', err)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   } finally {
     await reportFleetRun({
       slug: 'mg-email-onboarding-reminder',

@@ -68,8 +68,14 @@ export const ALL_EXPORT_FIELDS: ExportField[] = [
 // Default selection — all fields on
 export const DEFAULT_EXPORT_KEYS = ALL_EXPORT_FIELDS.map(f => f.key)
 
-function escapeCell(val: string | number | null | undefined): string {
-  const s = val == null ? '' : String(val)
+// Prepends `'` when a cell starts with =, +, -, @ (or tab/CR that Excel treats
+// as formula) to neutralize CSV formula injection: a customer named "=cmd|..."
+// or address "@SUM(..)" would otherwise execute in Excel when a PM exports and
+// opens the file. Same defense pattern as OWASP recommends and that EDGE
+// already applies on its portfolio export.
+export function escapeCell(val: string | number | null | undefined): string {
+  const raw = val == null ? '' : String(val)
+  const s = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw
   return s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')
     ? `"${s.replace(/"/g, '""')}"`
     : s

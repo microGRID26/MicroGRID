@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { ALL_EXPORT_FIELDS, DEFAULT_EXPORT_KEYS, exportProjectsCSV } from '@/lib/export-utils'
+import { ALL_EXPORT_FIELDS, DEFAULT_EXPORT_KEYS, exportProjectsCSV, escapeCell } from '@/lib/export-utils'
 import type { Project } from '@/types/database'
 
 function makeProject(overrides: Partial<Project> = {}): Project {
@@ -72,5 +72,33 @@ describe('exportProjectsCSV', () => {
     vi.spyOn(document, 'createElement').mockReturnValue({ click: clickMock, href: '', download: '' } as any)
     exportProjectsCSV([makeProject()])
     expect(clickMock).toHaveBeenCalled()
+  })
+})
+
+describe('escapeCell — CSV formula injection', () => {
+  it('prefixes = with single quote', () => {
+    expect(escapeCell('=1+1')).toBe("'=1+1")
+  })
+  it('prefixes @ with single quote', () => {
+    expect(escapeCell('@SUM(A1:A10)')).toBe("'@SUM(A1:A10)")
+  })
+  it('prefixes + with single quote', () => {
+    expect(escapeCell('+cmd|calc')).toBe("'+cmd|calc")
+  })
+  it('prefixes - with single quote', () => {
+    expect(escapeCell('-2+3')).toBe("'-2+3")
+  })
+  it('prefixes tab-led value with single quote (neutralizes formula)', () => {
+    expect(escapeCell('\t=evil')).toBe("'\t=evil")
+  })
+  it('leaves normal values alone', () => {
+    expect(escapeCell('Smith, John')).toBe('"Smith, John"')
+    expect(escapeCell('Austin')).toBe('Austin')
+    expect(escapeCell(null)).toBe('')
+    expect(escapeCell(undefined)).toBe('')
+    expect(escapeCell(42)).toBe('42')
+  })
+  it('quotes formula payloads containing commas', () => {
+    expect(escapeCell('=HYPERLINK("http://evil", "click")')).toBe('"\'=HYPERLINK(""http://evil"", ""click"")"')
   })
 })

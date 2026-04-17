@@ -81,6 +81,12 @@ export async function POST(
       { status: 400 },
     )
   }
+  // 2MB base64 ≈ 1.5MB PNG — generous for a sig pad, keeps a drawn-then-
+  // inflated payload from DoS-ing the handler before Postgres insertion.
+  const SIG_DATA_MAX_BYTES = 2 * 1024 * 1024
+  if (body.signature_data && typeof body.signature_data === 'string' && body.signature_data.length > SIG_DATA_MAX_BYTES) {
+    return NextResponse.json({ error: 'signature_data exceeds 2MB' }, { status: 413 })
+  }
 
   // ── Load invoice to determine from_org for the attestation row ─────────
   const { data: invoice, error: invErr } = await supabase

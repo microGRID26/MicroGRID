@@ -378,6 +378,72 @@ describe('POST /api/webhooks/subhub-vwc — identifier extraction', () => {
   })
 })
 
+// ── Replay protection (migration 120) ────────────────────────────────────────
+
+describe('POST /api/webhooks/subhub-vwc — replay protection', () => {
+  const AUTH = { Authorization: 'Bearer test-secret' }
+
+  it('rejects payloads with timestamp older than 5 min', async () => {
+    process.env.SUBHUB_WEBHOOK_SECRET = 'test-secret'
+    const sixMinAgo = new Date(Date.now() - 6 * 60 * 1000).toISOString()
+
+    const req = makeRequest({ event_type: 'survey_completed', timestamp: sixMinAgo }, AUTH)
+    const { POST } = await import('@/app/api/webhooks/subhub-vwc/route')
+    const res = await POST(req)
+
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toContain('window')
+  })
+
+  it('accepts payloads within the 5-min window', async () => {
+    process.env.SUBHUB_WEBHOOK_SECRET = 'test-secret'
+    const insertChain = mockChain({ data: null, error: null })
+    insertChain.then = vi.fn((cb: any) => Promise.resolve({ data: null, error: null }).then(cb))
+    mockDb.from.mockReturnValue(insertChain)
+
+    const fresh = new Date().toISOString()
+    const req = makeRequest({ event_type: 'survey_completed', timestamp: fresh }, AUTH)
+    const { POST } = await import('@/app/api/webhooks/subhub-vwc/route')
+    const res = await POST(req)
+
+    expect(res.status).toBe(200)
+  })
+
+  it('sends a payload_hash column on insert', async () => {
+    process.env.SUBHUB_WEBHOOK_SECRET = 'test-secret'
+    const insertChain = mockChain({ data: null, error: null })
+    insertChain.then = vi.fn((cb: any) => Promise.resolve({ data: null, error: null }).then(cb))
+    mockDb.from.mockReturnValue(insertChain)
+
+    const req = makeRequest({ event_type: 'survey_completed', subhub_id: 'SH-1' }, AUTH)
+    const { POST } = await import('@/app/api/webhooks/subhub-vwc/route')
+    await POST(req)
+
+    const insertArg = insertChain.insert.mock.calls[0][0]
+    expect(typeof insertArg.payload_hash).toBe('string')
+    expect(insertArg.payload_hash).toMatch(/^[0-9a-f]{64}$/)
+  })
+
+  it('returns duplicate:true when the dedup index hits a 23505', async () => {
+    process.env.SUBHUB_WEBHOOK_SECRET = 'test-secret'
+    const insertChain = mockChain({ data: null, error: null })
+    insertChain.then = vi.fn((cb: any) =>
+      Promise.resolve({ data: null, error: { code: '23505', message: 'duplicate key' } }).then(cb)
+    )
+    mockDb.from.mockReturnValue(insertChain)
+
+    const req = makeRequest({ event_type: 'survey_completed', subhub_id: 'SH-1' }, AUTH)
+    const { POST } = await import('@/app/api/webhooks/subhub-vwc/route')
+    const res = await POST(req)
+
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.received).toBe(true)
+    expect(json.duplicate).toBe(true)
+  })
+})
+
 // ── GET health check ─────────────────────────────────────────────────────────
 
 describe('GET /api/webhooks/subhub-vwc — health check', () => {
