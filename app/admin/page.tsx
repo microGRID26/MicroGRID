@@ -26,6 +26,7 @@ import { PayDistributionManager } from '@/components/admin/PayDistributionManage
 import { TicketConfigManager } from '@/components/admin/TicketConfigManager'
 import { DealerRelationshipsManager } from '@/components/admin/DealerRelationshipsManager'
 import { PartnerApiManager } from '@/components/admin/PartnerApiManager'
+import { FeedbackButton } from '@/components/FeedbackButton'
 
 export default function AdminPage() {
   const { user: authUser, loading } = useCurrentUser()
@@ -154,6 +155,7 @@ export default function AdminPage() {
           </div>
         </main>
       </div>
+      <FeedbackButton />
     </div>
   )
 }

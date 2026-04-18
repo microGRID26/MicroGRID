@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import { FeedbackButton } from '@/components/FeedbackButton'
 import { SessionTracker } from '@/components/SessionTracker'
 import { Providers } from '@/components/Providers'
 import { AskAtlasWidget } from '@/components/atlas/AskAtlasWidget'
@@ -35,7 +34,6 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
-        <FeedbackButton />
         <AskAtlasWidget />
         <SessionTracker />
       </body>
