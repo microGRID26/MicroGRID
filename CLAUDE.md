@@ -231,7 +231,7 @@ All four crons above self-report to the ATLAS HQ `/intel` Agent Runs tab via `li
 - `partial` — some per-item errors (e.g., some emails failed to send) but the route completed
 - `error` — hard failure (query error, internal error, early 5xx return)
 
-**Required Vercel env vars (already set on `microgrid-crm` project):**
+**Required Vercel env vars (already set on `microgrid` project):**
 - `HQ_SUPABASE_URL` — `https://hzymsezqfxzpbcqryeim.supabase.co` (same as MG itself)
 - `HQ_SUPABASE_PUBLISHABLE_KEY` — MG publishable key (grants RPC access)
 - `HQ_FLEET_SECRET` — shared secret validated by the write-path RPC
