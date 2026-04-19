@@ -339,7 +339,8 @@ export function buildPlansetData(project: Project, overrides: PlansetOverrides =
   const toIntCount = (v: unknown): number => {
     if (v == null || v === '') return 0
     const n = typeof v === 'number' ? v : Number(v)
-    return Number.isFinite(n) ? Math.round(n) : 0
+    if (!Number.isFinite(n) || n < 0) return 0
+    return Math.round(n)
   }
   const panelCount = overrides.panelCount ?? toIntCount(project.module_qty)
   // New system inverter count: use override or default (NOT project.inverter_qty which is the OLD microinverter count)
@@ -412,7 +413,7 @@ export function buildPlansetData(project: Project, overrides: PlansetOverrides =
     address: project.address ?? '',
     // CRM city values sometimes include trailing state and/or zip ("Cypress, TX 77433" or "Cypress TX")
     // Strip them so downstream `${city}, ${state} ${zip}` templates don't render duplicates.
-    city: (project.city ?? '').replace(/[,\s]+[A-Z]{2}(\s+\d{5}(-\d{4})?)?\s*$/i, '').trim(),
+    city: (project.city ?? '').replace(/[,\s]+[A-Z]{2}\s*\d{5}(-\d{4})?\s*$/i, '').replace(/[,\s]+[A-Z]{2}\s*$/i, '').trim(),
     state: 'TX',
     zip: project.zip ?? '',
     utility: project.utility ?? '',
@@ -421,7 +422,7 @@ export function buildPlansetData(project: Project, overrides: PlansetOverrides =
       const raw: unknown = project.esid
       if (raw == null) return ''
       if (typeof raw === 'number') return raw.toLocaleString('fullwide', { useGrouping: false })
-      const s = String(raw)
+      const s = String(raw).trim()
       // Detect Excel-corrupted scientific notation (e.g. "1.0089E+21") — original digits are unrecoverable
       if (/^-?\d+(\.\d+)?[eE][+-]?\d+$/.test(s)) return 'ESID UNAVAILABLE'
       return s

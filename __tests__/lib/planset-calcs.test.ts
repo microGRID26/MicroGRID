@@ -257,6 +257,58 @@ describe('buildPlansetData', () => {
     expect(data.panelCount).toBe(0)
     expect(data.racking.attachmentCount).toBe(0)
   })
+
+  it('clamps negative module quantity to zero', () => {
+    // toIntCount must reject negatives so planset never renders "(-5) Seraphim 440"
+    const data = buildPlansetData(makeProject({ module_qty: -5 as unknown as number }))
+    expect(data.panelCount).toBe(0)
+    expect(data.systemDcKw).toBe(0)
+  })
+
+  it('coerces Excel-floated quantity strings to integers', () => {
+    const data = buildPlansetData(makeProject({ module_qty: '64.0' as unknown as number }))
+    expect(data.panelCount).toBe(64)
+  })
+
+  it('detects Excel-corrupted scientific-notation ESID (uppercase E)', () => {
+    const data = buildPlansetData(makeProject({ esid: '1.0089E+21' }))
+    expect(data.esid).toBe('ESID UNAVAILABLE')
+  })
+
+  it('detects Excel-corrupted scientific-notation ESID (lowercase e)', () => {
+    const data = buildPlansetData(makeProject({ esid: '1.0089e+21' }))
+    expect(data.esid).toBe('ESID UNAVAILABLE')
+  })
+
+  it('detects sci-notation ESID with surrounding whitespace', () => {
+    const data = buildPlansetData(makeProject({ esid: '  1.0089E+21  ' }))
+    expect(data.esid).toBe('ESID UNAVAILABLE')
+  })
+
+  it('passes through valid 22-digit ESID unchanged', () => {
+    const data = buildPlansetData(makeProject({ esid: '1008901022901410240118' }))
+    expect(data.esid).toBe('1008901022901410240118')
+  })
+
+  it('strips trailing state+zip from city ("Cypress, TX 77433" → "Cypress")', () => {
+    const data = buildPlansetData(makeProject({ city: 'Cypress, TX 77433' }))
+    expect(data.city).toBe('Cypress')
+  })
+
+  it('strips trailing state from city ("Cypress, TX" → "Cypress")', () => {
+    const data = buildPlansetData(makeProject({ city: 'Cypress, TX' }))
+    expect(data.city).toBe('Cypress')
+  })
+
+  it('strips state+zip with no space between ("City,TX77433" → "City")', () => {
+    const data = buildPlansetData(makeProject({ city: 'Cypress,TX77433' }))
+    expect(data.city).toBe('Cypress')
+  })
+
+  it('leaves clean city name untouched', () => {
+    const data = buildPlansetData(makeProject({ city: 'Houston' }))
+    expect(data.city).toBe('Houston')
+  })
 })
 
 // ── DC Voltage Drop ────────────────────────────────────────────────────────
