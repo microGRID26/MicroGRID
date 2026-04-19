@@ -9,8 +9,8 @@ import type { Project } from '@/types/database'
 
 export const MICROGRID_CONTRACTOR = {
   name: 'MicroGRID Energy',
-  address: '15200 E Hardy Rd',
-  city: 'Houston, TX 77060',
+  address: '600 Northpark Central Dr, Suite 140',
+  city: 'Houston, TX 77073',
   phone: '(888) 485-5551',
   email: 'engineering@microgridenergy.com',
   license: '32259',
@@ -131,8 +131,8 @@ export interface PlansetString {
 
 export interface PlansetRoofFace {
   id: number
-  tilt: number       // degrees
-  azimuth: number    // degrees
+  tilt: number       // degrees (0 + azimuth 0 = unknown — derived faces use this sentinel)
+  azimuth: number    // degrees (0 + tilt 0 = unknown — derived faces use this sentinel)
   modules: number    // panels on this face
 }
 
@@ -342,7 +342,7 @@ export function buildPlansetData(project: Project, overrides: PlansetOverrides =
   const batteryCount = overrides.batteryCount ?? d.batteryCount
   const batteryCapacity = overrides.batteryCapacity ?? d.batteryCapacity
   const panelVoc = overrides.panelVoc ?? d.panelVoc
-  const mspBusRating = project.msp_bus_rating ?? '200'
+  const mspBusRating = String(project.msp_bus_rating ?? '200').replace(/\s*A$/i, '').trim()
 
   const systemDcKw = (panelCount * panelWattage) / 1000
   const systemAcKw = inverterCount * inverterAcPower
@@ -408,7 +408,12 @@ export function buildPlansetData(project: Project, overrides: PlansetOverrides =
     zip: project.zip ?? '',
     utility: project.utility ?? '',
     meter: project.meter_number ?? '',
-    esid: project.esid ?? '',
+    esid: ((): string => {
+      const raw: unknown = project.esid
+      if (raw == null) return ''
+      if (typeof raw === 'number') return raw.toLocaleString('fullwide', { useGrouping: false })
+      return String(raw)
+    })(),
     ahj: project.ahj ?? '',
     voltage: project.voltage ?? '120/240V',
     mspBusRating: mspBusRating,

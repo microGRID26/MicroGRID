@@ -117,8 +117,8 @@ export function SheetPV1({ data, aerialPhotoUrl, housePhotoUrl, enhanced = false
                   <tr><td style={cell}>ATTACHMENTS:</td><td style={val}>({data.racking.attachmentCount}) {data.racking.attachmentModel}</td></tr>
                   <tr><td style={cell}>RAIL:</td><td style={val}>({data.racking.railCount}) {data.racking.railModel}</td></tr>
                   <tr><td style={cell}>UTILITY:</td><td style={val}>{data.utility}</td></tr>
-                  <tr><td style={cell}>METER #:</td><td style={val}>{data.meter}</td></tr>
-                  <tr><td style={cell}>ESID:</td><td style={val}>{data.esid}</td></tr>
+                  {data.meter && <tr><td style={cell}>METER #:</td><td style={val}>{data.meter}</td></tr>}
+                  {data.esid && <tr><td style={cell}>ESID:</td><td style={val}>{data.esid}</td></tr>}
                   <tr><td style={cell}>BUILDING:</td><td style={val}>{storiesLabel} STORY, {data.buildingType}</td></tr>
                   <tr><td style={cell}>ROOF:</td><td style={val}>{data.roofType}, {data.rafterSize}</td></tr>
                   <tr><td style={cell}>WIND SPEED:</td><td style={val}>{data.windSpeed} MPH, Cat {data.riskCategory}, Exp {data.exposure}</td></tr>

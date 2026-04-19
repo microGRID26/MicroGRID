@@ -232,7 +232,7 @@ export function SheetPV3({ data }: { data: PlansetData }) {
         <circle cx="580" cy="230" r="25" fill="none" stroke="#333" strokeWidth="2" />
         <text x="580" y="226" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#333">M</text>
         <text x="580" y="237" textAnchor="middle" fontSize="6" fill="#333">kWh</text>
-        <text x="580" y="200" textAnchor="middle" fontSize="6" fill="#666">(E) ONCOR METER</text>
+        <text x="580" y="200" textAnchor="middle" fontSize="6" fill="#666">(E) {data.utility?.toUpperCase() || 'UTILITY'} METER</text>
         <text x="580" y="270" textAnchor="middle" fontSize="5" fill="#666">ESID NUMBER:</text>
         <text x="580" y="280" textAnchor="middle" fontSize="5" fill="#666">{data.esid || 'N/A'}</text>
 

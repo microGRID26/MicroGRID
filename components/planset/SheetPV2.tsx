@@ -4,12 +4,15 @@ import { TitleBlockHtml } from './TitleBlockHtml'
 export function SheetPV2({ data }: { data: PlansetData }) {
   const storiesLabel = data.stories === 1 ? 'ONE' : data.stories === 2 ? 'TWO' : String(data.stories)
 
-  const roofRows = data.roofFaces.map(rf => ({
-    roof: `ROOF ${rf.id}`,
-    tilt: rf.tilt === 0 && rf.azimuth === 0 ? '\u2014' : `${rf.tilt}\u00B0`,
-    azimuth: rf.tilt === 0 && rf.azimuth === 0 ? '\u2014' : `${rf.azimuth}\u00B0`,
-    modules: rf.modules,
-  }))
+  const roofRows = data.roofFaces.map(rf => {
+    const unknown = rf.tilt === 0 && rf.azimuth === 0
+    return {
+      roof: `ROOF ${rf.id}`,
+      tilt: unknown ? '\u2014' : `${rf.tilt}\u00B0`,
+      azimuth: unknown ? '\u2014' : `${rf.azimuth}\u00B0`,
+      modules: rf.modules,
+    }
+  })
 
   const codeRefs: [string, string][] = [
     ['2020 (NEC)', 'NATIONAL ELECTRICAL CODE'], ['2018 (IBC)', 'INTERNATIONAL BUILDING CODE'],
@@ -59,7 +62,7 @@ export function SheetPV2({ data }: { data: PlansetData }) {
                 <tbody>
                   {([
                     ['PROJECT ADDRESS', data.address],
-                    ['', `${data.city}, TX ${data.zip}`],
+                    ['', `${data.city.replace(/,?\s*[A-Z]{2}$/i, '').trim()}, ${data.state} ${data.zip}`],
                     ['OWNER', data.owner],
                     ['SYSTEM SIZE (DC)', `${data.systemDcKw.toFixed(2)} kWdc`],
                     ['SYSTEM SIZE (AC)', `${data.systemAcKw.toFixed(2)} kWac`],
