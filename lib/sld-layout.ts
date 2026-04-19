@@ -119,7 +119,7 @@ export function calculateSldLayout(config: SldConfig): SldLayout {
   // Battery scope box
   const battLines = [
     `(N)(${config.batteryCount}) ${config.batteryModel.toUpperCase()}`,
-    `${config.batteryCapacity}KWH, 380VDC, IP67, NEMA 3R`,
+    `${config.batteryCapacity}KWH, 51.2VDC NOMINAL, IP67, NEMA 3R`,
     `TOTAL STORAGE: ${config.totalStorageKwh} kWh | STACKS: ${config.inverterCount} x ${config.batteriesPerStack}`,
   ]
   const battScopeSize = sizeBox(battLines, 5.5, { x: PAD, y: PAD })
@@ -140,7 +140,7 @@ export function calculateSldLayout(config: SldConfig): SldLayout {
   const battStackLines = [
     `(N)(${config.batteriesPerStack})`,
     config.batteryModel.toUpperCase(),
-    `${config.batteryCapacity}KWH, 380VDC`,
+    `${config.batteryCapacity}KWH, 51.2VDC`,
     `IP67, NEMA 3R`,
     `STACK OF ${config.batteriesPerStack}`,
     `${config.batteriesPerStack * config.batteryCapacity} kWh TOTAL`,
@@ -240,7 +240,7 @@ export function calculateSldLayout(config: SldConfig): SldLayout {
   // Battery scope box (top right) — enhanced to match RUSH detail
   const battScopeEnhancedLines = [
     `(N)(${config.batteryCount}) ${config.batteryModel.toUpperCase()}`,
-    `${config.batteryCapacity}KWH, 380VDC, IP67, NEMA 3R`,
+    `${config.batteryCapacity}KWH, 51.2VDC NOMINAL, IP67, NEMA 3R`,
     `TOTAL STORAGE: ${config.totalStorageKwh} kWh | STACKS: ${config.inverterCount} x ${config.batteriesPerStack}`,
     `ELECTRICAL INFORMATION`,
     `  N-3P, 240V, 2220A`,
@@ -349,8 +349,8 @@ export function calculateSldLayout(config: SldConfig): SldLayout {
 
     // DC Disconnect
     elements.push({ type: 'disconnect', x: invCenterX, y: dcDiscY, label: '(N) DC DISCONNECT' })
-    // Callout ② — DC Disconnect
-    elements.push({ type: 'callout', cx: invCenterX + 22, cy: dcDiscY, number: 2 })
+    // Callout ② — DC Disconnect (offset past label text)
+    elements.push({ type: 'callout', cx: invCenterX + 100, cy: dcDiscY, number: 2 })
 
     // Wire to inverter
     elements.push({ type: 'line', x1: invCenterX, y1: dcDiscY + 10, x2: invCenterX, y2: invTopY, strokeWidth: 1.5 })
@@ -451,8 +451,8 @@ export function calculateSldLayout(config: SldConfig): SldLayout {
 
     // AC Disconnect
     elements.push({ type: 'disconnect', x: invCenterX, y: acDiscY, label: '(N) AC DISCONNECT, 200A/2P, 240V' })
-    // Callout ④ — AC Disconnect
-    elements.push({ type: 'callout', cx: invCenterX + 22, cy: acDiscY, number: 4 })
+    // Callout ④ — AC Disconnect (offset past long label text)
+    elements.push({ type: 'callout', cx: invCenterX + 130, cy: acDiscY, number: 4 })
 
     // Wire from AC disconnect to bus
     elements.push({ type: 'line', x1: invCenterX, y1: acDiscY + 10, x2: invCenterX, y2: busY, strokeWidth: 1.5 })
@@ -462,8 +462,8 @@ export function calculateSldLayout(config: SldConfig): SldLayout {
 
     // Backfeed breaker
     elements.push({ type: 'breaker', x: invCenterX, y: busY - 5, label: `(N) ${config.backfeedBreakerA ?? 100}A BACKFEED`, amps: 'BREAKER' })
-    // Callout ⑥ — Rapid Shutdown / Backfeed Breaker
-    elements.push({ type: 'callout', cx: invCenterX + 22, cy: busY - 5, number: 6 })
+    // Callout ⑥ — Rapid Shutdown / Backfeed Breaker (offset past label text)
+    elements.push({ type: 'callout', cx: invCenterX + 100, cy: busY - 5, number: 6 })
   }
 
   // ── Main Service Panel (physical rectangle, not just a line) ──
@@ -693,7 +693,7 @@ function calculateSldLayoutSpatial(config: SldConfig): SldLayout {
   elements.push({ type: 'text', x: W - 292, y: 22, text: 'BATTERY SCOPE', fontSize: 6, bold: true })
   const battScopeLines = [
     `(${config.batteryCount}) ${config.batteryModel.toUpperCase()}`,
-    `${config.batteryCapacity}KWH, 380VDC, IP67, NEMA 3R`,
+    `${config.batteryCapacity}KWH, 51.2VDC NOMINAL, IP67, NEMA 3R`,
     `SERVICE DISCONNECT RATING    200A`,
     `SERVICE DISCONNECT FUSE RATING    200A`,
   ]
@@ -820,7 +820,7 @@ function calculateSldLayoutSpatial(config: SldConfig): SldLayout {
   const dcDiscX = pvlcX + 40
   const dcDiscY = pvlcY + 80
   elements.push({ type: 'disconnect', x: dcDiscX, y: dcDiscY, label: '(N) PV DISCONNECT' })
-  elements.push({ type: 'callout', cx: dcDiscX + 22, cy: dcDiscY, number: 2 })
+  elements.push({ type: 'callout', cx: dcDiscX + 100, cy: dcDiscY, number: 2 })
   elements.push({ type: 'text', x: dcDiscX, y: dcDiscY + 16, text: 'NON-FUSIBLE', fontSize: 3.5, anchor: 'middle', fill: '#666' })
   elements.push({ type: 'text', x: dcDiscX, y: dcDiscY + 23, text: '200A, 2P, 240V (N)', fontSize: 3.5, anchor: 'middle', fill: '#666' })
   elements.push({ type: 'text', x: dcDiscX, y: dcDiscY + 32, text: 'VISIBLE, LOCKABLE,', fontSize: 3, anchor: 'middle', fill: '#999' })

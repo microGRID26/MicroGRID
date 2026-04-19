@@ -333,7 +333,7 @@ export function SheetPV3({ data }: { data: PlansetData }) {
           {data.panelCount} MODULES-ROOF MOUNTED - {data.systemDcKw.toFixed(3)} kW DC, {data.systemAcKw} kW AC
         </div>
         <div style={{ fontSize: '7pt', color: '#555', marginBottom: '6px' }}>
-          {data.address}, {data.city}, TX {data.zip}
+          {[data.address, data.city, `${data.state}${data.zip ? ` ${data.zip}` : ''}`].filter(Boolean).join(', ')}
         </div>
 
         <HeaderBoxes />

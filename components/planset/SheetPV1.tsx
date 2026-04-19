@@ -40,7 +40,8 @@ export function SheetPV1({ data, aerialPhotoUrl, housePhotoUrl, enhanced = false
   ]
 
   const codeRefs = [
-    'NEC 2020 (NFPA 70)', 'IBC 2015', 'IRC 2015', 'ASCE 7-16',
+    'NEC 2020 (NFPA 70)', 'IBC 2018', 'IRC 2018', 'IMC 2018', 'IPC 2018',
+    'IFC 2018', 'IECC 2018', 'ASCE 7-16',
     'UL 1703 / UL 61730', 'UL 1741 / UL 1741SA', 'UL 9540 (ESS)', 'IEEE 1547',
   ]
 
@@ -173,7 +174,7 @@ export function SheetPV1({ data, aerialPhotoUrl, housePhotoUrl, enhanced = false
                   <tr><td style={cell}>MAIN BREAKER:</td><td style={val}>{data.mainBreaker}</td></tr>
                   <tr><td style={cell}>SERVICE DISCONNECT RATING:</td><td style={val}>200A</td></tr>
                   <tr><td style={cell}>SERVICE DISCONNECT FUSE RATING:</td><td style={val}>200A</td></tr>
-                  <tr><td style={cell}>INTERCONNECTION TYPE:</td><td style={val}>UTILITY INTERCONNECTION</td></tr>
+                  <tr><td style={cell}>INTERCONNECTION TYPE:</td><td style={val}>LOAD-SIDE BACKFEED, NEC 705.12(B)(2)</td></tr>
                 </tbody>
               </table>
             </div>

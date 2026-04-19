@@ -30,8 +30,12 @@ export function SheetPV8({ data }: { data: PlansetData }) {
   const inv75CMax = 130
   const invUsable = Math.min(invCorrected, inv75CMax)
 
-  const genFla = 100
-  const genFla125 = 125
+  // Service-entrance conductor sized for full service rating (200A) per NEC 230.42
+  // and 215.2(B). Three current-carrying conductors → no conduit-fill derate per NEC 310.15(C)(1).
+  const genFla = 200
+  const genFla125 = 250
+  const gen250kcmilAmpacity = 255 // 250 kcmil CU THWN-2 @ 75°C
+  const genUsable = gen250kcmilAmpacity // service entrance not subject to 4+CCC fill derate
 
   type CondRow = string[]
 
@@ -76,10 +80,10 @@ export function SheetPV8({ data }: { data: PlansetData }) {
   if (data.inverterCount > 0) {
     condRows.push([
       '⑦ GEN', 'SERVICE DISCONNECT → UTILITY METER',
-      String(genFla), String(genFla125), '125',
-      '3', '#1 AWG', '1', '#6 AWG', 'THWN-2', '1-1/4" EMT',
-      String(inv1Ampacity), String(ambientTemp), String(tempFactor), String(invCorrected),
-      String(inv75CMax), String(invUsable),
+      String(genFla), String(genFla125), '200',
+      '3', '250 kcmil', '1', '#6 AWG', 'THWN-2', '2" EMT',
+      String(gen250kcmilAmpacity), String(ambientTemp), '1.00', String(gen250kcmilAmpacity),
+      String(gen250kcmilAmpacity), String(genUsable),
     ])
   }
 
