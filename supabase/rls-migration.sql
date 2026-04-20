@@ -35,10 +35,27 @@ $$;
 CREATE OR REPLACE FUNCTION public.provision_user(p_email TEXT, p_name TEXT)
 RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public AS $$
+DECLARE
+  v_user_id uuid;
+  v_domain  text;
 BEGIN
   INSERT INTO public.users (email, name, active, admin)
   VALUES (p_email, p_name, true, false)
   ON CONFLICT (email) DO NOTHING;
+
+  SELECT id INTO v_user_id FROM public.users WHERE email = p_email LIMIT 1;
+  IF v_user_id IS NULL THEN RETURN; END IF;
+
+  v_domain := split_part(p_email, '@', 2);
+  IF v_domain IS NULL OR v_domain = '' THEN RETURN; END IF;
+
+  INSERT INTO public.org_memberships (user_id, org_id)
+  SELECT v_user_id, o.id
+  FROM public.organizations o
+  WHERE o.active = true
+    AND o.allowed_domains IS NOT NULL
+    AND v_domain = ANY (o.allowed_domains)
+  ON CONFLICT DO NOTHING;
 END;
 $$;
 
