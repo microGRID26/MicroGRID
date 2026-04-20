@@ -114,6 +114,9 @@ When task statuses change in ProjectPanel:
 ### Offboarding convention
 **Offboard a user by flipping `users.active=false`** — never by deleting `org_memberships` rows or `users` rows. Migration 130 makes every RLS helper (`auth_user_org_ids`, `auth_is_platform_user`, `auth_is_org_member/admin`, `auth_is_admin`, `auth_is_super_admin`, `auth_user_role`, `auth_is_internal_writer`) short-circuit on `active=false`, and `provision_user` skips re-adding memberships for inactive rows. Deleting membership rows alone does not stick — `provision_user` re-adds them on next OAuth login.
 
+### Two-UUID-space reality (CRITICAL)
+`auth.uid()` returns `auth.users.id` (from the JWT `sub` claim). **`public.users.id` is a different UUID** for every user — the two tables grew independently with `email` as the only shared key. `org_memberships.user_id` keys on `public.users.id`, NOT `auth.users.id`. Any new RLS policy or helper that does `WHERE om.user_id = auth.uid()` is **dead code in production**. Resolve through email first: `SELECT id FROM public.users WHERE email = auth.email() AND active = true`. Migration 132 rewrote the four membership helpers to use this pattern; see it for the canonical shape. Migration 043's 30-table org-scoped RLS depended on this being right.
+
 ## Style Conventions
 
 - Dark theme: `bg-gray-900` (page), `bg-gray-800` (cards), green accent (`#1D9E75` / `text-green-400`)
