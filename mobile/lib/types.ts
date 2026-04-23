@@ -92,6 +92,7 @@ export interface TicketComment {
   author: string
   message: string
   image_url?: string | null
+  image_path?: string | null
   created_at: string
 }
 

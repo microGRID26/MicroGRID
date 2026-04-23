@@ -12,6 +12,7 @@ import { theme, useThemeColors } from '../../lib/theme'
 import { supabase } from '../../lib/supabase'
 import { loadComments, addComment, getCustomerAccount, uploadTicketPhoto } from '../../lib/api'
 import type { TicketComment } from '../../lib/types'
+import CommentAttachment from '../../components/CommentAttachment'
 
 const STATUS_LABELS: Record<string, string> = {
   open: 'Opened',
@@ -151,9 +152,9 @@ export default function TicketDetailScreen() {
     if (result.canceled || !result.assets?.[0]) return
     setUploading(true)
 
-    const imageUrl = await uploadTicketPhoto(result.assets[0].uri, id)
-    if (imageUrl) {
-      await addComment(id, `📷 Photo`, customerName, imageUrl)
+    const uploaded = await uploadTicketPhoto(result.assets[0].uri, id)
+    if (uploaded) {
+      await addComment(id, `📷 Photo`, customerName, uploaded.url, uploaded.path)
       const c = await loadComments(id)
       setComments(c)
     }
@@ -175,9 +176,9 @@ export default function TicketDetailScreen() {
     if (result.canceled || !result.assets?.[0]) return
     setUploading(true)
 
-    const imageUrl = await uploadTicketPhoto(result.assets[0].uri, id)
-    if (imageUrl) {
-      await addComment(id, `📷 Photo`, customerName, imageUrl)
+    const uploaded = await uploadTicketPhoto(result.assets[0].uri, id)
+    if (uploaded) {
+      await addComment(id, `📷 Photo`, customerName, uploaded.url, uploaded.path)
       const c = await loadComments(id)
       setComments(c)
     }
@@ -199,10 +200,10 @@ export default function TicketDetailScreen() {
     const ext = asset.name.split('.').pop() ?? 'file'
     const isImage = asset.mimeType?.startsWith('image/') ?? false
 
-    const imageUrl = await uploadTicketPhoto(asset.uri, id, asset.mimeType ?? undefined, ext)
-    if (imageUrl) {
+    const uploaded = await uploadTicketPhoto(asset.uri, id, asset.mimeType ?? undefined, ext)
+    if (uploaded) {
       const label = isImage ? '📷 Photo' : `📎 ${asset.name}`
-      await addComment(id, label, customerName, imageUrl)
+      await addComment(id, label, customerName, uploaded.url, uploaded.path)
       const c = await loadComments(id)
       setComments(c)
     }
@@ -285,8 +286,13 @@ export default function TicketDetailScreen() {
               {/* Comments as conversation bubbles */}
               {comments.map(c => {
                 const isCustomer = c.author === customerName
-                const hasImage = !!c.image_url && /\.(jpg|jpeg|png|webp|gif|heic)$/i.test(c.image_url)
-                const hasFile = !!c.image_url && !hasImage
+                // Attachment detection based on the stored path (preferred) or the
+                // legacy public URL (pre-migration rows). Using the storage_path
+                // means we can still decide image-vs-file before the signed URL
+                // resolves, so the bubble renders at the right width immediately.
+                const attachmentName = c.image_path ?? c.image_url ?? ''
+                const hasImage = !!attachmentName && /\.(jpg|jpeg|png|webp|gif|heic)(\?|$)/i.test(attachmentName)
+                const hasFile = !!attachmentName && !hasImage
                 const hasAttachment = hasImage || hasFile
                 return (
                   <View key={c.id} style={{ alignSelf: isCustomer ? 'flex-end' : 'flex-start', maxWidth: '85%', marginBottom: 8 }}>
@@ -304,52 +310,15 @@ export default function TicketDetailScreen() {
                           MicroGRID Support
                         </Text>
                       )}
-                      {hasImage ? (
-                        <Image
-                          source={{ uri: c.image_url! }}
-                          style={{ width: 200, height: 200, borderRadius: 12 }}
-                          resizeMode="cover"
+                      {hasAttachment ? (
+                        <CommentAttachment
+                          imagePath={c.image_path}
+                          imageUrl={c.image_url}
+                          message={c.message}
+                          accentColor={colors.accent}
+                          textColor={colors.text}
+                          textMutedColor={colors.textMuted}
                         />
-                      ) : hasFile ? (
-                        <TouchableOpacity
-                          onPress={async () => {
-                            try {
-                              // Download file locally then open native share sheet
-                              const url = c.image_url!
-                              const ext = url.split('.').pop()?.split('?')[0] ?? 'file'
-                              const localUri = (FileSystem.cacheDirectory ?? '') + `attachment_${Date.now()}.${ext}`
-                              const { uri } = await FileSystem.downloadAsync(url, localUri)
-                              if (await Sharing.isAvailableAsync()) {
-                                await Sharing.shareAsync(uri)
-                              } else {
-                                Linking.openURL(url).catch(() => {})
-                              }
-                            } catch {
-                              Linking.openURL(c.image_url!).catch(() => {})
-                            }
-                          }}
-                          activeOpacity={0.7}
-                          style={{ width: 220, paddingVertical: 6 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                            <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: colors.accent + '20', alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
-                              <Feather name="file-text" size={16} color={colors.accent} />
-                            </View>
-                            <Feather name="download" size={14} color={colors.accent} />
-                          </View>
-                          <Text style={{ fontSize: 13, color: colors.text, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>
-                            {(() => {
-                              const cleaned = c.message.replace(/📎\s*/, '').replace(/📷\s*/, '').trim()
-                              if (cleaned && cleaned !== 'Photo' && cleaned !== '[Photo attached]') return cleaned
-                              const urlParts = (c.image_url ?? '').split('/')
-                              const rawName = urlParts[urlParts.length - 1]?.split('?')[0] ?? 'File'
-                              const ext = rawName.split('.').pop() ?? ''
-                              return ext ? `Document.${ext}` : 'Attached file'
-                            })()}
-                          </Text>
-                          <Text style={{ fontSize: 10, color: colors.textMuted, fontFamily: 'Inter_400Regular', marginTop: 2 }}>
-                            Tap to open file
-                          </Text>
-                        </TouchableOpacity>
                       ) : (
                         <Text style={{
                           fontSize: 14, lineHeight: 20,

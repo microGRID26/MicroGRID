@@ -49,6 +49,7 @@ export interface TicketComment {
   message: string
   is_internal: boolean
   image_url: string | null
+  image_path: string | null
   created_at: string
 }
 
@@ -299,7 +300,7 @@ export async function updateTicketStatus(
 
 export async function loadTicketComments(ticketId: string): Promise<TicketComment[]> {
   const { data, error } = await db().from('ticket_comments')
-    .select('id, ticket_id, author, author_id, message, is_internal, image_url, created_at')
+    .select('id, ticket_id, author, author_id, message, is_internal, image_url, image_path, created_at')
     .eq('ticket_id', ticketId)
     .is('deleted_at', null)
     .order('created_at', { ascending: true })
@@ -308,8 +309,8 @@ export async function loadTicketComments(ticketId: string): Promise<TicketCommen
   return (data ?? []) as TicketComment[]
 }
 
-export async function addTicketComment(ticketId: string, author: string, authorId: string | undefined, message: string, isInternal = false, imageUrl?: string): Promise<boolean> {
-  const { error } = await db().from('ticket_comments').insert({ ticket_id: ticketId, author, author_id: authorId, message, is_internal: isInternal, image_url: imageUrl ?? null })
+export async function addTicketComment(ticketId: string, author: string, authorId: string | undefined, message: string, isInternal = false, imageUrl?: string | null, imagePath?: string | null): Promise<boolean> {
+  const { error } = await db().from('ticket_comments').insert({ ticket_id: ticketId, author, author_id: authorId, message, is_internal: isInternal, image_url: imageUrl ?? null, image_path: imagePath ?? null })
   if (error) { console.error('[addTicketComment]', error.message); return false }
 
   // Auto-set first_response_at if this is the first comment
@@ -349,7 +350,7 @@ export async function deleteTicketComment(commentId: string, deletedBy: string):
 
 export async function loadDeletedComments(ticketId: string): Promise<TicketComment[]> {
   const { data, error } = await db().from('ticket_comments')
-    .select('id, ticket_id, author, author_id, message, is_internal, image_url, created_at')
+    .select('id, ticket_id, author, author_id, message, is_internal, image_url, image_path, created_at')
     .eq('ticket_id', ticketId)
     .not('deleted_at', 'is', null)
     .order('created_at', { ascending: true })

@@ -6,6 +6,7 @@ import type { Project } from '@/types/database'
 import type { WorkOrder, WOChecklistItem } from '@/lib/api/work-orders'
 import { Toast } from './Toast'
 import { telLink, mapsLink } from './constants'
+import ChecklistPhotoThumbnail from '@/components/storage/ChecklistPhotoThumbnail'
 
 export function ProjectDetail({
   project,
@@ -308,19 +309,22 @@ export function ProjectDetail({
                                   </button>
                                   {/* Photo: show thumbnail + capture button */}
                                   <div className="flex items-center gap-2 ml-9">
-                                    {item.photo_url && (
-                                      <a href={item.photo_url} target="_blank" rel="noopener noreferrer">
-                                        <img src={item.photo_url} alt="" className="w-12 h-12 object-cover rounded border border-gray-700" />
-                                      </a>
+                                    {(item.photo_path || item.photo_url) && (
+                                      <ChecklistPhotoThumbnail
+                                        path={item.photo_path}
+                                        legacyUrl={item.photo_url}
+                                        size={12}
+                                      />
                                     )}
                                     <label className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 active:text-blue-400 cursor-pointer">
                                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
                                       <input type="file" accept="image/*" capture="environment" className="hidden" onChange={async (e) => {
                                         const file = e.target.files?.[0]
                                         if (!file) return
-                                        const url = await uploadChecklistPhoto(item.id, file)
-                                        if (url) {
-                                          item.photo_url = url
+                                        const result = await uploadChecklistPhoto(item.id, file)
+                                        if (result) {
+                                          item.photo_url = result.url
+                                          item.photo_path = result.path
                                           setWoChecklist([...woChecklist])
                                           setToast({ message: 'Photo uploaded', type: 'success' })
                                         } else {

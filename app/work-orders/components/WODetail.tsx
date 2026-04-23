@@ -11,6 +11,7 @@ import {
 import type { WorkOrder, WOChecklistItem } from '@/lib/api/work-orders'
 import { X, Check, Trash2, Camera } from 'lucide-react'
 import { STATUS_BADGE, STATUS_LABEL, PRIORITY_BADGE, TYPE_LABEL } from './constants'
+import ChecklistPhotoThumbnail from '@/components/storage/ChecklistPhotoThumbnail'
 
 export function WODetail({
   woId,
@@ -225,8 +226,12 @@ export function WODetail({
                     <input type="file" accept="image/*" capture="environment" className="hidden" onChange={async (e) => {
                       const file = e.target.files?.[0]
                       if (!file) return
-                      const url = await uploadChecklistPhoto(item.id, file)
-                      if (url) { item.photo_url = url; setChecklist([...checklist]) }
+                      const result = await uploadChecklistPhoto(item.id, file)
+                      if (result) {
+                        item.photo_url = result.url
+                        item.photo_path = result.path
+                        setChecklist([...checklist])
+                      }
                     }} />
                   </label>
                   <button onClick={() => handleDeleteItem(item.id)}
@@ -236,10 +241,12 @@ export function WODetail({
                 </div>
                 {/* Photo thumbnail + notes */}
                 <div className="ml-8 mt-0.5 space-y-1">
-                  {item.photo_url && (
-                    <a href={item.photo_url} target="_blank" rel="noopener noreferrer">
-                      <img src={item.photo_url} alt="" className="w-16 h-16 object-cover rounded border border-gray-700 hover:border-green-500 transition-colors" />
-                    </a>
+                  {(item.photo_path || item.photo_url) && (
+                    <ChecklistPhotoThumbnail
+                      path={item.photo_path}
+                      legacyUrl={item.photo_url}
+                      size={16}
+                    />
                   )}
                   <input
                     defaultValue={item.notes ?? ''}

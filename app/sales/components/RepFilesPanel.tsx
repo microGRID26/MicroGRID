@@ -6,6 +6,8 @@ import {
 } from '@/lib/api'
 import type { RepFile } from '@/lib/api'
 import { Upload, Trash2, FileText, Image, Download, X } from 'lucide-react'
+import { resolveSignedUrl, parsePathFromLegacyUrl } from '@/lib/storage/signed-url'
+import SignedLink from '@/components/storage/SignedLink'
 
 const ACCEPT = 'image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt'
 
@@ -64,6 +66,7 @@ export function RepFilesPanel({ repId, isAdmin, userName }: {
       file_type: fileType,
       file_name: file.name,
       file_url: urlData.publicUrl,
+      file_path: storagePath,
       uploaded_by: userName,
       notes: null,
     })
@@ -74,16 +77,39 @@ export function RepFilesPanel({ repId, isAdmin, userName }: {
     e.target.value = ''
   }
 
-  async function handleDelete(fileId: string, fileUrl: string) {
+  async function handleDelete(fileId: string, f: RepFile) {
     if (!confirm('Delete this file?')) return
     await deleteRepFile(fileId)
-    // Best-effort remove from storage
-    const path = fileUrl.split('/rep-files/')[1]
+    // Best-effort remove from storage — prefer the stored path column,
+    // fall back to parsing it out of the legacy URL for rows that predate
+    // migration 150. `file_path` is stored as raw object name, so no decode.
+    // The legacy URL's path segment may be percent-encoded (Supabase
+    // getPublicUrl encodes spaces etc), so only decode in that branch and
+    // catch malformed encodings (e.g. a stray `%` in a filename) instead of
+    // letting them crash the handler.
+    let path: string | null = null
+    if (f.file_path) {
+      path = f.file_path
+    } else if (f.file_url) {
+      const parsed = parsePathFromLegacyUrl(f.file_url, 'rep-files')
+      if (parsed) {
+        try {
+          path = decodeURIComponent(parsed)
+        } catch {
+          path = parsed
+        }
+      }
+    }
     if (path) {
       const supabase = createClient()
-      await supabase.storage.from('rep-files').remove([decodeURIComponent(path)])
+      await supabase.storage.from('rep-files').remove([path])
     }
     await load()
+  }
+
+  async function openPreview(f: RepFile) {
+    const signed = await resolveSignedUrl('rep-files', { path: f.file_path, legacyUrl: f.file_url })
+    if (signed) setPreviewUrl(signed)
   }
 
   const isImage = (name: string) => {
@@ -104,22 +130,22 @@ export function RepFilesPanel({ repId, isAdmin, userName }: {
                 <div className="min-w-0">
                   {isImage(f.file_name) ? (
                     <button
-                      onClick={() => setPreviewUrl(f.file_url)}
+                      onClick={() => openPreview(f)}
                       className="text-[10px] text-blue-400 hover:text-blue-300 truncate block max-w-[140px]"
                       title={f.file_name}
                     >
                       {f.file_name}
                     </button>
                   ) : (
-                    <a
-                      href={f.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <SignedLink
+                      bucket="rep-files"
+                      path={f.file_path}
+                      legacyUrl={f.file_url}
                       className="text-[10px] text-blue-400 hover:text-blue-300 truncate block max-w-[140px]"
                       title={f.file_name}
                     >
                       {f.file_name}
-                    </a>
+                    </SignedLink>
                   )}
                   <span className="text-[9px] text-gray-500">
                     {REP_FILE_TYPE_LABELS[f.file_type] ?? f.file_type}
@@ -127,12 +153,12 @@ export function RepFilesPanel({ repId, isAdmin, userName }: {
                 </div>
               </div>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <a href={f.file_url} target="_blank" rel="noopener noreferrer"
+                <SignedLink bucket="rep-files" path={f.file_path} legacyUrl={f.file_url}
                   className="text-gray-500 hover:text-white p-0.5" title="Download">
                   <Download className="w-3 h-3" />
-                </a>
+                </SignedLink>
                 {isAdmin && (
-                  <button onClick={() => handleDelete(f.id, f.file_url)}
+                  <button onClick={() => handleDelete(f.id, f)}
                     className="text-gray-500 hover:text-red-400 p-0.5" title="Delete">
                     <Trash2 className="w-3 h-3" />
                   </button>

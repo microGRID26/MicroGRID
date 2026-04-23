@@ -71,7 +71,7 @@ async function uploadAttachment(
   uri: string,
   fileName: string,
   mimeType: string,
-): Promise<{ url: string; size: number } | null> {
+): Promise<{ url: string; path: string; size: number } | null> {
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 30000)
@@ -99,7 +99,7 @@ async function uploadAttachment(
       .from('customer-feedback')
       .getPublicUrl(path)
 
-    return { url: urlData.publicUrl, size: uint8.byteLength }
+    return { url: urlData.publicUrl, path, size: uint8.byteLength }
   } catch (err) {
     console.error('[feedback] upload exception:', err instanceof Error ? err.message : err)
     return null
@@ -187,6 +187,7 @@ export async function submitFeedback(input: FeedbackSubmission): Promise<SubmitR
           .insert({
             feedback_id: feedbackId,
             file_url: upload.url,
+            file_path: upload.path,
             file_name: fileName,
             mime_type: mimeType,
             file_size: upload.size,

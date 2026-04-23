@@ -47,6 +47,7 @@ export interface WOChecklistItem {
   sort_order: number
   notes: string | null
   photo_url: string | null
+  photo_path: string | null
 }
 
 // ── Default Checklist Templates ──────────────────────────────────────────────
@@ -190,7 +191,7 @@ export async function loadWorkOrder(id: string): Promise<{ wo: WorkOrder; checkl
   const supabase = createClient()
   const [woRes, checkRes] = await Promise.all([
     supabase.from('work_orders').select('id, project_id, wo_number, type, status, assigned_crew, assigned_to, scheduled_date, started_at, completed_at, priority, description, special_instructions, customer_signature, customer_signed_at, materials_used, time_on_site_minutes, notes, created_by, created_at, updated_at, photo_audit_status, photo_audit_submitted_at, photo_audit_reviewed_by, photo_audit_reviewed_at, photo_audit_notes').eq('id', id).maybeSingle(),
-    supabase.from('wo_checklist_items').select('id, work_order_id, description, completed, completed_by, completed_at, sort_order, notes, photo_url').eq('work_order_id', id).order('sort_order', { ascending: true }).limit(500),
+    supabase.from('wo_checklist_items').select('id, work_order_id, description, completed, completed_by, completed_at, sort_order, notes, photo_url, photo_path').eq('work_order_id', id).order('sort_order', { ascending: true }).limit(500),
   ])
 
   if (woRes.error || !woRes.data) {
@@ -380,8 +381,11 @@ export async function updateChecklistItemNotes(id: string, notes: string | null)
   return true
 }
 
-/** Upload a photo for a checklist item → Supabase Storage → save URL */
-export async function uploadChecklistPhoto(itemId: string, file: File): Promise<string | null> {
+/** Upload a photo for a checklist item → Supabase Storage → save path + URL */
+export async function uploadChecklistPhoto(
+  itemId: string,
+  file: File,
+): Promise<{ url: string; path: string } | null> {
   const supabase = createClient()
   const ext = file.name.split('.').pop() ?? 'jpg'
   const path = `${itemId}/${Date.now()}.${ext}`
@@ -392,18 +396,24 @@ export async function uploadChecklistPhoto(itemId: string, file: File): Promise<
   })
   if (uploadErr) { console.error('photo upload failed:', uploadErr); return null }
 
+  // Store the object path so the bucket can remain private; sign on read.
+  // Also dual-write the legacy public URL during the transition so rollback
+  // (bucket → public=true) is a one-line change with zero data loss. The
+  // URL is not used by render sites after this change.
   const { data: urlData } = supabase.storage.from('wo-photos').getPublicUrl(path)
   const publicUrl = urlData.publicUrl
 
-  // Save URL to checklist item — rollback upload if DB update fails
-  const { error: updateErr } = await db().from('wo_checklist_items').update({ photo_url: publicUrl }).eq('id', itemId)
+  const { error: updateErr } = await db().from('wo_checklist_items').update({
+    photo_url: publicUrl,
+    photo_path: path,
+  }).eq('id', itemId)
   if (updateErr) {
     console.error('photo URL save failed:', updateErr)
     await supabase.storage.from('wo-photos').remove([path]).catch(() => {})
     return null
   }
 
-  return publicUrl
+  return { url: publicUrl, path }
 }
 
 export async function deleteChecklistItem(id: string): Promise<boolean> {

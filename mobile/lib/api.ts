@@ -126,7 +126,7 @@ export async function createTicket(
 export async function loadComments(ticketId: string): Promise<TicketComment[]> {
   const { data } = await supabase
     .from('ticket_comments')
-    .select('id, ticket_id, author, message, image_url, created_at')
+    .select('id, ticket_id, author, message, image_url, image_path, created_at')
     .eq('ticket_id', ticketId)
     .order('created_at', { ascending: true })
     .limit(200)
@@ -134,10 +134,10 @@ export async function loadComments(ticketId: string): Promise<TicketComment[]> {
   return (data ?? []) as TicketComment[]
 }
 
-export async function addComment(ticketId: string, message: string, author: string, imageUrl?: string): Promise<boolean> {
+export async function addComment(ticketId: string, message: string, author: string, imageUrl?: string | null, imagePath?: string | null): Promise<boolean> {
   const { error } = await supabase
     .from('ticket_comments')
-    .insert({ ticket_id: ticketId, author, message, is_internal: false, image_url: imageUrl ?? null })
+    .insert({ ticket_id: ticketId, author, message, is_internal: false, image_url: imageUrl ?? null, image_path: imagePath ?? null })
 
   return !error
 }
@@ -155,7 +155,7 @@ const MIME_MAP: Record<string, string> = {
   csv: 'text/csv', txt: 'text/plain',
 }
 
-export async function uploadTicketPhoto(uri: string, ticketId: string, overrideMime?: string, overrideExt?: string): Promise<string | null> {
+export async function uploadTicketPhoto(uri: string, ticketId: string, overrideMime?: string, overrideExt?: string): Promise<{ url: string; path: string } | null> {
   try {
     const ext = overrideExt ?? uri.split('.').pop()?.toLowerCase() ?? 'jpg'
     const mimeType = overrideMime ?? MIME_MAP[ext] ?? 'application/octet-stream'
@@ -172,11 +172,15 @@ export async function uploadTicketPhoto(uri: string, ticketId: string, overrideM
 
     if (error) { console.error('[upload]', error); return null }
 
+    // Dual-write: keep the legacy public URL for rows that might still
+    // render it from a stale client and return the object path for the new
+    // signed-URL reader path. Post-bucket-flip (2026-04-23), the public URL
+    // no longer resolves; new callers should rely on `path`.
     const { data: urlData } = supabase.storage
       .from('ticket-attachments')
       .getPublicUrl(fileName)
 
-    return urlData.publicUrl
+    return { url: urlData.publicUrl, path: fileName }
   } catch (err) {
     console.error('[upload] failed:', err)
     return null

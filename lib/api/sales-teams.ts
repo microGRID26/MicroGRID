@@ -560,7 +560,8 @@ export interface RepFile {
   rep_id: string
   file_type: string
   file_name: string
-  file_url: string
+  file_url: string | null
+  file_path: string | null
   uploaded_by: string | null
   notes: string | null
   created_at: string
@@ -578,7 +579,7 @@ export const REP_FILE_TYPE_LABELS: Record<string, string> = {
 
 export async function loadRepFiles(repId: string): Promise<RepFile[]> {
   const { data, error } = await db().from('rep_files')
-    .select('id, rep_id, file_type, file_name, file_url, uploaded_by, notes, created_at')
+    .select('id, rep_id, file_type, file_name, file_url, file_path, uploaded_by, notes, created_at')
     .eq('rep_id', repId)
     .order('created_at', { ascending: false })
     .limit(100)
