@@ -1,0 +1,29 @@
+-- Migration 151 — Restore GRANT EXECUTE on auth_is_internal_writer() to anon (+ public for parity)
+--
+-- Root cause
+-- ----------
+-- Commit 4519127 "security(db): tighten provision_user + atlas_kb trigger grants"
+-- revoked EXECUTE on the helper from roles it shouldn't have lost. Every peer
+-- helper (auth_is_admin, auth_is_manager, auth_user_id, auth_is_platform_user,
+-- auth_user_org_ids, auth_is_super_admin) has both anon + authenticated; this
+-- one was left with authenticated only.
+--
+-- Impact
+-- ------
+-- 155 RLS policies across ~70 tables gate on auth_is_internal_writer(). The
+-- users_read policy on `public.users` is one of them. When PostgREST evaluates
+-- any policy in a session that resolves to `anon` (or crosses anon on a nested
+-- call path), Postgres throws `permission denied for function
+-- auth_is_internal_writer`, the policy denies, the API returns 403 or an
+-- empty set. Reported symptom: ProjectCostBasisTab "Failed to load cost
+-- basis", FilesTab silent empty state.
+--
+-- Also grants to `public` for parity with peers and future role drift.
+--
+-- This GRANT was already applied via mcp execute_sql on 2026-04-24 during the
+-- outage. This migration codifies the change so it replays on fresh databases
+-- and is discoverable via schema_migrations. GRANT is idempotent.
+--
+-- References: session recap 2026-04-24, greg_actions audit, commit 4519127.
+
+GRANT EXECUTE ON FUNCTION public.auth_is_internal_writer() TO anon, authenticated, public;
