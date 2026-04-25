@@ -59,19 +59,39 @@ function getAppVersion(): string {
   )
 }
 
-/**
- * Upload a single screenshot/file to the customer-feedback bucket.
- * Returns the public URL + size on success, null on failure.
- * Matches the uploadTicketPhoto pattern in lib/api.ts.
- */
+// Upload a single screenshot/file to the customer-feedback bucket.
+// The bucket is private (migration 154) — readers resolve via file_path →
+// resolveMgSignedUrl, so this returns only the storage path + size.
 const MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024 // 5MB
+
+// Whitelist mime types that are safe to store + render via signed URL.
+// Anything else gets rejected before the upload starts.
+const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic'])
+
+// Map a mime type to a safe storage-path extension. The user-supplied
+// fileName is *only* persisted to file_name (display) — it never feeds
+// the storage path, so a malicious '../poison.jpg' filename can't escape
+// the per-feedback prefix. Pairs with the storage RLS path-prefix policy
+// + enforce_customer_feedback_attachment_path trigger in migration 164.
+function extensionForMime(mime: string): string {
+  switch (mime) {
+    case 'image/png': return 'png'
+    case 'image/webp': return 'webp'
+    case 'image/heic': return 'heic'
+    case 'image/jpeg':
+    default: return 'jpg'
+  }
+}
 
 async function uploadAttachment(
   feedbackId: string,
   uri: string,
-  fileName: string,
   mimeType: string,
-): Promise<{ url: string; path: string; size: number } | null> {
+): Promise<{ path: string; size: number } | null> {
+  if (!ALLOWED_MIME.has(mimeType)) {
+    console.warn('[feedback] rejected mime type:', mimeType)
+    return null
+  }
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 30000)
@@ -85,7 +105,8 @@ async function uploadAttachment(
       return null
     }
 
-    const path = `${feedbackId}/${Date.now()}-${fileName}`
+    const ext = extensionForMime(mimeType)
+    const path = `${feedbackId}/${Date.now()}.${ext}`
     const { error: uploadError } = await supabase.storage
       .from('customer-feedback')
       .upload(path, uint8, { contentType: mimeType, upsert: false })
@@ -95,15 +116,23 @@ async function uploadAttachment(
       return null
     }
 
-    const { data: urlData } = supabase.storage
-      .from('customer-feedback')
-      .getPublicUrl(path)
-
-    return { url: urlData.publicUrl, path, size: uint8.byteLength }
+    return { path, size: uint8.byteLength }
   } catch (err) {
     console.error('[feedback] upload exception:', err instanceof Error ? err.message : err)
     return null
   }
+}
+
+// Cap the user-supplied fileName before we persist it to the display column.
+// Storage path doesn't use this value; this only protects the DB column +
+// any UI that renders the original name.
+const MAX_FILENAME_LEN = 128
+function sanitizeDisplayFileName(raw: string): string {
+  // Strip path separators + control chars; collapse to allow-list. Falls
+  // back to a generic name so the column is never empty.
+  const stripped = raw.replace(/[\x00-\x1f\x7f/\\]/g, '').trim()
+  const safe = stripped.length > 0 ? stripped : 'attachment'
+  return safe.length > MAX_FILENAME_LEN ? safe.slice(0, MAX_FILENAME_LEN) : safe
 }
 
 export interface SubmitResult {
@@ -178,21 +207,30 @@ export async function submitFeedback(input: FeedbackSubmission): Promise<SubmitR
   if (input.attachments && input.attachments.length > 0) {
     const settled = await Promise.allSettled(
       input.attachments.map(async (att, idx) => {
-        const fileName = att.fileName ?? `screenshot-${idx + 1}.jpg`
+        const displayName = sanitizeDisplayFileName(att.fileName ?? `screenshot-${idx + 1}.jpg`)
         const mimeType = att.mimeType ?? 'image/jpeg'
-        const upload = await uploadAttachment(feedbackId, att.uri, fileName, mimeType)
-        if (!upload) throw new Error(`upload failed for ${fileName}`)
+        const upload = await uploadAttachment(feedbackId, att.uri, mimeType)
+        if (!upload) throw new Error(`upload failed for ${displayName}`)
         const { error: attErr } = await supabase
           .from('customer_feedback_attachments')
           .insert({
             feedback_id: feedbackId,
-            file_url: upload.url,
+            file_url: null,
             file_path: upload.path,
-            file_name: fileName,
+            file_name: displayName,
             mime_type: mimeType,
             file_size: upload.size,
           })
-        if (attErr) throw new Error(`attachment row insert failed: ${attErr.message}`)
+        if (attErr) {
+          // Roll back the storage object so we don't leave an orphan blob
+          // (R1-M1). Best-effort: if delete fails, the nightly orphan
+          // sweep can pick it up — but at least we tried.
+          await supabase.storage
+            .from('customer-feedback')
+            .remove([upload.path])
+            .catch(() => {})
+          throw new Error(`attachment row insert failed: ${attErr.message}`)
+        }
       }),
     )
 
