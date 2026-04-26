@@ -445,7 +445,7 @@ function PlanSetPageInner() {
       setStrings(finalStrings)
 
       const plansetData = buildPlansetData(project, { ...overrides, strings: finalStrings, roofFaces: roofFaces.length > 0 ? roofFaces : undefined, sitePlanImageUrl: images.sitePlanImageUrl ?? undefined })
-      if (enhanced) plansetData.sheetTotal = 13  // 9 base + 4 enhanced (utility letter, PV-3.1, PV-4, PV-4.1)
+      if (enhanced) plansetData.sheetTotal = 13  // 10 base (incl. PV-4) + 3 enhanced (utility letter, PV-3.1, PV-4.1)
       setRoofFaces(plansetData.roofFaces)
       setData(plansetData)
       setProjectId(id)
@@ -472,7 +472,7 @@ function PlanSetPageInner() {
       const project = await loadProjectById(projectId)
       if (!project) return
       const plansetData = buildPlansetData(project, { ...overrides, strings, roofFaces: roofFaces.length > 0 ? roofFaces : undefined, sitePlanImageUrl: images.sitePlanImageUrl ?? undefined })
-      if (enhanced) plansetData.sheetTotal = 13  // 9 base + utility letter + PV-3.1 + PV-4 + PV-4.1
+      if (enhanced) plansetData.sheetTotal = 13  // 10 base (incl. PV-4) + utility letter + PV-3.1 + PV-4.1
       setData(plansetData)
     } finally {
       setLoading(false)
@@ -696,9 +696,9 @@ function PlanSetPageInner() {
                 { id: 'PV-1', label: 'Cover Page & General Notes', component: <SheetPV1 data={data} aerialPhotoUrl={images.aerialPhotoUrl} housePhotoUrl={images.housePhotoUrl} enhanced={enhanced} /> },
                 { id: 'PV-2', label: 'Project Data', component: <SheetPV2 data={data} /> },
                 { id: 'PV-3', label: 'Site Plan', component: <SheetPV3 data={data} /> },
+                { id: 'PV-4', label: 'Equipment Detail', component: <SheetPV4 data={data} /> },
                 ...(enhanced ? [
                   { id: 'PV-3.1', label: 'Equipment Elevation', component: <SheetPV31 data={data} equipmentPhotos={images.equipmentPhotos} /> },
-                  { id: 'PV-4', label: 'Roof Plan with Modules', component: <SheetPV4 data={data} roofPlanImageUrl={images.roofPlanImageUrl} /> },
                   { id: 'PV-4.1', label: 'Attachment Detail', component: <SheetPV41 data={data} /> },
                 ] : []),
                 { id: 'PV-5', label: 'Single Line Diagram', component: <SheetPV5 data={data} /> },
