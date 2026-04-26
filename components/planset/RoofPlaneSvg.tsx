@@ -36,41 +36,46 @@ export function RoofPlaneSvg({ faces, strings, width, height }: Props) {
         const [cx, cy] = polygonCentroid(scaledPoly)
         const facetStrings = stringsByFace.get(face.id) ?? []
 
-        // Setback band — dashed ring inset from the plane edge by ~4% of min(w,h)
-        const setbackInset = insetPolygon(scaledPoly, Math.min(width, height) * 0.04)
-        const setbackPath = polygonToSvgPath(setbackInset)
-        const anySetback = face.setbacks.ridge || face.setbacks.eave || face.setbacks.rake
-        const setbackKind = face.setbacks.ridge
-          ? 'ridge'
-          : face.setbacks.eave
-            ? 'eave'
-            : face.setbacks.rake
-              ? 'rake'
-              : null
+        // Inset multipliers differ per edge type so multiple bands are visually distinct
+        const SETBACK_CFG = [
+          { kind: 'ridge', insetFactor: 0.04, stroke: '#c33' },
+          { kind: 'eave',  insetFactor: 0.06, stroke: '#c63' },
+          { kind: 'rake',  insetFactor: 0.08, stroke: '#996' },
+        ] as const
+
+        // pathClear label config
+        const pathClear = face.setbacks.pathClear
+        const pathLabelCfg =
+          pathClear === 'walkable' ? { text: 'WALKABLE',         fill: '#080' } :
+          pathClear === 'partial'  ? { text: 'PARTIAL ACCESS',   fill: '#a60' } :
+                                     { text: 'BLOCKED — NO PATH', fill: '#c00' }
 
         return (
           <g key={face.id} data-face-id={face.id}>
             {/* Plane fill */}
             <path d={path} fill="#f5f5f5" stroke="#333" strokeWidth={1.5} />
 
-            {/* Setback band (dashed inner ring) */}
-            {anySetback && setbackKind && (
-              <path
-                d={setbackPath}
-                data-setback={setbackKind}
-                fill="none"
-                stroke="#c33"
-                strokeWidth={1}
-                strokeDasharray="4 3"
-              />
-            )}
+            {/* Setback bands — one per active edge type, distinct inset + color */}
+            {SETBACK_CFG.map(({ kind, insetFactor, stroke }) => {
+              if (!face.setbacks[kind]) return null
+              const insetPath = polygonToSvgPath(insetPolygon(scaledPoly, Math.min(width, height) * insetFactor))
+              return (
+                <path
+                  key={kind}
+                  d={insetPath}
+                  data-setback={kind}
+                  fill="none"
+                  stroke={stroke}
+                  strokeWidth={1}
+                  strokeDasharray="4 3"
+                />
+              )
+            })}
 
-            {/* Walking-ridge marker */}
-            {face.setbacks.pathClear === 'walkable' && (
-              <text x={cx} y={cy - 14} textAnchor="middle" fontSize={6} fill="#080" fontWeight="bold">
-                WALKABLE
-              </text>
-            )}
+            {/* Walking-path marker — all three states */}
+            <text x={cx} y={cy - 14} textAnchor="middle" fontSize={6} fill={pathLabelCfg.fill} fontWeight="bold">
+              {pathLabelCfg.text}
+            </text>
 
             {/* Roof label */}
             <text x={cx} y={cy} textAnchor="middle" fontSize={7} fontWeight="bold" fill="#222">

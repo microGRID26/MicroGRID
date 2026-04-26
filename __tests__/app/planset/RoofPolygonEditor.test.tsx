@@ -43,10 +43,12 @@ describe('RoofPolygonEditor', () => {
 
   it('lets the user toggle ridge / eave / rake setback checkboxes', () => {
     const onSave = vi.fn()
+    // Provide a valid initial polygon so Save is enabled
+    const initial: [number, number][] = [[0.1, 0.1], [0.9, 0.1], [0.5, 0.9]]
     render(
       <RoofPolygonEditor
         faceId={1}
-        initialPolygon={[]}
+        initialPolygon={initial}
         onSave={onSave}
         onClose={() => {}}
       />
@@ -75,7 +77,9 @@ describe('RoofPolygonEditor', () => {
     expect(canvas.querySelectorAll('circle').length).toBe(3)
   })
 
-  it('clear button resets points to empty', () => {
+  it('clear button prompts for confirmation and resets points to empty', () => {
+    // window.confirm must be mocked — jsdom returns false by default
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     const onSave = vi.fn()
     const initial: [number, number][] = [[0, 0], [1, 0], [0.5, 1]]
     render(
@@ -87,9 +91,11 @@ describe('RoofPolygonEditor', () => {
       />
     )
     fireEvent.click(screen.getByText(/clear/i))
-    fireEvent.click(screen.getByText(/save/i))
-    const [polygon] = onSave.mock.calls[0]
-    expect(polygon.length).toBe(0)
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('3'))
+    // After clear, Save is disabled (< 3 points) — verify button is disabled
+    const saveBtn = screen.getByText(/save/i).closest('button')
+    expect(saveBtn).toBeDisabled()
+    confirmSpy.mockRestore()
   })
 
   it('Escape key closes the editor (calls onClose)', () => {

@@ -445,7 +445,7 @@ function PlanSetPageInner() {
       setStrings(finalStrings)
 
       const plansetData = buildPlansetData(project, { ...overrides, strings: finalStrings, roofFaces: roofFaces.length > 0 ? roofFaces : undefined, sitePlanImageUrl: images.sitePlanImageUrl ?? undefined })
-      if (enhanced) plansetData.sheetTotal = 13  // 10 base (incl PV-2A) + 3 enhanced (utility letter, PV-3.1, PV-4.1)
+      plansetData.sheetTotal = enhanced ? 13 : 10  // 10 base; enhanced adds UTIL + PV-3.1 + PV-4.1
       setRoofFaces(plansetData.roofFaces)
       setData(plansetData)
       setProjectId(id)
@@ -472,7 +472,7 @@ function PlanSetPageInner() {
       const project = await loadProjectById(projectId)
       if (!project) return
       const plansetData = buildPlansetData(project, { ...overrides, strings, roofFaces: roofFaces.length > 0 ? roofFaces : undefined, sitePlanImageUrl: images.sitePlanImageUrl ?? undefined })
-      if (enhanced) plansetData.sheetTotal = 12  // 9 base + utility letter + PV-3.1 + PV-4.1
+      plansetData.sheetTotal = enhanced ? 13 : 10  // 10 base; enhanced adds UTIL + PV-3.1 + PV-4.1
       setData(plansetData)
     } finally {
       setLoading(false)

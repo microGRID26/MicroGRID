@@ -2,19 +2,22 @@ import type { PlansetData } from '@/lib/planset-types'
 import { TitleBlockHtml } from './TitleBlockHtml'
 
 const LEGEND_ITEMS: Array<{ sym: string; label: string }> = [
-  { sym: 'M',       label: 'Utility Meter' },
-  { sym: 'MSP',     label: 'Main Service Panel' },
-  { sym: 'SP',      label: 'Sub Panel' },
-  { sym: 'INV',     label: 'Duracell Max Hybrid Inverter' },
-  { sym: 'BAT',     label: 'Duracell 5+ Battery Module' },
-  { sym: 'RSD',     label: 'Rapid Shutdown Device (RSD-D-20)' },
-  { sym: 'CTX',     label: 'Cantex High-Current Distribution Bar' },
-  { sym: '═══',     label: 'EMT Conduit (above ground, wall mount)' },
-  { sym: '─ ─ ─',   label: 'PVC Conduit (below ground, trench)' },
-  { sym: '▨▨',     label: 'Fire Setback (no panels — walking path required for fire access)' },
-  { sym: '↻',       label: 'Walkable Ridge (clear path for fire personnel)' },
-  { sym: 'AZ',      label: 'Azimuth (compass direction roof faces, in degrees)' },
-  { sym: '°',       label: 'Tilt (roof pitch, in degrees)' },
+  { sym: 'M',        label: 'Utility Meter' },
+  { sym: 'MSP',      label: 'Main Service Panel' },
+  { sym: 'SP',       label: 'Sub Panel' },
+  { sym: 'INV',      label: 'Duracell Max Hybrid Inverter' },
+  { sym: 'BAT',      label: 'Duracell 5+ Battery Module' },
+  { sym: 'RSD',      label: 'Rapid Shutdown Device (RSD-D-20)' },
+  { sym: 'CTX',      label: 'Cantex High-Current Distribution Bar' },
+  { sym: '═══',      label: 'EMT Conduit (above ground, wall mount)' },
+  { sym: '┄ ┄',      label: 'Ridge Setback — red dashed inset ring (3 ft from ridge)' },
+  { sym: '┄ ┄',      label: 'Eave Setback — orange dashed inset ring (deeper, 18 in from eave)' },
+  { sym: '┄ ┄',      label: 'Rake Setback — gray dashed inset ring (deepest, 18 in from rake)' },
+  { sym: 'WALKABLE', label: 'Walkable Path — green text on roof face' },
+  { sym: 'PARTIAL',  label: 'Partial Access — amber text on roof face' },
+  { sym: 'BLOCKED',  label: 'No Walking Path — red text on roof face' },
+  { sym: 'AZ',       label: 'Azimuth (compass direction roof faces, in degrees)' },
+  { sym: '°',        label: 'Tilt (roof pitch, in degrees)' },
 ]
 
 export function SheetPV2A({ data }: { data: PlansetData }) {
@@ -49,12 +52,13 @@ export function SheetPV2A({ data }: { data: PlansetData }) {
         </div>
 
         <div style={{ marginTop: '16pt', fontSize: '7pt', color: '#555', maxWidth: '6in' }}>
-          <strong style={{ color: '#111' }}>CONDUIT NOTATION:</strong> Solid lines represent above-ground conduit (EMT); dashed lines represent below-ground conduit (PVC, trenched).
+          <strong style={{ color: '#111' }}>CONDUIT NOTATION:</strong> Solid lines represent above-ground EMT conduit.
           All conduit runs are shown schematically — refer to the site plan (PV-3) for routing and dimensions.
         </div>
         <div style={{ marginTop: '6pt', fontSize: '7pt', color: '#555', maxWidth: '6in' }}>
-          <strong style={{ color: '#111' }}>FIRE SETBACK / ACCESS:</strong> Hatched areas on the roof plan represent required fire department access paths per IFC 2018.
-          No modules or equipment may be placed within fire setback zones.
+          <strong style={{ color: '#111' }}>FIRE SETBACK / ACCESS:</strong> Dashed inset rings on each roof face represent required fire department access paths per IFC 2018.
+          Ridge setbacks shown in red, eave in orange, rake in gray. No modules or equipment may be placed within setback zones.
+          Walking-path status (WALKABLE / PARTIAL ACCESS / BLOCKED) is shown as colored text on each face.
         </div>
       </div>
       <TitleBlockHtml sheetName="UNIT INDEX / LEGEND" sheetNumber="PV-2A" data={data} />

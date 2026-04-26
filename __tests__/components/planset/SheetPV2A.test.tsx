@@ -12,7 +12,7 @@ describe('SheetPV2A — Unit Index / Legend', () => {
   it('renders all legend entries', () => {
     const { container } = render(<SheetPV2A data={baseData as PlansetData} />)
     const rows = container.querySelectorAll('tbody tr')
-    expect(rows.length).toBeGreaterThanOrEqual(13)
+    expect(rows.length).toBeGreaterThanOrEqual(16)
   })
 
   it('includes RSD-D-20 callout', () => {
@@ -25,10 +25,10 @@ describe('SheetPV2A — Unit Index / Legend', () => {
     expect(container.textContent?.toLowerCase()).toContain('cantex')
   })
 
-  it('includes EMT and PVC conduit symbols', () => {
+  it('includes EMT conduit symbol but not PVC (Duracell projects use EMT only)', () => {
     const { container } = render(<SheetPV2A data={baseData as PlansetData} />)
     expect(container.textContent).toContain('EMT')
-    expect(container.textContent).toContain('PVC')
+    expect(container.textContent).not.toContain('PVC')
   })
 
   it('includes fire setback entry', () => {

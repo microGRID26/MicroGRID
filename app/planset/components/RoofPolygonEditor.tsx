@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { polygonToSvgPath } from '@/lib/planset-polygons'
+import { polygonToSvgPath, isValidPolygon } from '@/lib/planset-polygons'
 import type { PlansetRoofFace } from '@/lib/planset-types'
 
 interface Props {
@@ -46,9 +46,23 @@ export function RoofPolygonEditor({ faceId, initialPolygon, initialSetbacks, onS
     onSave(normalized, setbacks)
   }
 
-  function handleBackdropClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === e.currentTarget) onClose()
+  function handleClear() {
+    if (points.length === 0) return
+    if (!window.confirm(`Discard ${points.length} placed vertices?`)) return
+    setPoints([])
   }
+
+  function handleBackdropClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target !== e.currentTarget) return
+    // Check for unsaved changes vs. initial polygon
+    const initial = initialPolygon.map(([x, y]) => [x * W, y * H] as [number, number])
+    const changed = points.length !== initial.length ||
+      points.some((p, i) => p[0] !== initial[i]?.[0] || p[1] !== initial[i]?.[1])
+    if (changed && !window.confirm('Discard unsaved polygon changes?')) return
+    onClose()
+  }
+
+  const canSave = isValidPolygon(points.map(([x, y]) => [x / W, y / H] as [number, number]))
 
   return (
     <div
@@ -132,19 +146,27 @@ export function RoofPolygonEditor({ faceId, initialPolygon, initialSetbacks, onS
           </label>
         </div>
 
-        <footer className="mt-4 flex gap-2 justify-end">
-          <button
-            onClick={() => setPoints([])}
-            className="px-3 py-1.5 bg-gray-600 text-white rounded hover:bg-gray-500"
-          >
-            Clear
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-500"
-          >
-            Save
-          </button>
+        <footer className="mt-4 flex flex-col gap-2">
+          {!canSave && (
+            <p className="text-xs text-amber-400">
+              Need at least 3 non-degenerate vertices for a valid polygon ({points.length} placed)
+            </p>
+          )}
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={handleClear}
+              className="px-3 py-1.5 bg-gray-600 text-white rounded hover:bg-gray-500"
+            >
+              Clear
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!canSave}
+              className={`px-3 py-1.5 rounded ${canSave ? 'bg-green-600 text-white hover:bg-green-500' : 'bg-gray-500 text-gray-300 cursor-not-allowed'}`}
+            >
+              Save
+            </button>
+          </div>
         </footer>
       </div>
     </div>
