@@ -83,10 +83,29 @@ data isolated from real org data.
 
 | Gap | Why deferred | Path to v2 |
 |---|---|---|
-| Partner-leads HTTP path (POST `/api/v1/partner/leads`) | The route writes new projects under MG's canonical EPC tenant (`org_id = MG_ENERGY_ORG_ID`). Test rows would pollute real production data; no clean way to scope on prod. | Move evals to a Supabase branch. Spawn `next dev` and POST with bearer + `X-MG-Actor` + `Idempotency-Key`. |
+| Partner-leads HTTP path (POST `/api/v1/partner/leads`) | The route writes new projects under MG's canonical EPC tenant (`org_id = MG_ENERGY_ORG_ID`). Test rows would pollute real production data; no clean way to scope on prod. | See "Branch attempt 2026-04-25" below. |
 | EDGE/SPARK eval suites | One-codebase scope. | Replicate the `evals/` pattern after the MG harness stabilizes. |
 | CI integration | Manual post-deploy is enough for v1. | GitHub Actions workflow — run after a successful Vercel deploy. |
 | Performance/load evals | Different domain. | Out of scope. |
+
+## Branch attempt 2026-04-25 (failed — relevant for next attempt)
+
+Tried to lift the partner-leads HTTP deferral by creating a Supabase branch
+(`evals` branch off the MG project). Branch DB came up healthy but with
+**0 tables** — Supabase's auto-migration sync expected timestamped CLI-format
+files in `supabase/migrations/`, but MG's migrations are numbered
+(`030-work-orders.sql`, etc.) so the sync silently failed. Branch was deleted;
+~$0.05 of hourly billing burned.
+
+**Path forward when this is attempted again:**
+
+The 167 prod migrations are tracked in Supabase's internal `supabase_migrations.schema_migrations` but their SQL bodies aren't directly fetchable via the MCP `list_migrations` tool. To replicate prod schema on a fresh branch, the next attempt needs one of:
+
+1. **Rename MG's migration files to Supabase CLI format** (`<timestamp>_<name>.sql`) so the auto-sync works. Requires care — the existing numbered names are referenced from existing tooling.
+2. **`pg_dump --schema-only` on prod, apply to branch** via execute_sql. Needs a direct database connection string with credentials.
+3. **Hand-write a minimal `init.sql`** scoped to just the tables the partner-leads route touches. Quick to ship but creates a maintenance liability — every prod schema change must be mirrored or the branch drifts.
+
+Until one of those is done, partner-leads HTTP eval stays deferred.
 
 ## File map
 
