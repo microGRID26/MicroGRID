@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { ChevronDown, ChevronUp, X } from 'lucide-react'
 import type { PlansetData, PlansetOverrides, PlansetString, PlansetRoofFace } from '@/lib/planset-types'
 import { PANEL_PRESETS, PANEL_PRESET_LABELS } from '@/lib/planset-types'
+import { RoofPolygonEditor } from './RoofPolygonEditor'
 
 export interface PlansetImageUrls {
   sitePlanImageUrl: string | null
@@ -28,6 +29,7 @@ export function OverridesPanel({ data, strings, onStringsChange, overrides, onOv
   const sitePlanImageUrl = images.sitePlanImageUrl
   const onSitePlanChange = (url: string | null) => onImagesChange({ ...images, sitePlanImageUrl: url })
   const [expanded, setExpanded] = useState(false)
+  const [editingPolygonFor, setEditingPolygonFor] = useState<number | null>(null)
 
   const updateStringModules = (idx: number, modules: number) => {
     const updated = [...strings]
@@ -381,6 +383,7 @@ export function OverridesPanel({ data, strings, onStringsChange, overrides, onOv
                     <th className="text-left py-1 px-2">Modules</th>
                     <th className="text-left py-1 px-2">Tilt (&deg;)</th>
                     <th className="text-left py-1 px-2">Azimuth (&deg;)</th>
+                    <th className="text-left py-1 px-2">Polygon</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -402,6 +405,14 @@ export function OverridesPanel({ data, strings, onStringsChange, overrides, onOv
                           onRoofFacesChange(updated)
                         }} className="w-16 px-1 py-0.5 bg-gray-900 border border-gray-700 rounded text-xs text-white" />
                       </td>
+                      <td className="py-1 px-2">
+                        <button
+                          onClick={() => setEditingPolygonFor(rf.id)}
+                          className="px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-500"
+                        >
+                          {rf.polygon.length > 0 ? `Edit (${rf.polygon.length}pts)` : 'Edit Polygon'}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -409,6 +420,27 @@ export function OverridesPanel({ data, strings, onStringsChange, overrides, onOv
             )}
             <p className="text-xs text-gray-600 mt-2">Roof faces are auto-derived from string assignments. Edit tilt and azimuth here.</p>
           </div>
+
+          {/* Roof Polygon Editor modal */}
+          {editingPolygonFor !== null && (() => {
+            const face = roofFaces.find(rf => rf.id === editingPolygonFor)
+            if (!face) return null
+            return (
+              <RoofPolygonEditor
+                faceId={face.id}
+                initialPolygon={face.polygon}
+                initialSetbacks={face.setbacks}
+                onSave={(polygon, setbacks) => {
+                  const updated = roofFaces.map(rf =>
+                    rf.id === editingPolygonFor ? { ...rf, polygon, setbacks } : rf
+                  )
+                  onRoofFacesChange(updated)
+                  setEditingPolygonFor(null)
+                }}
+                onClose={() => setEditingPolygonFor(null)}
+              />
+            )
+          })()}
 
           {/* String configuration table */}
           <div>
