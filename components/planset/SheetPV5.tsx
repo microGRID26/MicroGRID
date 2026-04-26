@@ -78,6 +78,9 @@ export function SheetPV5({ data }: { data: PlansetData }) {
     pcsCurrentSetting: data.pcsCurrentSetting,
     acRunLengthFt: data.acRunLengthFt,
     backfeedBreakerA: data.backfeedBreakerA,
+    systemTopology: data.systemTopology,
+    rapidShutdownModel: data.rapidShutdownModel,
+    hasCantexBar: data.hasCantexBar,
   }
 
   const layout = calculateSldLayout(config)

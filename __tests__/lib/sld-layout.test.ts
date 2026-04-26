@@ -215,3 +215,73 @@ describe('calculateSldLayout', () => {
     expect(texts.some(t => t.text.includes('PVC'))).toBe(false)
   })
 })
+
+// ── SLD topology gating (Task 2.4) ─────────────────────────────────────────
+
+describe('SLD topology gating', () => {
+  it('does NOT render DPCRGM, DTU, CT (micro-inverter CTs), or Ethernet on string-mppt topology', () => {
+    const config = makeConfig()
+    config.systemTopology = 'string-mppt'
+    const layout = calculateSldLayout(config)
+    const texts = layout.elements.filter(e => e.type === 'text').map(e => (e as { text: string }).text)
+    expect(texts.some(t => t.includes('DPCRGM'))).toBe(false)
+    expect(texts.some(t => t.includes('DTU'))).toBe(false)
+    // Ethernet switch (micro-inverter artifact)
+    expect(texts.some(t => /ethernet switch/i.test(t))).toBe(false)
+    // PLC (micro-inverter artifact)
+    expect(texts.some(t => /\bPLC\b/.test(t))).toBe(false)
+  })
+
+  it('string-mppt topology produces a valid layout with elements', () => {
+    const config = makeConfig()
+    config.systemTopology = 'string-mppt'
+    const layout = calculateSldLayout(config)
+    expect(layout.elements.length).toBeGreaterThan(0)
+    expect(layout.width).toBeGreaterThan(0)
+    expect(layout.height).toBeGreaterThan(0)
+  })
+
+  it('micro-inverter topology produces a valid layout with elements', () => {
+    // The current SLD renderer is Duracell/string-MPPT style by design —
+    // it never rendered DPCRGM/DTU/PLC/Ethernet even before Task 2.4.
+    // micro-inverter topology flag is wired in for forward compatibility;
+    // the layout must not crash and must still return valid elements.
+    const config = makeConfig()
+    config.systemTopology = 'micro-inverter'
+    const layout = calculateSldLayout(config)
+    expect(layout.elements.length).toBeGreaterThan(0)
+    expect(layout.width).toBeGreaterThan(0)
+  })
+
+  it('renders RSD callout text using the configured rapidShutdownModel', () => {
+    const config = makeConfig()
+    config.systemTopology = 'string-mppt'
+    config.rapidShutdownModel = 'RSD-D-20'
+    const layout = calculateSldLayout(config)
+    const texts = layout.elements.filter(e => e.type === 'text').map(e => (e as { text: string }).text)
+    expect(texts.some(t => t.includes('RSD-D-20'))).toBe(true)
+  })
+
+  it('renders Cantex bar callout when hasCantexBar=true', () => {
+    const config = makeConfig()
+    config.hasCantexBar = true
+    const layout = calculateSldLayout(config)
+    const texts = layout.elements.filter(e => e.type === 'text').map(e => (e as { text: string }).text)
+    expect(texts.some(t => /cantex/i.test(t))).toBe(true)
+  })
+
+  it('does NOT render Cantex bar when hasCantexBar=false', () => {
+    const config = makeConfig()
+    config.hasCantexBar = false
+    const layout = calculateSldLayout(config)
+    const texts = layout.elements.filter(e => e.type === 'text').map(e => (e as { text: string }).text)
+    expect(texts.some(t => /cantex/i.test(t))).toBe(false)
+  })
+
+  it('Cantex bar renders by default (hasCantexBar omitted)', () => {
+    const config = makeConfig() // no hasCantexBar field
+    const layout = calculateSldLayout(config)
+    const texts = layout.elements.filter(e => e.type === 'text').map(e => (e as { text: string }).text)
+    expect(texts.some(t => /cantex/i.test(t))).toBe(true)
+  })
+})

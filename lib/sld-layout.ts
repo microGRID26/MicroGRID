@@ -55,6 +55,10 @@ export interface SldConfig {
   pcsCurrentSetting?: number  // default: 200
   acRunLengthFt?: number      // trenching distance from inverter to MSP/utility (default: 50)
   backfeedBreakerA?: number   // per-inverter backfeed breaker amps, NEC 705.12 (default: 100)
+  // Topology discriminators (Task 2.4)
+  systemTopology?: 'string-mppt' | 'micro-inverter'  // defaults to 'string-mppt' if absent
+  rapidShutdownModel?: string                         // defaults to 'RSD-D-20' if absent
+  hasCantexBar?: boolean                              // defaults to true if absent
 }
 
 // Text width estimation: ~0.58 * fontSize * charCount for Arial (padded to prevent overflow)
@@ -323,8 +327,8 @@ export function calculateSldLayout(config: SldConfig): SldLayout {
       elements.push({ type: 'text', x: labelX, y: sy + moduleH / 2 - 2, text: `${s.vocCold.toFixed(1)}V`, fontSize: 5, fill: '#444' })
       elements.push({ type: 'text', x: labelX, y: sy + moduleH / 2 + 6, text: `${s.imp}A`, fontSize: 5, fill: '#444' })
 
-      // RSD label
-      elements.push({ type: 'text', x: stringsBaseX, y: sy + moduleH + 10, text: '(N) RSD-D-20 ROOFTOP MODULE LEVEL RAPID SHUTDOWN DEVICE', fontSize: 4.5, fill: '#444' })
+      // RSD label — uses configured rapidShutdownModel, defaults to RSD-D-20
+      elements.push({ type: 'text', x: stringsBaseX, y: sy + moduleH + 10, text: `(N) ${config.rapidShutdownModel ?? 'RSD-D-20'} ROOFTOP MODULE LEVEL RAPID SHUTDOWN DEVICE`, fontSize: 4.5, fill: '#444' })
     })
 
     // Roof array wiring label (RUSH style: bold header + detail lines)
@@ -408,6 +412,14 @@ export function calculateSldLayout(config: SldConfig): SldLayout {
     elements.push({ type: 'text', x: (dpcLeft + dpcRight) / 2, y: dpcTop + 10, text: 'DURACELL POWER CENTER', fontSize: 6, anchor: 'middle', bold: true })
     // Battery combiner label (between battery and inverter)
     elements.push({ type: 'text', x: battWireMidX, y: invTopY + invSize.h / 2 - 18, text: '(N) BATTERY COMBINER', fontSize: 4.5, anchor: 'middle', bold: true })
+
+    // Cantex high-current distribution bar on battery DC bus (Task 2.4)
+    if (config.hasCantexBar !== false) {
+      const cantexX = battX
+      const cantexY = battY + battStackSize.h + 8
+      elements.push({ type: 'rect', x: cantexX, y: cantexY, w: 90, h: 18 })
+      elements.push({ type: 'text', x: cantexX + 45, y: cantexY + 12, text: '(N) CANTEX HIGH-CURRENT BAR', fontSize: 4.5, anchor: 'middle', bold: true })
+    }
 
     // Monitoring gateway (right of inverter)
     const gwX = invX + invSize.w + 25
@@ -776,8 +788,8 @@ function calculateSldLayoutSpatial(config: SldConfig): SldLayout {
       elements.push({ type: 'text', x: stringBlockX + 120, y: branchY + 26, text: `Imp: ${s0.imp}A`, fontSize: 4.5, fill: '#444' })
     }
 
-    // RSD label
-    elements.push({ type: 'text', x: stringBlockX, y: branchY + 34, text: '(N) RSD MODULE-LEVEL RAPID SHUTDOWN', fontSize: 3.5, fill: '#666' })
+    // RSD label — uses configured rapidShutdownModel, defaults to RSD-D-20
+    elements.push({ type: 'text', x: stringBlockX, y: branchY + 34, text: `(N) ${config.rapidShutdownModel ?? 'RSD-D-20'} MODULE-LEVEL RAPID SHUTDOWN`, fontSize: 3.5, fill: '#666' })
 
     // Wire to right →
     elements.push({ type: 'line', x1: stringBlockX + 180, y1: branchY + 20, x2: 230, y2: branchY + 20, strokeWidth: 1 })
@@ -865,6 +877,14 @@ function calculateSldLayoutSpatial(config: SldConfig): SldLayout {
     elements.push({ type: 'line', x1: battX + battUnitW, y1: battY + 5, x2: battX + battUnitW, y2: battStackBottom - 5, strokeWidth: 2 })
     elements.push({ type: 'text', x: battX + battUnitW + 4, y: battY + (battStackBottom - battY) / 2, text: '(N) HARNESS', fontSize: 3, fill: '#666' })
     elements.push({ type: 'text', x: battX + battUnitW + 4, y: battY + (battStackBottom - battY) / 2 + 7, text: 'DISTRIBUTION BAR', fontSize: 3, fill: '#666' })
+
+    // Cantex high-current distribution bar on battery DC bus (Task 2.4)
+    if (config.hasCantexBar !== false) {
+      const cantexX = battX
+      const cantexY = battStackBottom + 6
+      elements.push({ type: 'rect', x: cantexX, y: cantexY, w: 80, h: 18 })
+      elements.push({ type: 'text', x: cantexX + 40, y: cantexY + 12, text: '(N) CANTEX HIGH-CURRENT BAR', fontSize: 3.5, anchor: 'middle', bold: true })
+    }
 
     // Battery combiner (center inside DPC)
     const combX = battX + battUnitW + 25, combY = battY + 15
