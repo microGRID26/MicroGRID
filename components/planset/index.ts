@@ -1,6 +1,7 @@
 export { TitleBlockHtml } from './TitleBlockHtml'
 export { SheetPV1 } from './SheetPV1'
 export { SheetPV2 } from './SheetPV2'
+export { SheetPV2A } from './SheetPV2A'
 export { SheetPV3 } from './SheetPV3'
 export { SheetPV31 } from './SheetPV31'
 export { SheetPV4 } from './SheetPV4'

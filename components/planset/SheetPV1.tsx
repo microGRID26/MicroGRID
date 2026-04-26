@@ -59,6 +59,7 @@ export function SheetPV1({ data, aerialPhotoUrl, housePhotoUrl, enhanced = false
   const sheetIndex: [string, string][] = [
     ['PV-1', 'COVER PAGE & GENERAL NOTES'],
     ['PV-2', 'PROJECT DATA'],
+    ['PV-2A', 'UNIT INDEX / LEGEND'],
     ['PV-3', 'SITE PLAN'],
     ...(enhanced ? [['PV-3.1', 'EQUIPMENT ELEVATION'] as [string, string]] : []),
     ...(enhanced ? [['PV-4', 'ROOF PLAN WITH MODULES'] as [string, string]] : []),

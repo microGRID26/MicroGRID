@@ -540,7 +540,7 @@ export function buildPlansetData(project: Project, overrides: PlansetOverrides =
     contractor: MICROGRID_CONTRACTOR,
     vocCorrected: parseFloat(vocCorrected.toFixed(2)),
     pcsCurrentSetting,
-    sheetTotal: 9,  // base count — page.tsx overrides when enhanced mode adds sheets
+    sheetTotal: 10,  // base count — page.tsx overrides when enhanced mode adds sheets
     drawnDate,
   }
 }
