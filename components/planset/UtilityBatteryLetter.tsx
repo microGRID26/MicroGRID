@@ -10,11 +10,14 @@ export function UtilityBatteryLetter({ data }: { data: PlansetData }) {
   const dateStr = today.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
   const totalKwh = data.totalStorageKwh
 
+  // Height = 10.5in to match the printable area on the planset's landscape
+  // 17×11 page (after the 0.25in @page margin). 11in here would overflow
+  // onto a second print page even though screen-render looks like Letter.
   return (
     <div className="utility-letter" style={{
       width: '8.5in',
-      height: '11in',
-      padding: '1in 1in 1in 1in',
+      height: '10.5in',
+      padding: '0.75in 1in',
       fontFamily: 'Arial, Helvetica, sans-serif',
       fontSize: '12pt',
       lineHeight: '1.6',

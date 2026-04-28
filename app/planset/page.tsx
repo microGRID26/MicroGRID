@@ -39,6 +39,12 @@ body { background: white; }
 }
 .sheet:last-child { page-break-after: auto; }
 .sheet.sld-sheet { grid-template-columns: 1fr; }
+.utility-letter {
+  page-break-after: always;
+  page-break-inside: avoid;
+  width: 8.5in;
+  height: 10.5in;
+}
 .sheet-content {
   padding: 0.15in 0.2in;
   overflow: hidden;
