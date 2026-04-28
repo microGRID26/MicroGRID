@@ -23,8 +23,29 @@ function mockChain(result: { data: any; error: any }) {
   return chain
 }
 
+// Defaults reflect the post-2026-04-28 audit fix (#358): the route ALWAYS looks
+// up project + PM from the DB and ignores body.pmEmail/pmName. Tests that
+// exercise auth-failure or "PM not found" paths override per-test.
 const mockDb = {
-  from: vi.fn((_table: string) => mockChain({ data: null, error: null })),
+  from: vi.fn((table: string) => {
+    if (table === 'projects') {
+      return mockChain({
+        data: { id: 'PROJ-1', pm: 'Test PM', pm_id: 'pm-uuid-1', name: 'Test Project' },
+        error: null,
+      })
+    }
+    if (table === 'users') {
+      // Stuck-task route makes 2 different `users` calls:
+      //   1) role-gate lookup (in session-fallback path) — needs role + active
+      //   2) PM email lookup (always) — needs email + name
+      // Returning all four fields keeps both call sites happy under the default mock.
+      return mockChain({
+        data: { role: 'manager', active: true, email: 'pm@gomicrogridenergy.com', name: 'Test PM' },
+        error: null,
+      })
+    }
+    return mockChain({ data: null, error: null })
+  }),
 }
 
 vi.mock('@supabase/supabase-js', () => ({
@@ -40,7 +61,7 @@ vi.mock('@/lib/email', () => ({
 
 let originalEnv: NodeJS.ProcessEnv
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks()
   vi.resetModules()
   originalEnv = { ...process.env }
@@ -49,6 +70,27 @@ beforeEach(() => {
   process.env.SUPABASE_SECRET_KEY = 'test-service-key'
   process.env.CRON_SECRET = 'test-cron-secret'
   process.env.NEXT_PUBLIC_APP_URL = 'https://microgrid-crm.vercel.app'
+  // Restore default mocks so per-test `mockImplementation` overrides don't pollute.
+  mockDb.from.mockImplementation((table: string) => {
+    if (table === 'projects') {
+      return mockChain({
+        data: { id: 'PROJ-1', pm: 'Test PM', pm_id: 'pm-uuid-1', name: 'Test Project' },
+        error: null,
+      })
+    }
+    if (table === 'users') {
+      return mockChain({
+        data: { role: 'manager', active: true, email: 'pm@gomicrogridenergy.com', name: 'Test PM' },
+        error: null,
+      })
+    }
+    return mockChain({ data: null, error: null })
+  })
+  // Restore the default supabase createClient mock (negative role-gate tests
+  // override it with a session-bearing browser client; reset to the service-role
+  // shape every test).
+  const supaModule: any = await import('@supabase/supabase-js')
+  ;(supaModule.createClient as any).mockImplementation(() => mockDb)
 })
 
 afterEach(() => {
@@ -123,6 +165,71 @@ describe('POST /api/notifications/stuck-task — auth', () => {
     const res = await POST(req)
 
     expect(res.status).toBe(200)
+  })
+
+  // ── Session-fallback role-gate negative tests (R2 audit 2026-04-28) ────────
+  // Original P1 #358 was "any auth user (incl portal customers) can fire
+  // MicroGRID-branded email to attacker-supplied recipient." Closed by the
+  // role-gate; these tests document the closed surface.
+
+  it('returns 403 when session-fallback caller has no public.users row (portal customer)', async () => {
+    delete process.env.CRON_SECRET
+    delete process.env.ADMIN_API_SECRET
+
+    // Mock auth.getUser to return a valid session
+    const { createClient: createBrowserClient } = await import('@supabase/supabase-js')
+    const originalCreateClient = createBrowserClient as any
+    ;(createBrowserClient as any).mockImplementation((_url: any, key: any) => ({
+      auth: { getUser: vi.fn(() => Promise.resolve({ data: { user: { id: 'auth-portal', email: 'portal@example.com' } }, error: null })) },
+      from: mockDb.from,
+    }))
+
+    // Mock the role-check users lookup to return null (no public.users row)
+    mockDb.from.mockImplementation((table: string) => {
+      if (table === 'users') return mockChain({ data: null, error: null })
+      return mockChain({ data: null, error: null })
+    })
+
+    const req = makeRequest(
+      { projectId: 'PROJ-1', taskName: 'Permit', status: 'Pending Resolution' },
+      { cookie: 'sb-test=session' }
+    )
+    const { POST } = await import('@/app/api/notifications/stuck-task/route')
+    const res = await POST(req)
+
+    expect(res.status).toBe(403)
+    const json = await res.json()
+    expect(json.error).toContain('manager+ required')
+
+    ;(createBrowserClient as any).mockImplementation(originalCreateClient)
+  })
+
+  it('returns 403 when session-fallback caller has role=user (sales rep case)', async () => {
+    delete process.env.CRON_SECRET
+    delete process.env.ADMIN_API_SECRET
+
+    const { createClient: createBrowserClient } = await import('@supabase/supabase-js')
+    const originalCreateClient = createBrowserClient as any
+    ;(createBrowserClient as any).mockImplementation((_url: any, key: any) => ({
+      auth: { getUser: vi.fn(() => Promise.resolve({ data: { user: { id: 'auth-sales', email: 'sales@gomicrogridenergy.com' } }, error: null })) },
+      from: mockDb.from,
+    }))
+
+    mockDb.from.mockImplementation((table: string) => {
+      if (table === 'users') return mockChain({ data: { role: 'user', active: true }, error: null })
+      return mockChain({ data: null, error: null })
+    })
+
+    const req = makeRequest(
+      { projectId: 'PROJ-1', taskName: 'Permit', status: 'Pending Resolution' },
+      { cookie: 'sb-test=session' }
+    )
+    const { POST } = await import('@/app/api/notifications/stuck-task/route')
+    const res = await POST(req)
+
+    expect(res.status).toBe(403)
+
+    ;(createBrowserClient as any).mockImplementation(originalCreateClient)
   })
 })
 
@@ -203,16 +310,16 @@ describe('POST /api/notifications/stuck-task — validation', () => {
 // ── Email templates ──────────────────────────────────────────────────────────
 
 describe('POST /api/notifications/stuck-task — email sending', () => {
-  it('sends email with Pending Resolution template', async () => {
+  it('PHISHING-RELAY REGRESSION (#358): body.pmEmail and body.projectName are ignored — email goes to DB-resolved PM, not attacker-supplied recipient', async () => {
     const req = makeRequest(
       {
         projectId: 'PROJ-1',
-        projectName: 'Smith Residence',
+        projectName: 'Your account is locked — click here to verify',  // attacker-controlled HTML
         taskName: 'Permit Application',
         status: 'Pending Resolution',
         reason: 'Missing HOA approval',
-        pmEmail: 'john@gomicrogridenergy.com',
-        pmName: 'John Doe',
+        pmEmail: 'attacker@evil.com',  // attacker-supplied recipient
+        pmName: 'Phishing Target',
       },
       { Authorization: 'Bearer test-cron-secret' }
     )
@@ -223,16 +330,20 @@ describe('POST /api/notifications/stuck-task — email sending', () => {
     const json = await res.json()
     expect(json.sent).toBe(true)
 
-    // Verify sendEmail was called
     expect(mockSendEmail).toHaveBeenCalledTimes(1)
     const [to, subject, html] = mockSendEmail.mock.calls[0]
-    expect(to).toBe('john@gomicrogridenergy.com')
+    // The original P1 bug: body.pmEmail flowed straight to sendEmail recipient.
+    // After fix: email always goes to the project's DB-resolved PM.
+    expect(to).toBe('pm@gomicrogridenergy.com')
+    expect(to).not.toBe('attacker@evil.com')
     expect(subject).toContain('Pending Resolution')
     expect(subject).toContain('Permit Application')
-    expect(subject).toContain('Smith Residence')
-    // HTML should contain the task info
+    // Project name sourced from DB ('Test Project'); body.projectName ignored.
+    expect(subject).toContain('Test Project')
+    expect(subject).not.toContain('Your account is locked')
     expect(html).toContain('Permit Application')
-    expect(html).toContain('Smith Residence')
+    expect(html).toContain('Test Project')
+    expect(html).not.toContain('Your account is locked')
     expect(html).toContain('Missing HOA approval')
     // Pending Resolution should use red color
     expect(html).toContain('#ef4444')
@@ -259,7 +370,8 @@ describe('POST /api/notifications/stuck-task — email sending', () => {
     expect(json.sent).toBe(true)
 
     const [to, subject, html] = mockSendEmail.mock.calls[0]
-    expect(to).toBe('jane@gomicrogridenergy.com')
+    // After audit fix #358, email goes to DB-resolved PM, not body.pmEmail.
+    expect(to).toBe('pm@gomicrogridenergy.com')
     expect(subject).toContain('Revision Required')
     // Revision Required uses amber color
     expect(html).toContain('#f59e0b')
@@ -364,13 +476,27 @@ describe('POST /api/notifications/stuck-task — PM lookup', () => {
   })
 
   it('includes link to queue search with project ID', async () => {
+    // Re-register default mocks (prior test in this describe permanently
+    // overrode mockDb.from with a null-project response).
+    mockDb.from.mockImplementation((table: string) => {
+      if (table === 'projects') {
+        return mockChain({
+          data: { id: 'PROJ-42', pm: 'Test PM', pm_id: 'pm-uuid-1', name: 'Test Project' },
+          error: null,
+        })
+      }
+      if (table === 'users') {
+        return mockChain({ data: { email: 'pm@gomicrogridenergy.com', name: 'Test PM' }, error: null })
+      }
+      return mockChain({ data: null, error: null })
+    })
+
     const req = makeRequest(
       {
         projectId: 'PROJ-42',
         projectName: 'Test',
         taskName: 'Permit',
         status: 'Pending Resolution',
-        pmEmail: 'pm@gomicrogridenergy.com',
       },
       { Authorization: 'Bearer test-cron-secret' }
     )

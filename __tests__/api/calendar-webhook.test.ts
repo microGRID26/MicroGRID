@@ -110,7 +110,7 @@ describe('POST /api/calendar/webhook — sync', () => {
     const req = makeWebhookRequest({
       'x-goog-channel-token': 'valid-token',
       'x-goog-resource-state': 'sync',
-      'x-goog-channel-id': 'nova-crew-abc',
+      'x-goog-channel-id': 'nova-crew-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
     })
     const { POST } = await import('@/app/api/calendar/webhook/route')
     const res = await POST(req as any)
@@ -127,7 +127,7 @@ describe('POST /api/calendar/webhook — ignored states', () => {
     const req = makeWebhookRequest({
       'x-goog-channel-token': 'valid-token',
       'x-goog-resource-state': 'not_exists',
-      'x-goog-channel-id': 'nova-crew-abc',
+      'x-goog-channel-id': 'nova-crew-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
     })
     const { POST } = await import('@/app/api/calendar/webhook/route')
     const res = await POST(req as any)
@@ -145,7 +145,7 @@ describe('POST /api/calendar/webhook — config', () => {
     const req = makeWebhookRequest({
       'x-goog-channel-token': 'valid-token',
       'x-goog-resource-state': 'exists',
-      'x-goog-channel-id': 'nova-crew-abc',
+      'x-goog-channel-id': 'nova-crew-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
     })
     const { POST } = await import('@/app/api/calendar/webhook/route')
     const res = await POST(req as any)
@@ -179,7 +179,7 @@ describe('POST /api/calendar/webhook — processing', () => {
     const req = makeWebhookRequest({
       'x-goog-channel-token': 'valid-token',
       'x-goog-resource-state': 'exists',
-      'x-goog-channel-id': 'nova-crew-crew1',
+      'x-goog-channel-id': 'nova-crew-11111111-2222-3333-4444-555555555555',
     })
     const { POST } = await import('@/app/api/calendar/webhook/route')
     const res = await POST(req as any)
@@ -211,14 +211,14 @@ describe('POST /api/calendar/webhook — processing', () => {
     const req = makeWebhookRequest({
       'x-goog-channel-token': 'valid-token',
       'x-goog-resource-state': 'exists',
-      'x-goog-channel-id': 'nova-crew-crew1',
+      'x-goog-channel-id': 'nova-crew-11111111-2222-3333-4444-555555555555',
     })
     const { POST } = await import('@/app/api/calendar/webhook/route')
     const res = await POST(req as any)
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.status).toBe('processed')
-    expect(json.crew_id).toBe('crew1')
+    expect(json.crew_id).toBe('11111111-2222-3333-4444-555555555555')
     expect(json.updated).toBe(0)
   })
 
@@ -238,7 +238,7 @@ describe('POST /api/calendar/webhook — processing', () => {
     const req = makeWebhookRequest({
       'x-goog-channel-token': 'valid-token',
       'x-goog-resource-state': 'exists',
-      'x-goog-channel-id': 'nova-crew-crew1',
+      'x-goog-channel-id': 'nova-crew-11111111-2222-3333-4444-555555555555',
     })
     const { POST } = await import('@/app/api/calendar/webhook/route')
     const res = await POST(req as any)

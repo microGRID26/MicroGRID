@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'crypto'
 import { createClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/email'
 import { rateLimit } from '@/lib/rate-limit'
+import { checkRole, MANAGER_PLUS } from '@/lib/auth/role-gate'
 
 /**
  * POST /api/notifications/stuck-task
@@ -29,14 +30,16 @@ export async function POST(req: Request) {
   } catch { hasAuth = false }
 
   if (!hasAuth) {
-    // Fall back to session cookie check via Supabase
+    // Fall back to session cookie check via Supabase. Tightened per audit-rotation
+    // greg_action #358 (P1): must be a real public.users row (excludes portal
+    // customers / auth.users-only accounts) AND role >= manager. Without the
+    // role check, any authenticated session could fire MicroGRID-branded
+    // emails to attacker-supplied recipients.
     const cookieHeader = req.headers.get('cookie')
     if (!cookieHeader) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    // Validate the session is real
     const { createClient: createBrowserClient } = await import('@supabase/supabase-js')
-    // Use anon key — just validating the JWT, not doing privileged ops
     const supabaseAuth = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -45,6 +48,22 @@ export async function POST(req: Request) {
     const { data: { user } } = await supabaseAuth.auth.getUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    // Role gate — manager+ only. Email-based lookup (see lib/auth/role-gate.ts
+    // for why id-based lookups silently 403 most legitimate users).
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const serviceKey = process.env.SUPABASE_SECRET_KEY
+    if (!supabaseUrl || !serviceKey) {
+      return NextResponse.json({ error: 'Not configured' }, { status: 503 })
+    }
+    const supabaseRole = createClient(supabaseUrl, serviceKey)
+    const roleCheck = await checkRole({
+      db: supabaseRole,
+      authUserEmail: user.email,
+      allowedRoles: MANAGER_PLUS,
+    })
+    if (!roleCheck.ok) {
+      return NextResponse.json({ error: 'Forbidden — manager+ required' }, { status: 403 })
     }
   }
 
@@ -56,12 +75,10 @@ export async function POST(req: Request) {
 
   let body: {
     projectId: string
-    projectName: string
+    projectName?: string  // accepted for display fallback only — verified against DB
     taskName: string
     status: string
     reason?: string
-    pmEmail?: string
-    pmName?: string
   }
 
   try {
@@ -70,13 +87,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { projectId, projectName, taskName, status, reason, pmEmail, pmName } = body
+  const { projectId, taskName, status, reason } = body
 
   if (!projectId || !taskName || !status) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
-  // Rate limit: 20 stuck-task emails per minute per project
+  // Rate limit: 20 stuck-task emails per minute per project. Note: the
+  // limit fires on the *requested* projectId BEFORE the DB existence check
+  // below, so a noisy caller spraying fake projectIds can still create
+  // bounded rate-limit buckets in Upstash (entries expire after 60s, so
+  // memory cost is bounded). The phishing-relay vector is closed because
+  // the DB lookup downstream returns 404 for non-existent projects and
+  // never reaches sendEmail — only the rate-limit slot is consumed.
   const { success: withinLimit } = await rateLimit(`stuck-task:${projectId}`, {
     windowMs: 60_000,
     max: 20,
@@ -86,33 +109,44 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
   }
 
-  // If no PM email provided, look it up
-  let email = pmEmail
-  let name = pmName ?? 'PM'
+  // ALWAYS look up the PM email from the project record — never trust the
+  // body. Per audit-rotation greg_action #358 (P1), the prior body-trust
+  // path let any authenticated user fire MicroGRID-branded email to any
+  // address. The route is purpose-built to notify the project's PM, full
+  // stop. If you need to email someone else, use a different endpoint.
+  const supabase = createClient(supabaseUrl, serviceKey)
+  const { data: project } = await supabase
+    .from('projects')
+    .select('pm, pm_id, name')
+    .eq('id', projectId)
+    .single()
 
-  if (!email) {
-    const supabase = createClient(supabaseUrl, serviceKey)
-    const { data: project } = await supabase
-      .from('projects')
-      .select('pm, pm_id')
-      .eq('id', projectId)
+  if (!project) {
+    return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+  }
+
+  let email: string | undefined
+  let name = 'PM'
+
+  if (project.pm_id) {
+    const { data: user } = await supabase
+      .from('users')
+      .select('email, name')
+      .eq('id', project.pm_id)
       .single()
-
-    if (project?.pm_id) {
-      const { data: user } = await supabase
-        .from('users')
-        .select('email, name')
-        .eq('id', project.pm_id)
-        .single()
-
-      email = (user as { email: string; name: string } | null)?.email
-      name = (user as { email: string; name: string } | null)?.name ?? project?.pm ?? 'PM'
-    }
+    email = (user as { email: string; name: string } | null)?.email
+    name = (user as { email: string; name: string } | null)?.name ?? project.pm ?? 'PM'
   }
 
   if (!email) {
     return NextResponse.json({ sent: false, reason: 'No PM email found' })
   }
+
+  // Use the DB project name; fall back to body.projectName only for display
+  // when DB has no name (legacy rows). Either way, the email goes to the
+  // DB-resolved PM, so attacker-controlled projectName can't be paired with
+  // an attacker-controlled recipient.
+  const projectName = (project.name as string | null) ?? body.projectName ?? projectId
 
   const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://microgrid-crm.vercel.app'

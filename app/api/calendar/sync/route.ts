@@ -8,6 +8,7 @@ import {
   buildEventTitle,
   buildEventDescription,
 } from '@/lib/google-calendar'
+import { checkRole, MANAGER_PLUS } from '@/lib/auth/role-gate'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SECRET_KEY
@@ -44,7 +45,11 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Verify auth — require a valid Supabase session
+  // Verify auth — require a valid Supabase session AND a manager+ role on the
+  // internal users table. Without the role check, any authenticated session
+  // (including portal customers via customer_accounts) could trigger
+  // service-role writes against arbitrary crew_id / schedule_ids — see
+  // greg_action #353 (audit-rotation 2026-04-28 P0).
   const { createServerClient } = await import('@supabase/ssr')
   const supabaseAuth = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -54,6 +59,20 @@ export async function POST(req: NextRequest) {
   const { data: { user: authUser } } = await supabaseAuth.auth.getUser()
   if (!authUser) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Role gate — manager+ only. Lookup is email-based via the shared helper
+  // because public.users.id ≠ auth.users.id for legacy users (only 3 of 15
+  // role-bearing rows match by id; 14 of 15 match by email). Trusts
+  // authUser.email because Supabase Auth verifies it before issuing a session.
+  const dbForRoleCheck = getServiceClient()
+  const roleCheck = await checkRole({
+    db: dbForRoleCheck,
+    authUserEmail: authUser.email,
+    allowedRoles: MANAGER_PLUS,
+  })
+  if (!roleCheck.ok) {
+    return NextResponse.json({ error: 'Forbidden — manager+ required' }, { status: 403 })
   }
 
   const body = await req.json().catch(() => ({}))

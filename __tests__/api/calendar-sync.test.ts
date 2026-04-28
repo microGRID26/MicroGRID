@@ -25,8 +25,16 @@ function mockChain(result: { data: any; error: any }) {
   return chain
 }
 
+// Default mocks: `users` lookup returns a manager so the new role-gate (added
+// 2026-04-28 per audit-rotation #353) passes; everything else returns null.
+// Tests that exercise role-rejection override this in-test. Lookup is by
+// email per lib/auth/role-gate.ts (R2 audit fix — id-based lookup silently
+// 403s most legitimate users).
 const mockDb = {
-  from: vi.fn((_table: string) => mockChain({ data: null, error: null })),
+  from: vi.fn((table: string) => {
+    if (table === 'users') return mockChain({ data: { role: 'manager', active: true }, error: null })
+    return mockChain({ data: null, error: null })
+  }),
 }
 
 vi.mock('@supabase/supabase-js', () => ({
@@ -72,6 +80,12 @@ beforeEach(() => {
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key'
   process.env.SUPABASE_SECRET_KEY = 'test-service-key'
   mockIsConfigured.mockReturnValue(true)
+  // Restore default mockDb.from each test so per-test `mockImplementation`
+  // overrides don't pollute subsequent tests.
+  mockDb.from.mockImplementation((table: string) => {
+    if (table === 'users') return mockChain({ data: { role: 'manager', active: true }, error: null })
+    return mockChain({ data: null, error: null })
+  })
 })
 
 afterEach(() => {
@@ -119,6 +133,66 @@ describe('POST /api/calendar/sync — auth', () => {
     expect(res.status).toBe(401)
     const json = await res.json()
     expect(json.error).toBe('Unauthorized')
+  })
+
+  // ── Role-gate negative tests (R2 audit 2026-04-28) ─────────────────────────
+  // The original P0 #353 was "any auth user can wipe any crew calendar" —
+  // these tests document the closed surface.
+
+  it('returns 403 when authenticated session has no public.users row (portal customer case)', async () => {
+    mockDb.from.mockImplementation((table: string) => {
+      if (table === 'users') return mockChain({ data: null, error: null })  // no public.users row
+      return mockChain({ data: null, error: null })
+    })
+
+    const req = makeRequest({ schedule_ids: ['s1'] })
+    const { POST } = await import('@/app/api/calendar/sync/route')
+    const res = await POST(req as any)
+
+    expect(res.status).toBe(403)
+    const json = await res.json()
+    expect(json.error).toContain('manager+ required')
+  })
+
+  it('returns 403 when role=user (sales rep case)', async () => {
+    mockDb.from.mockImplementation((table: string) => {
+      if (table === 'users') return mockChain({ data: { role: 'user', active: true }, error: null })
+      return mockChain({ data: null, error: null })
+    })
+
+    const req = makeRequest({ schedule_ids: ['s1'] })
+    const { POST } = await import('@/app/api/calendar/sync/route')
+    const res = await POST(req as any)
+
+    expect(res.status).toBe(403)
+  })
+
+  it('returns 403 when role is null', async () => {
+    mockDb.from.mockImplementation((table: string) => {
+      if (table === 'users') return mockChain({ data: { role: null, active: true }, error: null })
+      return mockChain({ data: null, error: null })
+    })
+
+    const req = makeRequest({ schedule_ids: ['s1'] })
+    const { POST } = await import('@/app/api/calendar/sync/route')
+    const res = await POST(req as any)
+
+    expect(res.status).toBe(403)
+  })
+
+  it('returns 403 when active=false', async () => {
+    mockDb.from.mockImplementation((table: string) => {
+      // The role-gate helper queries `WHERE active=true` so an inactive row
+      // returns no match — same shape as the no-row case above.
+      if (table === 'users') return mockChain({ data: null, error: null })
+      return mockChain({ data: null, error: null })
+    })
+
+    const req = makeRequest({ schedule_ids: ['s1'] })
+    const { POST } = await import('@/app/api/calendar/sync/route')
+    const res = await POST(req as any)
+
+    expect(res.status).toBe(403)
   })
 })
 
@@ -200,6 +274,7 @@ describe('POST /api/calendar/sync — sync action', () => {
     const upsertChain = mockChain({ data: null, error: null })
 
     mockDb.from.mockImplementation((table: string) => {
+      if (table === 'users') return mockChain({ data: { role: 'manager', active: true }, error: null })
       if (table === 'schedule') return schedChain
       if (table === 'crews') return crewsChain
       if (table === 'calendar_settings') return settingsChain
@@ -240,6 +315,7 @@ describe('POST /api/calendar/sync — sync action', () => {
     }
 
     mockDb.from.mockImplementation((table: string) => {
+      if (table === 'users') return mockChain({ data: { role: 'manager', active: true }, error: null })
       if (table === 'schedule') return mockChain({ data: [schedule], error: null })
       if (table === 'crews') return mockChain({ data: [{ id: 'crew-1', name: 'A Crew' }], error: null })
       if (table === 'calendar_settings') return mockChain({
@@ -273,6 +349,7 @@ describe('POST /api/calendar/sync — delete action', () => {
     const deleteChain = mockChain({ data: null, error: null })
 
     mockDb.from.mockImplementation((table: string) => {
+      if (table === 'users') return mockChain({ data: { role: 'manager', active: true }, error: null })
       if (table === 'calendar_sync') {
         // Return different chains for select vs delete operations
         return syncChain
@@ -302,7 +379,10 @@ describe('POST /api/calendar/sync — delete action', () => {
     ]
 
     const syncChain = mockChain({ data: syncEntries, error: null })
-    mockDb.from.mockReturnValue(syncChain)
+    mockDb.from.mockImplementation((table: string) => {
+      if (table === 'users') return mockChain({ data: { role: 'manager', active: true }, error: null })
+      return syncChain
+    })
 
     // First delete succeeds, second fails
     mockDeleteEvent.mockResolvedValueOnce(true).mockResolvedValueOnce(false)

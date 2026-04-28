@@ -412,15 +412,18 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
   }
-  // Check role — only manager, admin, super_admin allowed
-  const { data: userRow } = await userSupabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-  const role = userRow?.role ?? 'user'
-  const allowedRoles = ['manager', 'admin', 'super_admin']
-  if (!allowedRoles.includes(role)) {
+  // Check role — only manager, admin, super_admin allowed.
+  // Email-based lookup via shared helper (R2 audit 2026-04-28). Prior code
+  // joined on `users.id = auth.uid()` which silently 403'd 12 of 15 active
+  // role-bearing users because `public.users.id` was not backfilled to match
+  // `auth.users.id`. See lib/auth/role-gate.ts for the helper.
+  const { checkRole, MANAGER_PLUS_NO_FINANCE } = await import('@/lib/auth/role-gate')
+  const roleCheck = await checkRole({
+    db: userSupabase,
+    authUserEmail: user.email,
+    allowedRoles: MANAGER_PLUS_NO_FINANCE,
+  })
+  if (!roleCheck.ok) {
     return NextResponse.json({ error: 'Insufficient permissions. Manager role required.' }, { status: 403 })
   }
 
@@ -438,9 +441,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  // Rate limiting — use auth cookie as stable identifier (not spoofable headers)
-  const authCookie = request.cookies.getAll().find(c => c.name.startsWith('sb-'))?.value ?? ''
-  const userId = authCookie || 'anonymous'
+  // Rate limiting — key on the validated user.id, not the raw sb-* cookie
+  // value. Prior cookie-keying (greg_action #359, P1) let multi-device users
+  // multiply their daily Anthropic-spend cap because each device has its own
+  // session cookie, AND incognito-window swaps reset the daily limit by
+  // generating a new cookie value. user.id is stable across all sessions.
+  const userId = user.id
   const { success: minuteOk } = await rateLimit(userId, { max: 10, prefix: 'reports-chat' })
   if (!minuteOk) {
     return NextResponse.json(

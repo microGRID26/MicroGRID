@@ -76,11 +76,18 @@ export async function POST(req: NextRequest) {
   const db = getServiceClient()
 
   try {
-    // Find which crew's calendar this notification is for
-    // Channel ID format: "nova-crew-{crew_id}"
-    const crewId = channelId?.replace('nova-crew-', '') ?? null
+    // Find which crew's calendar this notification is for.
+    // Channel ID format: "nova-crew-{crew_uuid}". Strict UUID validation per
+    // audit-rotation greg_action #361 (P1) — defense-in-depth against a
+    // webhook-token-holder spoofing the channel id to steer schedule
+    // mutations against arbitrary crews. Full fix (storing the registered
+    // channel id on calendar_settings + comparing) requires the watch-
+    // creation flow to write `channel_id` — TODO when that ships.
+    const CHANNEL_ID_RE = /^nova-crew-([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i
+    const channelMatch = channelId?.match(CHANNEL_ID_RE)
+    const crewId = channelMatch?.[1] ?? null
     if (!crewId) {
-      console.warn('Calendar webhook: cannot extract crew_id from channel', channelId)
+      console.warn('Calendar webhook: invalid channel-id format', channelId)
       return NextResponse.json({ status: 'ignored' })
     }
 
