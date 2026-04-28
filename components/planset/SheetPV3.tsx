@@ -1,8 +1,9 @@
+import { memo } from 'react'
 import type { PlansetData } from '@/lib/planset-types'
 import { TitleBlockHtml } from './TitleBlockHtml'
 import { RoofPlaneSvg } from './RoofPlaneSvg'
 
-export function SheetPV3({ data }: { data: PlansetData }) {
+function SheetPV3Inner({ data }: { data: PlansetData }) {
   // Legacy fallback: schematic house outline for projects without polygon data
   function RoofPlanDiagram({ data: d }: { data: PlansetData }) {
     // House dimensions (schematic, not to scale)
@@ -283,3 +284,7 @@ export function SheetPV3({ data }: { data: PlansetData }) {
     </div>
   )
 }
+
+// Heavy: polygon roof renderer, string overlays, setback bands. Memoized so
+// zoom-toolbar / fullscreen-modal state changes don't re-render the SVG tree.
+export const SheetPV3 = memo(SheetPV3Inner)

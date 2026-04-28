@@ -35,7 +35,7 @@ describe('OverridesPanel — Existing System fields', () => {
       />
     )
     fireEvent.click(screen.getByText(/Overrides/i)) // expand
-    const input = screen.getByDisplayValue('1') // existingInverterCount = 1 from data
+    const input = screen.getByLabelText('Inverter Count') as HTMLInputElement
     fireEvent.change(input, { target: { value: '2' } })
     expect(onOverridesChange).toHaveBeenCalledWith(expect.objectContaining({ existingInverterCount: 2 }))
 
@@ -68,7 +68,8 @@ describe('OverridesPanel — Existing System fields', () => {
       />
     )
     fireEvent.click(screen.getByText(/Overrides/i))
-    const input = screen.getByDisplayValue('1')
+    const input = screen.getByLabelText('Inverter Count') as HTMLInputElement
+    expect(input.value).toBe('1')
     fireEvent.change(input, { target: { value: '' } })
     rerender(
       <OverridesPanel
@@ -82,7 +83,8 @@ describe('OverridesPanel — Existing System fields', () => {
       />
     )
     // After clearing, the input should be empty, not fall back to '1' from data
-    expect(screen.queryByDisplayValue('1')).toBeNull()
+    const clearedInput = screen.getByLabelText('Inverter Count') as HTMLInputElement
+    expect(clearedInput.value).toBe('')
   })
 
   it('preserves 0 as a valid value for existingPanelCount (falsy-zero fix)', () => {

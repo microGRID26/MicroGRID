@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { PlansetData } from '@/lib/planset-types'
 import { DURACELL_DEFAULTS } from '@/lib/planset-types'
 import { autoDistributeStrings } from '@/lib/planset-calcs'
@@ -5,7 +6,7 @@ import { calculateSldLayout } from '@/lib/sld-layout'
 import { SldRenderer } from '@/components/SldRenderer'
 import { TitleBlockHtml } from './TitleBlockHtml'
 
-export function SheetPV5({ data }: { data: PlansetData }) {
+function SheetPV5Inner({ data }: { data: PlansetData }) {
   let sldStrings = data.strings
   let sldStringsPerInverter = data.stringsPerInverter
   const effectivePanelCount = data.panelCount > 0 ? data.panelCount : (data.existingPanelCount ?? 0)
@@ -104,3 +105,7 @@ export function SheetPV5({ data }: { data: PlansetData }) {
     </div>
   )
 }
+
+// Heavy: full SLD layout calc + SVG renderer. Memoized so zoom-toolbar /
+// fullscreen state changes don't re-run sldLayout + re-render the SVG tree.
+export const SheetPV5 = memo(SheetPV5Inner)

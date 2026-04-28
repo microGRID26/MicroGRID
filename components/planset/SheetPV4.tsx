@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { PlansetData } from '@/lib/planset-types'
 import { TitleBlockHtml } from './TitleBlockHtml'
 
@@ -11,7 +12,7 @@ import { TitleBlockHtml } from './TitleBlockHtml'
  * PV-3 is overall site plan only and PV-4 is the dedicated detail page.
  * Renders unconditionally for every project (not enhanced-only).
  */
-export function SheetPV4({ data }: { data: PlansetData }) {
+function SheetPV4Inner({ data }: { data: PlansetData }) {
   return (
     <div className="sheet" style={{
       width: '16.5in', height: '10.5in', display: 'grid',
@@ -167,3 +168,7 @@ export function SheetPV4({ data }: { data: PlansetData }) {
     </div>
   )
 }
+
+// Heavy: equipment-wall geometry + conduit/trench annotations. Memoized so
+// zoom-toolbar / fullscreen state changes don't re-render the SVG tree.
+export const SheetPV4 = memo(SheetPV4Inner)

@@ -201,8 +201,9 @@ export function OverridesPanel({ data, strings, onStringsChange, overrides, onOv
                 { label: 'Inverter Count', key: 'existingInverterCount' as const, val: 'existingInverterCount' in overrides ? String(overrides.existingInverterCount ?? '') : String(data.existingInverterCount ?? '') },
               ].map(f => (
                 <div key={f.key}>
-                  <label className="text-xs text-gray-500 block mb-1">{f.label}</label>
+                  <label htmlFor={`overrides-${f.key}`} className="text-xs text-gray-500 block mb-1">{f.label}</label>
                   <input
+                    id={`overrides-${f.key}`}
                     value={f.val}
                     onChange={e => {
                       const v = e.target.value

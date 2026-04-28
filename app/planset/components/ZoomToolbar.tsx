@@ -18,7 +18,8 @@ export function ZoomToolbar({ scale, onScaleChange, min, max }: ZoomToolbarProps
       <button
         onClick={() => onScaleChange(s => Math.max(min, parseFloat((s - ZOOM_STEP).toFixed(2))))}
         aria-label="Zoom out"
-        disabled={scale <= min}
+        // Already at min within FP tolerance; next click is a no-op clamp.
+        disabled={scale <= min + 1e-9}
         className="px-2 py-1.5 text-gray-300 hover:text-white hover:bg-gray-700 rounded-l-md disabled:opacity-30 disabled:cursor-not-allowed"
       >
         <ZoomOut size={14} />
@@ -29,7 +30,7 @@ export function ZoomToolbar({ scale, onScaleChange, min, max }: ZoomToolbarProps
       <button
         onClick={() => onScaleChange(s => Math.min(max, parseFloat((s + ZOOM_STEP).toFixed(2))))}
         aria-label="Zoom in"
-        disabled={scale >= max}
+        disabled={scale >= max - 1e-9}
         className="px-2 py-1.5 text-gray-300 hover:text-white hover:bg-gray-700 rounded-r-md disabled:opacity-30 disabled:cursor-not-allowed"
       >
         <ZoomIn size={14} />

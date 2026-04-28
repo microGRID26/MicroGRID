@@ -336,7 +336,7 @@ function handlePrintAll(data: PlansetData) {
   if (!printWindow) {
     const t = document.createElement('div')
     t.textContent = 'Please allow popups to print.'
-    t.className = 'fixed bottom-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium bg-red-600 text-white'
+    t.className = 'fixed bottom-4 right-4 z-[60] px-4 py-3 rounded-lg shadow-lg text-sm font-medium bg-red-600 text-white'
     document.body.appendChild(t)
     setTimeout(() => t.remove(), 3000)
     return
@@ -808,7 +808,7 @@ function PlanSetPageInner() {
       </div>
 
       {toast && (
-        <div className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${
+        <div className={`fixed bottom-4 right-4 z-[60] px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${
           toast.type === 'error' ? 'bg-red-600 text-white' : toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'
         }`}>{toast.message}</div>
       )}
