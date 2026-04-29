@@ -25,7 +25,7 @@ Each phase below is independently applicable, independently rollback-able, and g
 |---|---|---|---|
 | 1 — Backfill 75 NULL `org_id` rows | **applied 2026-04-28** | `183_rls_phase1_backfill_org_id_nulls.sql` | 2026-04-28 |
 | 2 — Drop 11 `auth_full_access` policies + naked-table coverage + legacy SELECT fallback + helper | **applied 2026-04-29** (closes #351) | `191-rls-phase2-drop-auth-full-access.sql` | 2026-04-29 |
-| 3 — Rewrite 53 NULL-bypass v2 policies | pending | `185_rls_phase3_drop_null_bypass.sql` | — |
+| 3 — Rewrite 53 NULL-bypass v2 policies | **applied 2026-04-29** (closes #350 + #360) | `193-rls-phase3-drop-null-bypass.sql` | 2026-04-29 |
 | 4 — Enforce `org_id NOT NULL` on 9 backfilled tables | pending | `186_rls_phase4_org_id_not_null.sql` | — |
 | 5 — Add org-scoping to 130+ internal-writer policies | pending | `187_rls_phase5_internal_writer_org_scope.sql` | — |
 | 6 — Customer portal coverage gaps + advisor sweep | pending | `188_rls_phase6_finalization.sql` | — |
