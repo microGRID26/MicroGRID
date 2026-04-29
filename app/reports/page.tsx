@@ -21,6 +21,8 @@ import {
   Trash2,
   Clock,
   Share2,
+  Code,
+  AlertTriangle,
 } from 'lucide-react'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -77,11 +79,17 @@ function isProjectId(value: unknown): boolean {
 // ── CSV Export ───────────────────────────────────────────────────────────────
 
 function exportCSV(columns: string[], rows: Record<string, unknown>[]) {
+  // Neutralize Excel/Sheets formula-injection: any cell starting with =, +, -, @,
+  // tab, or CR is treated as a formula by spreadsheet apps. Prefix with a single
+  // quote so it renders as text. (R1 audit on #375 — Critical, 2026-04-29.)
+  const neutralizeFormula = (v: string) =>
+    /^[=+\-@\t\r]/.test(v) ? "'" + v : v
   const escape = (v: string) => {
-    if (v.includes(',') || v.includes('"') || v.includes('\n')) {
-      return '"' + v.replace(/"/g, '""') + '"'
+    const safe = neutralizeFormula(v)
+    if (safe.includes(',') || safe.includes('"') || safe.includes('\n')) {
+      return '"' + safe.replace(/"/g, '""') + '"'
     }
-    return v
+    return safe
   }
   const header = columns.map(escape).join(',')
   const body = rows.map(r =>
@@ -92,7 +100,7 @@ function exportCSV(columns: string[], rows: Record<string, unknown>[]) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `nova-report-${Date.now()}.csv`
+  a.download = `atlas-report-${Date.now()}.csv`
   a.click()
   URL.revokeObjectURL(url)
 }
@@ -290,10 +298,291 @@ function AssistantMessage({
   )
 }
 
+// ── Data Query Panel (one-shot NL→SQL) ──────────────────────────────────────
+//
+// Wraps POST /api/atlas/query (#367 backend, commit f944918). Different UX
+// from the chat panel above — one question, one result table, no
+// conversational history. Defense-in-depth via 29-table allowlist + SECURITY
+// DEFINER RPC (atlas_safe_query) + per-user rate limits (10/min, 25/day).
+
+const DATA_QUERY_STARTERS = [
+  'every project signed since March over 15 kW',
+  'sales today by rep',
+  'projects in permit stage older than 30 days',
+  'change orders pending site survey',
+]
+
+interface DataQueryResult {
+  ok: boolean
+  explanation?: string
+  sql?: string
+  reason?: string
+  // RPC payload — atlas_safe_query returns rows + columns + count
+  rows?: Record<string, unknown>[]
+  columns?: string[]
+  count?: number
+  truncated?: boolean
+}
+
+// Cap UI-rendered error messages at 500 chars so a regressed backend can't
+// paint stack traces full-screen. (R1 M4 on #375.)
+function capErr(s: string | undefined, fallback: string): string {
+  const v = (s || fallback).toString()
+  return v.length > 500 ? v.slice(0, 500) + '…' : v
+}
+
+// Defensive shape-validate the API response. Backend can ship malformed payloads
+// after a deploy regression; this prevents a `columns.map is not a function`
+// crash that would blank the whole /reports page. (R1 H2 on #375.)
+function coerceQueryResult(body: unknown): DataQueryResult & { error?: string } {
+  if (!body || typeof body !== 'object') return { ok: false, reason: 'Server returned an unexpected response.' }
+  const b = body as Record<string, unknown>
+  return {
+    ok: b.ok === true,
+    explanation: typeof b.explanation === 'string' ? b.explanation : undefined,
+    sql: typeof b.sql === 'string' ? b.sql : undefined,
+    reason: typeof b.reason === 'string' ? b.reason : undefined,
+    rows: Array.isArray(b.rows) ? (b.rows as Record<string, unknown>[]) : [],
+    columns: Array.isArray(b.columns) ? (b.columns as string[]).filter(c => typeof c === 'string') : [],
+    count: typeof b.count === 'number' ? b.count : undefined,
+    truncated: b.truncated === true,
+    error: typeof b.error === 'string' ? b.error : undefined,
+  }
+}
+
+function DataQueryPanel({ onClickProject }: { onClickProject: (id: string) => Promise<boolean> }) {
+  const [question, setQuestion] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const submittingRef = useRef(false)
+  const [result, setResult] = useState<DataQueryResult | null>(null)
+  const [errorBanner, setErrorBanner] = useState<{ kind: 'rate' | 'reject' | 'server'; msg: string } | null>(null)
+  const [rowToast, setRowToast] = useState<string | null>(null)
+  const [showSql, setShowSql] = useState(false)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => { inputRef.current?.focus() }, [])
+
+  // R1 M3 — surface "no access" feedback when a clicked PROJ-ID can't load
+  // (RLS-filtered or missing). Auto-dismisses after 3s.
+  const handleRowProjectClick = useCallback(async (id: string): Promise<void> => {
+    const ok = await onClickProject(id)
+    if (!ok) {
+      setRowToast(`No access to ${id} (or it doesn't exist).`)
+      setTimeout(() => setRowToast(null), 3000)
+    }
+  }, [onClickProject])
+
+  const submit = useCallback(async (text: string) => {
+    // Ref-gate prevents rapid-double-click race that would issue two parallel
+    // fetches and render the wrong response. (R1 M2 on #375.)
+    if (!text.trim() || submittingRef.current) return
+    submittingRef.current = true
+    setSubmitting(true)
+    setErrorBanner(null)
+    setResult(null)
+    setShowSql(false)
+    try {
+      const res = await fetch('/api/atlas/query', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ question: text.trim(), page_path: '/reports' }),
+      })
+      if (res.status === 429) {
+        const body = await res.json().catch(() => null)
+        const r = coerceQueryResult(body)
+        setErrorBanner({ kind: 'rate', msg: capErr(r.error || r.reason, 'Rate limit exceeded.') })
+        return
+      }
+      if (res.status === 401 || res.status === 403) {
+        setErrorBanner({ kind: 'server', msg: 'Access denied. Manager role required.' })
+        return
+      }
+      let raw: unknown
+      try {
+        raw = await res.json()
+      } catch {
+        // Non-JSON response (Vercel HTML 502, deploy boundary, etc.)
+        setErrorBanner({ kind: 'server', msg: 'Server returned an unexpected response.' })
+        return
+      }
+      const body = coerceQueryResult(raw)
+      if (!res.ok && !body.ok) {
+        setErrorBanner({
+          kind: body.reason ? 'reject' : 'server',
+          msg: capErr(body.reason || body.error, 'Query rejected.'),
+        })
+        // Surface the SQL even when rejected so the user can see what was tried.
+        setResult(body)
+        return
+      }
+      setResult(body)
+    } catch (err) {
+      // Generic network error (offline, DNS, etc.) — never leak the parser
+      // error string. (R1 H2 on #375.)
+      const msg = err instanceof Error && err.name === 'AbortError'
+        ? 'Request was canceled.'
+        : 'Network error. Check connection and retry.'
+      setErrorBanner({ kind: 'server', msg })
+    } finally {
+      submittingRef.current = false
+      setSubmitting(false)
+    }
+  }, [])
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    submit(question)
+  }
+
+  const rows = result?.rows ?? []
+  const columns = result?.columns ?? []
+  const hasResults = result?.ok === true && rows.length > 0
+  const noResults = result?.ok === true && rows.length === 0
+
+  return (
+    <div className="flex-1 overflow-auto pb-4 space-y-4">
+      {/* Question textarea + Ask button */}
+      <form onSubmit={handleSubmit} className="space-y-2">
+        <textarea
+          ref={inputRef}
+          value={question}
+          onChange={e => setQuestion(e.target.value)}
+          placeholder="Ask a one-shot data question (e.g. 'every project signed since March over 15 kW')"
+          rows={3}
+          maxLength={2000}
+          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 resize-none"
+          disabled={submitting}
+        />
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] text-gray-500">
+            Returns up to 5,000 rows. SELECT only. 10/min · 25/day per user.
+            {question.length > 1800 && (
+              <span className="text-yellow-400 ml-2">{question.length} / 2000</span>
+            )}
+          </span>
+          <button
+            type="submit"
+            disabled={submitting || !question.trim()}
+            className={cn(
+              'px-4 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-1.5',
+              submitting || !question.trim()
+                ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                : 'bg-green-600 hover:bg-green-500 text-white'
+            )}
+          >
+            {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+            Ask Atlas
+          </button>
+        </div>
+      </form>
+
+      {/* Starter prompts (only when nothing asked yet) */}
+      {!result && !submitting && !errorBanner && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {DATA_QUERY_STARTERS.map(s => (
+            <button
+              key={s}
+              onClick={() => { setQuestion(s); submit(s) }}
+              className="text-left text-xs text-gray-300 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 rounded-lg px-3 py-2.5 transition-colors"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Error banners */}
+      {errorBanner?.kind === 'rate' && (
+        <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg px-3 py-2 flex items-start gap-2">
+          <Clock className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+          <div className="text-xs">
+            <p className="text-yellow-400 font-medium">Rate limit hit</p>
+            <p className="text-yellow-300/80 mt-0.5">{errorBanner.msg}</p>
+          </div>
+        </div>
+      )}
+      {errorBanner?.kind === 'reject' && (
+        <div className="bg-red-900/20 border border-red-800/50 rounded-lg px-3 py-2 flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+          <div className="text-xs">
+            <p className="text-red-400 font-medium">Query rejected</p>
+            <p className="text-red-300/80 mt-0.5">{errorBanner.msg}</p>
+          </div>
+        </div>
+      )}
+      {errorBanner?.kind === 'server' && (
+        <div className="bg-red-900/20 border border-red-800/50 rounded-lg px-3 py-2 flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+          <p className="text-xs text-red-300/80">{errorBanner.msg}</p>
+        </div>
+      )}
+
+      {/* Explanation */}
+      {result?.explanation && (
+        <p className="text-xs text-gray-300 bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2">
+          {result.explanation}
+        </p>
+      )}
+
+      {/* Results table */}
+      {hasResults && (
+        <div>
+          <ResultsTable columns={columns} rows={rows} onClickProject={handleRowProjectClick} />
+          <div className="flex items-center justify-between mt-2">
+            <span className="text-xs text-gray-500">
+              {result?.count ?? rows.length} result{(result?.count ?? rows.length) !== 1 ? 's' : ''}
+              {result?.truncated && <span className="text-yellow-500 ml-2">(truncated at 5,000)</span>}
+            </span>
+            <button
+              onClick={() => exportCSV(columns, rows)}
+              className="flex items-center gap-1 text-xs text-green-400 hover:text-green-300 transition-colors"
+            >
+              <Download className="w-3 h-3" />
+              Export CSV
+            </button>
+          </div>
+        </div>
+      )}
+      {noResults && (
+        <div className="bg-gray-800/40 border border-gray-700 rounded-lg px-3 py-2 text-xs text-gray-400">
+          No rows matched this query.
+        </div>
+      )}
+
+      {/* Row-level toast (R1 M3 — silent no-op on cross-org PROJ-IDs) */}
+      {rowToast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-gray-800 border border-yellow-700 text-yellow-300 text-xs px-4 py-2 rounded-lg shadow-lg">
+          {rowToast}
+        </div>
+      )}
+
+      {/* Show generated SQL */}
+      {result?.sql && (
+        <div>
+          <button
+            onClick={() => setShowSql(!showSql)}
+            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-400 transition-colors"
+          >
+            <Code className="w-3 h-3" />
+            {showSql ? 'Hide generated SQL' : 'Show generated SQL'}
+            {showSql ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          </button>
+          {showSql && (
+            <pre className="mt-1 text-[11px] text-gray-300 bg-gray-900/70 border border-gray-700 rounded p-2 overflow-auto max-h-[240px] font-mono whitespace-pre-wrap break-words">
+              {result.sql.length > 8000 ? result.sql.slice(0, 8000) + '\n\n[truncated for display]' : result.sql}
+            </pre>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ReportsPage() {
   const { user: currentUser, loading: userLoading } = useCurrentUser()
+  const [mode, setMode] = useState<'chat' | 'data'>('chat')
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
@@ -370,10 +659,16 @@ export default function ReportsPage() {
     setSavedQueries(prev => prev.filter(q => q.id !== id))
   }, [])
 
-  // Load a project by ID for ProjectPanel
-  const handleClickProject = useCallback(async (id: string) => {
+  // Load a project by ID for ProjectPanel.
+  // Returns true if the project was loaded; false on RLS-filtered / not-found
+  // so the caller can surface "no access" feedback (R1 M3 on #375).
+  const handleClickProject = useCallback(async (id: string): Promise<boolean> => {
     const data = await loadProjectById(id)
-    if (data) setSelectedProject(data)
+    if (data) {
+      setSelectedProject(data)
+      return true
+    }
+    return false
   }, [])
 
   const sendMessage = useCallback(async (text: string) => {
@@ -459,7 +754,33 @@ export default function ReportsPage() {
               <Sparkles className="w-5 h-5 text-green-400" />
               <h1 className="text-xl font-semibold">Atlas</h1>
             </div>
-            <p className="text-gray-400 text-sm mt-1">AI-powered project reports — ask me anything</p>
+            <p className="text-gray-400 text-sm mt-1">
+              {mode === 'chat'
+                ? 'AI-powered project reports — ask me anything'
+                : 'One-shot data query — natural language → SQL → table'}
+            </p>
+            {/* Mode tab toggle (#375) */}
+            <div className="flex items-center gap-1 mt-3 bg-gray-800 border border-gray-700 rounded-lg p-1 w-fit">
+              <button
+                onClick={() => setMode('chat')}
+                className={cn(
+                  'text-xs px-3 py-1 rounded transition-colors',
+                  mode === 'chat' ? 'bg-green-600 text-white' : 'text-gray-400 hover:text-white'
+                )}
+              >
+                Chat
+              </button>
+              <button
+                onClick={() => setMode('data')}
+                className={cn(
+                  'text-xs px-3 py-1 rounded transition-colors flex items-center gap-1',
+                  mode === 'data' ? 'bg-green-600 text-white' : 'text-gray-400 hover:text-white'
+                )}
+              >
+                <Code className="w-3 h-3" />
+                Data Query
+              </button>
+            </div>
           </div>
           {savedQueries.length > 0 && (
             <button
@@ -475,6 +796,10 @@ export default function ReportsPage() {
           )}
         </div>
 
+        {/* Mode dispatch — chat (default) vs data-query (#375) */}
+        {mode === 'data' ? (
+          <DataQueryPanel onClickProject={handleClickProject} />
+        ) : (<>
         {/* Saved queries panel */}
         {showSaved && savedQueries.length > 0 && (
           <div className="mb-4 bg-gray-800/50 border border-gray-700 rounded-xl p-4">
@@ -614,6 +939,7 @@ export default function ReportsPage() {
             </button>
           </form>
         </div>
+        </>)}
       </div>
 
       {/* Project Panel */}
