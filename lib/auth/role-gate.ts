@@ -1,16 +1,17 @@
 // Server-side role-gate helper for API routes that need to enforce
 // "must be a manager+ internal user" beyond just "must be authenticated."
 //
-// CRITICAL CONTEXT (R2 audit 2026-04-28):
+// CONTEXT:
 // - public.users does NOT have an `auth_user_id` column. Only `id`, `email`, `role`, `active`.
-// - public.users.id ≠ auth.users.id for 12 of 15 active role-bearing users
-//   (legacy data; only 3 users were provisioned with matching ids).
-// - Therefore the ONLY reliable join from auth.users → public.users is by email.
+// - As of migration 196 (2026-04-29) public.users.id is aligned with auth.users.id for
+//   every active role-bearing user that has signed in via Supabase auth. id-based lookup
+//   in other code paths is now safe.
+// - This helper still uses email for defense-in-depth: (a) inactive auth.users rows
+//   (e.g. aaron@gomicrogridenergy.com had no auth.users row at backfill time and will
+//   diverge again on first sign-in), (b) the user-provisioning flow that originally
+//   caused the divergence has not been audited yet, so new users may still drift.
 // - Supabase Auth marks email as verified on the auth.users row before a session
 //   is issued, so trusting authUser.email is safe for this purpose.
-//
-// All API routes doing "manager+" gating MUST use this helper. Inline lookups
-// against `public.users` by `id` will silently 403 most legitimate users.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 
@@ -88,8 +89,8 @@ export async function checkRole(input: RoleCheckInput): Promise<RoleCheckResult>
 
 /**
  * Resolve the org_ids the caller belongs to via `org_memberships`. Keyed by
- * public.users.id (NOT auth.users.id — only 3 of 15 active internal users have
- * matching ids; see #353/#363).
+ * public.users.id (which now equals auth.users.id post-mig-196 for users that
+ * have signed in, but the helper accepts whichever id checkRole returned).
  *
  * Returns `{ ok: true, orgIds: [] }` when the user has no memberships.
  * Returns `{ ok: false }` when the lookup itself failed (caller should
